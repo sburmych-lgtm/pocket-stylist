@@ -213,10 +213,10 @@ export interface LookbookResponse {
 /* ---------- Lookbook API ---------- */
 
 export const lookbookApi = {
-  generate(lat?: number, lon?: number): Promise<LookbookResponse> {
+  generate(lat?: number, lon?: number, memberId?: string): Promise<LookbookResponse> {
     return apiFetch<LookbookResponse>("/lookbook/generate", {
       method: "POST",
-      body: JSON.stringify({ lat, lon }),
+      body: JSON.stringify({ lat, lon, memberId }),
     });
   },
 
@@ -241,5 +241,97 @@ export const lookbookApi = {
       method: "POST",
       body: JSON.stringify({ dayIndex, excludeItemIds, lat, lon }),
     });
+  },
+};
+
+/* ---------- Family types ---------- */
+
+export interface FamilyMemberInfo {
+  id: string;
+  name: string | null;
+  email: string;
+  avatarUrl: string | null;
+}
+
+export interface FamilyMembership {
+  id: string;
+  familyId: string;
+  userId: string;
+  role: string;
+  user: FamilyMemberInfo;
+}
+
+export interface FamilyData {
+  id: string;
+  name: string;
+  createdAt: string;
+  members: FamilyMembership[];
+  myRole: string;
+}
+
+export interface WardrobeItem {
+  id: string;
+  imageUrl: string;
+  thumbnailUrl: string | null;
+  category: string;
+  subcategory: string | null;
+  colorPrimary: string;
+  colorHex: string | null;
+  pattern: string;
+  fabric: string | null;
+  formalityLevel: number;
+  season: string;
+  brand: string | null;
+  confidence: number;
+  timesWorn: number;
+}
+
+/* ---------- Family API ---------- */
+
+export const familyApi = {
+  list(): Promise<{ families: FamilyData[] }> {
+    return apiFetch("/family");
+  },
+
+  create(name: string): Promise<{ family: FamilyData }> {
+    return apiFetch("/family", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    });
+  },
+
+  update(familyId: string, name: string): Promise<{ family: FamilyData }> {
+    return apiFetch(`/family/${familyId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    });
+  },
+
+  remove(familyId: string): Promise<{ ok: boolean }> {
+    return apiFetch(`/family/${familyId}`, { method: "DELETE" });
+  },
+
+  addMember(
+    familyId: string,
+    email: string,
+    role?: string,
+  ): Promise<{ member: FamilyMembership }> {
+    return apiFetch(`/family/${familyId}/members`, {
+      method: "POST",
+      body: JSON.stringify({ email, role }),
+    });
+  },
+
+  removeMember(familyId: string, userId: string): Promise<{ ok: boolean }> {
+    return apiFetch(`/family/${familyId}/members/${userId}`, {
+      method: "DELETE",
+    });
+  },
+
+  getMemberWardrobe(
+    familyId: string,
+    memberId: string,
+  ): Promise<{ items: WardrobeItem[] }> {
+    return apiFetch(`/family/${familyId}/members/${memberId}/wardrobe`);
   },
 };

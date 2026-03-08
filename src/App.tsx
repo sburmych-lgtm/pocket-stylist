@@ -9,6 +9,7 @@ import { MatchingPage } from "./pages/MatchingPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { LookbookPage } from "./pages/LookbookPage";
+import FamilyPage from "./pages/FamilyPage";
 import { LoginPage } from "./pages/LoginPage";
 import { Layout } from "./components/Layout";
 
@@ -60,6 +61,7 @@ export default function App() {
                 <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/lookbook" element={<LookbookPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/family" element={<FamilyPage />} />
               </Route>
             </Route>
           </Routes>

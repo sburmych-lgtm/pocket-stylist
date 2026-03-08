@@ -5,6 +5,7 @@ import { getWeatherForecast, getWeather, weatherToSeason } from "../services/sty
 import { filterWardrobe } from "../services/styling/rules-engine.js";
 import { generateOutfits } from "../services/styling/outfit-generator.js";
 import type { WardrobeItem } from "../../src/generated/prisma/client.js";
+import { resolveTargetUser } from "../services/family.js";
 
 export const lookbookRouter = Router();
 
@@ -34,14 +35,25 @@ interface LookbookResponse {
 lookbookRouter.post("/generate", async (req: Request, res: Response) => {
   try {
     const userId = req.userId!;
-    const { lat, lon } = req.body as { lat?: number; lon?: number };
+    const { lat, lon, memberId } = req.body as {
+      lat?: number;
+      lon?: number;
+      memberId?: string;
+    };
+
+    // Resolve target user (self or family member)
+    const { targetUserId, error: memberError } = await resolveTargetUser(userId, memberId);
+    if (memberError) {
+      res.status(403).json({ error: memberError });
+      return;
+    }
 
     const userLat = lat ?? 50.45;
     const userLon = lon ?? 30.52;
 
-    // Get user profile for color data
+    // Get target user profile for color data
     const userProfile = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: targetUserId },
       select: { colorPalette: true, avoidColors: true },
     });
 
@@ -54,7 +66,7 @@ lookbookRouter.post("/generate", async (req: Request, res: Response) => {
 
     // Get full wardrobe
     const allItems = await prisma.wardrobeItem.findMany({
-      where: { userId },
+      where: { userId: targetUserId },
     });
 
     if (allItems.length === 0) {

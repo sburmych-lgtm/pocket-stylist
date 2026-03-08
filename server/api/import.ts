@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { prisma } from "../services/prisma.js";
 import { analyzeClothingImage } from "../services/gemini.js";
 import { uploadImage } from "../services/cloudinary.js";
+import { resolveTargetUser } from "../services/family.js";
 
 export const importRouter = Router();
 
@@ -107,12 +108,19 @@ importRouter.post("/save", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/import/wardrobe — Get all wardrobe items
+// GET /api/import/wardrobe — Get all wardrobe items (supports ?memberId= for family)
 importRouter.get("/wardrobe", async (req: Request, res: Response) => {
   try {
     const userId = req.userId!;
+    const memberId = req.query.memberId as string | undefined;
+    const { targetUserId, error } = await resolveTargetUser(userId, memberId);
+    if (error) {
+      res.status(403).json({ error });
+      return;
+    }
+
     const items = await prisma.wardrobeItem.findMany({
-      where: { userId },
+      where: { userId: targetUserId },
       orderBy: { createdAt: "desc" },
     });
     res.json(items);

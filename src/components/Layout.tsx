@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: "/match", label: "Match" },
   { to: "/analytics", label: "Analytics" },
   { to: "/lookbook", label: "\uD83D\uDCC5 Lookbook" },
+  { to: "/family", label: "\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67 Сім'я" },
 ] as const;
 
 export function Layout() {

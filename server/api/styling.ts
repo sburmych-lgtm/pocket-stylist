@@ -4,6 +4,7 @@ import { prisma } from "../services/prisma.js";
 import { getWeather, weatherToSeason } from "../services/styling/weather.js";
 import { filterWardrobe } from "../services/styling/rules-engine.js";
 import { generateOutfits } from "../services/styling/outfit-generator.js";
+import { resolveTargetUser } from "../services/family.js";
 
 export const stylingRouter = Router();
 
@@ -16,16 +17,26 @@ stylingRouter.post("/suggest", async (req: Request, res: Response) => {
       lon,
       formalityMin,
       formalityMax,
+      memberId,
     } = req.body as {
       mood: { energy: number; boldness: number };
       lat?: number;
       lon?: number;
       formalityMin?: number;
       formalityMax?: number;
+      memberId?: string;
     };
 
     if (!mood) {
       res.status(400).json({ error: "mood is required" });
+      return;
+    }
+
+    // Resolve target user (self or family member)
+    const userId = req.userId!;
+    const { targetUserId, error: memberError } = await resolveTargetUser(userId, memberId);
+    if (memberError) {
+      res.status(403).json({ error: memberError });
       return;
     }
 
@@ -38,10 +49,9 @@ stylingRouter.post("/suggest", async (req: Request, res: Response) => {
       max: formalityMax ?? 5,
     };
 
-    // Get user with color data
-    const userId = req.userId!;
+    // Get target user with color data
     const userProfile = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: targetUserId },
       select: { colorPalette: true, avoidColors: true },
     });
 
@@ -54,7 +64,7 @@ stylingRouter.post("/suggest", async (req: Request, res: Response) => {
 
     // Get wardrobe
     const allItems = await prisma.wardrobeItem.findMany({
-      where: { userId },
+      where: { userId: targetUserId },
     });
 
     if (allItems.length === 0) {
