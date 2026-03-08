@@ -5,6 +5,7 @@ const NAV_ITEMS = [
   { to: "/import", label: "Import" },
   { to: "/style", label: "Style Me" },
   { to: "/scan", label: "Scanner" },
+  { to: "/match", label: "Match" },
 ] as const;
 
 export function Layout() {
