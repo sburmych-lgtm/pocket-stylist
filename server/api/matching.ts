@@ -7,15 +7,6 @@ import { colorsHarmonize } from "../services/styling/rules-engine.js";
 export const matchingRouter = Router();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
-const DEMO_USER_EMAIL = "demo@pocket-stylist.app";
-
-async function getDemoUser() {
-  return prisma.user.upsert({
-    where: { email: DEMO_USER_EMAIL },
-    update: {},
-    create: { email: DEMO_USER_EMAIL, name: "Demo User" },
-  });
-}
 
 interface GarmentBreakdown {
   garments: Array<{
@@ -64,9 +55,9 @@ Return ONLY valid JSON (no markdown fences):
     const breakdown = JSON.parse(json) as GarmentBreakdown;
 
     // Find matches from user's wardrobe
-    const user = await getDemoUser();
+    const userId = req.userId!;
     const wardrobe = await prisma.wardrobeItem.findMany({
-      where: { userId: user.id },
+      where: { userId },
     });
 
     const recreations = breakdown.garments.map((garment) => {

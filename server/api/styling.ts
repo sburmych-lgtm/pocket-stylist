@@ -7,16 +7,6 @@ import { generateOutfits } from "../services/styling/outfit-generator.js";
 
 export const stylingRouter = Router();
 
-const DEMO_USER_EMAIL = "demo@pocket-stylist.app";
-
-async function getDemoUser() {
-  return prisma.user.upsert({
-    where: { email: DEMO_USER_EMAIL },
-    update: {},
-    create: { email: DEMO_USER_EMAIL, name: "Demo User" },
-  });
-}
-
 // POST /api/styling/suggest — Get outfit suggestions
 stylingRouter.post("/suggest", async (req: Request, res: Response) => {
   try {
@@ -49,9 +39,9 @@ stylingRouter.post("/suggest", async (req: Request, res: Response) => {
     };
 
     // Get wardrobe
-    const user = await getDemoUser();
+    const userId = req.userId!;
     const allItems = await prisma.wardrobeItem.findMany({
-      where: { userId: user.id },
+      where: { userId },
     });
 
     if (allItems.length === 0) {
@@ -109,11 +99,11 @@ stylingRouter.post("/feedback", async (req: Request, res: Response) => {
 stylingRouter.post("/wear", async (req: Request, res: Response) => {
   try {
     const { outfitId } = req.body as { outfitId: string };
-    const user = await getDemoUser();
+    const userId = req.userId!;
 
     // Log the wear
     await prisma.outfitLog.create({
-      data: { userId: user.id, outfitId },
+      data: { userId, outfitId },
     });
 
     // Update lastWornAt and timesWorn on each item

@@ -1,17 +1,16 @@
 import { Router } from "express";
+import { authRouter } from "./auth.js";
 import { importRouter } from "./import.js";
 import { stylingRouter } from "./styling.js";
 import { scannerRouter } from "./scanner.js";
 import { matchingRouter } from "./matching.js";
 import { analyticsRouter } from "./analytics.js";
+import { requireAuth } from "../middleware/auth.js";
 
 export const apiRouter = Router();
 
-apiRouter.use("/import", importRouter);
-apiRouter.use("/styling", stylingRouter);
-apiRouter.use("/scanner", scannerRouter);
-apiRouter.use("/matching", matchingRouter);
-apiRouter.use("/analytics", analyticsRouter);
+// Public routes — no auth required
+apiRouter.use("/auth", authRouter);
 
 apiRouter.get("/status", (_req, res) => {
   res.json({
@@ -26,3 +25,10 @@ apiRouter.get("/status", (_req, res) => {
     googleAuthConfigured: !!process.env.GOOGLE_CLIENT_ID,
   });
 });
+
+// Protected routes — require auth
+apiRouter.use("/import", requireAuth, importRouter);
+apiRouter.use("/styling", requireAuth, stylingRouter);
+apiRouter.use("/scanner", requireAuth, scannerRouter);
+apiRouter.use("/matching", requireAuth, matchingRouter);
+apiRouter.use("/analytics", requireAuth, analyticsRouter);

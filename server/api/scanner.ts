@@ -5,16 +5,6 @@ import { analyzeClothingImage } from "../services/gemini.js";
 
 export const scannerRouter = Router();
 
-const DEMO_USER_EMAIL = "demo@pocket-stylist.app";
-
-async function getDemoUser() {
-  return prisma.user.upsert({
-    where: { email: DEMO_USER_EMAIL },
-    update: {},
-    create: { email: DEMO_USER_EMAIL, name: "Demo User" },
-  });
-}
-
 // POST /api/scanner/analyze — Scan item in store, get BUY/SKIP verdict
 scannerRouter.post("/analyze", async (req: Request, res: Response) => {
   try {
@@ -32,9 +22,9 @@ scannerRouter.post("/analyze", async (req: Request, res: Response) => {
     const tags = await analyzeClothingImage(image, mimeType);
 
     // Get user's wardrobe for comparison
-    const user = await getDemoUser();
+    const userId = req.userId!;
     const wardrobe = await prisma.wardrobeItem.findMany({
-      where: { userId: user.id },
+      where: { userId },
     });
 
     // Gap analysis: does user already have similar items?

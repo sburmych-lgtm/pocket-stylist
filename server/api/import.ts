@@ -6,17 +6,6 @@ import { uploadImage } from "../services/cloudinary.js";
 
 export const importRouter = Router();
 
-// Temporary demo user — replaced by auth in Phase 2
-const DEMO_USER_EMAIL = "demo@pocket-stylist.app";
-
-async function ensureDemoUser() {
-  return prisma.user.upsert({
-    where: { email: DEMO_USER_EMAIL },
-    update: {},
-    create: { email: DEMO_USER_EMAIL, name: "Demo User" },
-  });
-}
-
 // POST /api/import/analyze — Upload + analyze a single image
 importRouter.post("/analyze", async (req: Request, res: Response) => {
   try {
@@ -91,11 +80,11 @@ importRouter.post("/save", async (req: Request, res: Response) => {
       return;
     }
 
-    const user = await ensureDemoUser();
+    const userId = req.userId!;
 
     const created = await prisma.wardrobeItem.createMany({
       data: items.map((item) => ({
-        userId: user.id,
+        userId,
         imageUrl: item.imageUrl,
         thumbnailUrl: item.thumbnailUrl,
         category: item.category,
@@ -119,11 +108,11 @@ importRouter.post("/save", async (req: Request, res: Response) => {
 });
 
 // GET /api/import/wardrobe — Get all wardrobe items
-importRouter.get("/wardrobe", async (_req: Request, res: Response) => {
+importRouter.get("/wardrobe", async (req: Request, res: Response) => {
   try {
-    const user = await ensureDemoUser();
+    const userId = req.userId!;
     const items = await prisma.wardrobeItem.findMany({
-      where: { userId: user.id },
+      where: { userId },
       orderBy: { createdAt: "desc" },
     });
     res.json(items);

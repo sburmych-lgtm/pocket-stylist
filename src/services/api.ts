@@ -1,11 +1,33 @@
 const API_BASE = "/api";
 
+const TOKEN_KEY = "pocket_stylist_token";
+
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearToken(): void {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
 async function apiFetch<T>(
   path: string,
   options?: RequestInit,
 ): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers,
     ...options,
   });
   if (!res.ok) {
@@ -14,6 +36,45 @@ async function apiFetch<T>(
   }
   return res.json() as Promise<T>;
 }
+
+/* ---------- Auth types ---------- */
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string | null;
+  avatarUrl: string | null;
+  genderMode: string;
+  colorSeason: string | null;
+}
+
+interface AuthResponse {
+  token: string;
+  user: AuthUser;
+}
+
+/* ---------- Auth API ---------- */
+
+export const authApi = {
+  loginGoogle(credential: string): Promise<AuthResponse> {
+    return apiFetch<AuthResponse>("/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ credential }),
+    });
+  },
+
+  loginDemo(): Promise<AuthResponse> {
+    return apiFetch<AuthResponse>("/auth/demo", {
+      method: "POST",
+    });
+  },
+
+  getMe(): Promise<AuthUser> {
+    return apiFetch<AuthUser>("/auth/me");
+  },
+};
+
+/* ---------- Existing domain API ---------- */
 
 export function analyzeImage(image: string, mimeType: string, fileName: string) {
   return apiFetch<{

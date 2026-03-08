@@ -11,26 +11,16 @@ import {
 
 export const analyticsRouter = Router();
 
-const DEMO_USER_EMAIL = "demo@pocket-stylist.app";
-
-async function getDemoUser() {
-  return prisma.user.upsert({
-    where: { email: DEMO_USER_EMAIL },
-    update: {},
-    create: { email: DEMO_USER_EMAIL, name: "Demo User" },
-  });
-}
-
 // GET /api/analytics/dashboard — full analytics dashboard data
-analyticsRouter.get("/dashboard", async (_req: Request, res: Response) => {
+analyticsRouter.get("/dashboard", async (req: Request, res: Response) => {
   try {
-    const user = await getDemoUser();
+    const userId = req.userId!;
 
     const [wardrobe, outfits, outfitLogs] = await Promise.all([
-      prisma.wardrobeItem.findMany({ where: { userId: user.id } }),
-      prisma.outfit.findMany({ where: { userId: user.id } }),
+      prisma.wardrobeItem.findMany({ where: { userId } }),
+      prisma.outfit.findMany({ where: { userId } }),
       prisma.outfitLog.findMany({
-        where: { userId: user.id },
+        where: { userId },
         orderBy: { wornAt: "desc" },
       }),
     ]);
