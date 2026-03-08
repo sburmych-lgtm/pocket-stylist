@@ -173,3 +173,73 @@ export const profileApi = {
     });
   },
 };
+
+/* ---------- Lookbook types ---------- */
+
+export interface LookbookDayWeather {
+  temp: number;
+  feelsLike: number;
+  condition: string;
+  icon: string;
+  location: string;
+}
+
+export interface LookbookOutfit {
+  name: string;
+  items: Array<{
+    id: string;
+    imageUrl: string;
+    thumbnailUrl: string | null;
+    category: string;
+    subcategory: string | null;
+    colorPrimary: string;
+  }>;
+  stylingTip: string;
+  confidence: number;
+}
+
+export interface LookbookDay {
+  date: string;
+  weather: LookbookDayWeather;
+  outfit: LookbookOutfit | null;
+}
+
+export interface LookbookResponse {
+  days: LookbookDay[];
+  weekStart: string;
+  message?: string;
+}
+
+/* ---------- Lookbook API ---------- */
+
+export const lookbookApi = {
+  generate(lat?: number, lon?: number): Promise<LookbookResponse> {
+    return apiFetch<LookbookResponse>("/lookbook/generate", {
+      method: "POST",
+      body: JSON.stringify({ lat, lon }),
+    });
+  },
+
+  getCurrent(): Promise<{ days: LookbookDay[] | null }> {
+    return apiFetch<{ days: LookbookDay[] | null }>("/lookbook/current");
+  },
+
+  logWear(dayIndex: number, itemIds: string[]): Promise<{ ok: boolean }> {
+    return apiFetch<{ ok: boolean }>(`/lookbook/${dayIndex}/wear`, {
+      method: "POST",
+      body: JSON.stringify({ itemIds }),
+    });
+  },
+
+  regenerateDay(
+    dayIndex: number,
+    excludeItemIds?: string[],
+    lat?: number,
+    lon?: number,
+  ): Promise<{ outfit: LookbookOutfit | null }> {
+    return apiFetch<{ outfit: LookbookOutfit | null }>("/lookbook/regenerate-day", {
+      method: "POST",
+      body: JSON.stringify({ dayIndex, excludeItemIds, lat, lon }),
+    });
+  },
+};

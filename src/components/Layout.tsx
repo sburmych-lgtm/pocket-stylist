@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { to: "/scan", label: "Scanner" },
   { to: "/match", label: "Match" },
   { to: "/analytics", label: "Analytics" },
+  { to: "/lookbook", label: "\uD83D\uDCC5 Lookbook" },
 ] as const;
 
 export function Layout() {
