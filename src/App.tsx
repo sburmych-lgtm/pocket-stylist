@@ -5,6 +5,7 @@ import { ImportPage } from "./pages/ImportPage";
 import { StylingPage } from "./pages/StylingPage";
 import { ScannerPage } from "./pages/ScannerPage";
 import { MatchingPage } from "./pages/MatchingPage";
+import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { Layout } from "./components/Layout";
 
 const queryClient = new QueryClient({
@@ -27,6 +28,7 @@ export default function App() {
             <Route path="/style" element={<StylingPage />} />
             <Route path="/scan" element={<ScannerPage />} />
             <Route path="/match" element={<MatchingPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
