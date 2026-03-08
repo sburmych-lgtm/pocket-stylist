@@ -38,7 +38,6 @@ const BADGE_ICONS: Record<string, string> = {
 };
 
 export function GamificationPanel({ data }: GamificationPanelProps) {
-  const nextLevelPoints = data.level * 100;
   const currentLevelProgress = data.points % 100;
 
   return (

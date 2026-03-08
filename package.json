@@ -7,8 +7,8 @@
     "dev": "concurrently \"vite\" \"tsx watch server/index.ts\"",
     "dev:client": "vite",
     "dev:server": "tsx watch server/index.ts",
-    "build": "prisma generate && prisma db push && tsc -p tsconfig.server.json && vite build",
-    "start": "NODE_ENV=production node dist/server/server/index.js",
+    "build": "prisma generate && tsc -p tsconfig.server.json && vite build",
+    "start": "prisma db push && NODE_ENV=production node dist/server/server/index.js",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
     "preview": "vite preview",
@@ -30,6 +30,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.1",
+    "prisma": "^7.4.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -47,7 +48,6 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
-    "prisma": "^7.4.2",
     "tailwindcss": "^4.2.1",
     "tsx": "^4.21.0",
     "typescript": "~5.9.3",
