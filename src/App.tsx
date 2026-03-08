@@ -7,6 +7,7 @@ import { StylingPage } from "./pages/StylingPage";
 import { ScannerPage } from "./pages/ScannerPage";
 import { MatchingPage } from "./pages/MatchingPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { LoginPage } from "./pages/LoginPage";
 import { Layout } from "./components/Layout";
 
@@ -56,6 +57,7 @@ export default function App() {
                 <Route path="/scan" element={<ScannerPage />} />
                 <Route path="/match" element={<MatchingPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
               </Route>
             </Route>
           </Routes>

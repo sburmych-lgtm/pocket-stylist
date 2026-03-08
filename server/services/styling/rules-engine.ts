@@ -1,10 +1,17 @@
 import type { WardrobeItem } from "../../../src/generated/prisma/client.js";
 
+interface ColorEntry {
+  name: string;
+  hex: string;
+}
+
 interface StylingContext {
   mood: { energy: number; boldness: number };
   weatherSeason: string;
   formalityRange: { min: number; max: number };
   avoidRecentDays?: number;
+  colorPalette?: ColorEntry[];
+  avoidColors?: ColorEntry[];
 }
 
 // Pure-code rules engine — no Gemini needed, unlimited usage
@@ -68,6 +75,24 @@ export function scoreItem(
 
   // High confidence items preferred
   score += item.confidence * 10;
+
+  // Color palette bonus: items matching user's best colors get +15
+  if (ctx.colorPalette && ctx.colorPalette.length > 0) {
+    const itemColor = item.colorPrimary.toLowerCase();
+    const matchesPalette = ctx.colorPalette.some(
+      (c) => c.name.toLowerCase() === itemColor,
+    );
+    if (matchesPalette) score += 15;
+  }
+
+  // Avoid colors penalty: items matching colors to avoid get -10
+  if (ctx.avoidColors && ctx.avoidColors.length > 0) {
+    const itemColor = item.colorPrimary.toLowerCase();
+    const matchesAvoid = ctx.avoidColors.some(
+      (c) => c.name.toLowerCase() === itemColor,
+    );
+    if (matchesAvoid) score -= 10;
+  }
 
   return Math.max(0, Math.min(100, score));
 }

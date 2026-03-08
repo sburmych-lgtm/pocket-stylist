@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 const NAV_ITEMS = [
@@ -12,6 +12,7 @@ const NAV_ITEMS = [
 
 export function Layout() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900">
@@ -45,21 +46,27 @@ export function Layout() {
           {/* User info + logout */}
           {user && (
             <div className="flex items-center gap-3">
-              {user.avatarUrl ? (
-                <img
-                  src={user.avatarUrl}
-                  alt={user.name ?? "avatar"}
-                  className="h-8 w-8 rounded-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700">
-                  {(user.name ?? user.email).charAt(0).toUpperCase()}
-                </div>
-              )}
-              <span className="hidden text-sm font-medium text-neutral-700 sm:inline">
-                {user.name ?? user.email}
-              </span>
+              <button
+                type="button"
+                onClick={() => navigate("/profile")}
+                className="flex items-center gap-2 rounded-lg p-1 transition-colors hover:bg-neutral-100"
+              >
+                {user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.name ?? "avatar"}
+                    className="h-8 w-8 rounded-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700">
+                    {(user.name ?? user.email).charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <span className="hidden text-sm font-medium text-neutral-700 sm:inline">
+                  {user.name ?? user.email}
+                </span>
+              </button>
               <button
                 type="button"
                 onClick={logout}

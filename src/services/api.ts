@@ -124,3 +124,52 @@ export function saveItems(
 export function fetchWardrobe() {
   return apiFetch<Array<Record<string, unknown>>>("/import/wardrobe");
 }
+
+/* ---------- Profile types ---------- */
+
+export interface ColorPaletteEntry {
+  name: string;
+  hex: string;
+}
+
+export interface ColorAnalysisResult {
+  season: string;
+  undertone: string;
+  contrast: string;
+  palette: ColorPaletteEntry[];
+  avoid: ColorPaletteEntry[];
+  description: string;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string | null;
+  avatarUrl: string | null;
+  genderMode: string;
+  colorSeason: string | null;
+  colorPalette: ColorPaletteEntry[] | null;
+  avoidColors: ColorPaletteEntry[] | null;
+}
+
+/* ---------- Profile API ---------- */
+
+export const profileApi = {
+  getProfile(): Promise<UserProfile> {
+    return apiFetch<UserProfile>("/profile");
+  },
+
+  updateProfile(data: { genderMode?: string; name?: string }): Promise<UserProfile> {
+    return apiFetch<UserProfile>("/profile", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  },
+
+  analyzeColor(image: string): Promise<ColorAnalysisResult> {
+    return apiFetch<ColorAnalysisResult>("/profile/color-analysis", {
+      method: "POST",
+      body: JSON.stringify({ image }),
+    });
+  },
+};

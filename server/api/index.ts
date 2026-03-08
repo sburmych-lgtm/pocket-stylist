@@ -5,6 +5,7 @@ import { stylingRouter } from "./styling.js";
 import { scannerRouter } from "./scanner.js";
 import { matchingRouter } from "./matching.js";
 import { analyticsRouter } from "./analytics.js";
+import { profileRouter } from "./profile.js";
 import { requireAuth } from "../middleware/auth.js";
 
 export const apiRouter = Router();
@@ -32,3 +33,4 @@ apiRouter.use("/styling", requireAuth, stylingRouter);
 apiRouter.use("/scanner", requireAuth, scannerRouter);
 apiRouter.use("/matching", requireAuth, matchingRouter);
 apiRouter.use("/analytics", requireAuth, analyticsRouter);
+apiRouter.use("/profile", requireAuth, profileRouter);

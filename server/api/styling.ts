@@ -38,8 +38,21 @@ stylingRouter.post("/suggest", async (req: Request, res: Response) => {
       max: formalityMax ?? 5,
     };
 
-    // Get wardrobe
+    // Get user with color data
     const userId = req.userId!;
+    const userProfile = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { colorPalette: true, avoidColors: true },
+    });
+
+    const colorPalette = (userProfile?.colorPalette ?? undefined) as
+      | Array<{ name: string; hex: string }>
+      | undefined;
+    const avoidColors = (userProfile?.avoidColors ?? undefined) as
+      | Array<{ name: string; hex: string }>
+      | undefined;
+
+    // Get wardrobe
     const allItems = await prisma.wardrobeItem.findMany({
       where: { userId },
     });
@@ -59,6 +72,8 @@ stylingRouter.post("/suggest", async (req: Request, res: Response) => {
       weatherSeason,
       formalityRange,
       avoidRecentDays: 7,
+      colorPalette,
+      avoidColors,
     });
 
     // Generate outfits
