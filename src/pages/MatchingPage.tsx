@@ -1,4 +1,7 @@
 import { useState, useCallback } from "react";
+import { ShareCard } from "../components/matching/ShareCard.js";
+import { SharePreview } from "../components/matching/SharePreview.js";
+import { shareImage, downloadBlob } from "../utils/share.js";
 
 interface GarmentTarget {
   category: string;
@@ -26,11 +29,19 @@ interface MatchResult {
   recreations: RecreationOption[];
 }
 
+type ShareState = "idle" | "generating" | "shared" | "downloaded";
+
 export function MatchingPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<MatchResult | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Share state per recreation option index
+  const [shareStates, setShareStates] = useState<Record<number, ShareState>>({});
+  const [shareBlobs, setShareBlobs] = useState<Record<number, Blob>>({});
+  const [activeShareIndex, setActiveShareIndex] = useState<number | null>(null);
+  const [showPreview, setShowPreview] = useState<number | null>(null);
 
   const handleUpload = useCallback(() => {
     const input = document.createElement("input");
@@ -43,6 +54,10 @@ export function MatchingPage() {
       setPreviewUrl(URL.createObjectURL(file));
       setLoading(true);
       setError(null);
+      setShareStates({});
+      setShareBlobs({});
+      setActiveShareIndex(null);
+      setShowPreview(null);
 
       const reader = new FileReader();
       reader.onload = async () => {
@@ -66,6 +81,56 @@ export function MatchingPage() {
     };
     input.click();
   }, []);
+
+  const handleShareClick = useCallback((optionIndex: number) => {
+    setShareStates((prev) => ({ ...prev, [optionIndex]: "generating" }));
+    setActiveShareIndex(optionIndex);
+  }, []);
+
+  const handleShareReady = useCallback(
+    async (optionIndex: number, blob: Blob) => {
+      setShareBlobs((prev) => ({ ...prev, [optionIndex]: blob }));
+      try {
+        const shared = await shareImage(blob, "My Style Match - Pocket Stylist");
+        setShareStates((prev) => ({
+          ...prev,
+          [optionIndex]: shared ? "shared" : "downloaded",
+        }));
+      } catch {
+        setShareStates((prev) => ({ ...prev, [optionIndex]: "idle" }));
+      }
+      setActiveShareIndex(null);
+    },
+    [],
+  );
+
+  const handleDownload = useCallback(
+    (optionIndex: number) => {
+      const blob = shareBlobs[optionIndex];
+      if (!blob) {
+        // Generate first, then download
+        setShareStates((prev) => ({ ...prev, [optionIndex]: "generating" }));
+        setActiveShareIndex(optionIndex);
+        return;
+      }
+      downloadBlob(blob, "style-match.png");
+      setShareStates((prev) => ({ ...prev, [optionIndex]: "downloaded" }));
+    },
+    [shareBlobs],
+  );
+
+  const shareButtonLabel = (state: ShareState): string => {
+    switch (state) {
+      case "generating":
+        return "Створюю...";
+      case "shared":
+        return "Надіслано!";
+      case "downloaded":
+        return "Завантажено!";
+      default:
+        return "Поділитися";
+    }
+  };
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -159,6 +224,68 @@ export function MatchingPage() {
                     </div>
                   ))}
                 </div>
+
+                {/* Share & Download buttons */}
+                <div className="mt-4 flex items-center gap-3 border-t border-neutral-100 pt-3">
+                  <button
+                    onClick={() => {
+                      if (shareStates[i] === "generating") return;
+                      handleShareClick(i);
+                    }}
+                    disabled={shareStates[i] === "generating"}
+                    className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm
+                      font-medium text-white transition-colors hover:bg-indigo-700
+                      disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {shareStates[i] === "generating" ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                      <span>{"📸"}</span>
+                    )}
+                    {shareButtonLabel(shareStates[i] ?? "idle")}
+                  </button>
+
+                  <button
+                    onClick={() => handleDownload(i)}
+                    disabled={shareStates[i] === "generating"}
+                    className="flex items-center gap-2 rounded-lg border border-neutral-300 px-4 py-2
+                      text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50
+                      disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <span>{"💾"}</span>
+                    Завантажити
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      setShowPreview((prev) => (prev === i ? null : i))
+                    }
+                    className="ml-auto text-sm text-indigo-600 hover:text-indigo-700"
+                  >
+                    {showPreview === i ? "Сховати" : "Попередній перегляд"}
+                  </button>
+                </div>
+
+                {/* Preview panel */}
+                {showPreview === i && previewUrl && (
+                  <div className="mt-4">
+                    <SharePreview
+                      referenceImageUrl={previewUrl}
+                      recreationItems={option.items}
+                      matchScore={option.overallScore}
+                    />
+                  </div>
+                )}
+
+                {/* Hidden ShareCard for canvas rendering */}
+                {activeShareIndex === i && previewUrl && (
+                  <ShareCard
+                    referenceImageUrl={previewUrl}
+                    recreationItems={option.items}
+                    matchScore={option.overallScore}
+                    onShare={(blob) => void handleShareReady(i, blob)}
+                  />
+                )}
               </div>
             ))
           ) : (
@@ -168,7 +295,14 @@ export function MatchingPage() {
           )}
 
           <button
-            onClick={() => { setResult(null); setPreviewUrl(null); }}
+            onClick={() => {
+              setResult(null);
+              setPreviewUrl(null);
+              setShareStates({});
+              setShareBlobs({});
+              setActiveShareIndex(null);
+              setShowPreview(null);
+            }}
             className="w-full rounded-xl border border-neutral-300 px-6 py-3 text-base font-medium
               text-neutral-700 hover:bg-neutral-50"
           >
