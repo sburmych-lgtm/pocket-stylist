@@ -3,6 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 const NAV_ITEMS = [
   { to: "/", label: "Home" },
   { to: "/import", label: "Import" },
+  { to: "/style", label: "Style Me" },
 ] as const;
 
 export function Layout() {
