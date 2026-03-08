@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { importRouter } from "./import.js";
 import { stylingRouter } from "./styling.js";
+import { scannerRouter } from "./scanner.js";
 
 export const apiRouter = Router();
 
 apiRouter.use("/import", importRouter);
 apiRouter.use("/styling", stylingRouter);
+apiRouter.use("/scanner", scannerRouter);
 
 apiRouter.get("/status", (_req, res) => {
   res.json({

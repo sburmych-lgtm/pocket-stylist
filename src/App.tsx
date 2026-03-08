@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HomePage } from "./pages/HomePage";
 import { ImportPage } from "./pages/ImportPage";
 import { StylingPage } from "./pages/StylingPage";
+import { ScannerPage } from "./pages/ScannerPage";
 import { Layout } from "./components/Layout";
 
 const queryClient = new QueryClient({
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/import" element={<ImportPage />} />
             <Route path="/style" element={<StylingPage />} />
+            <Route path="/scan" element={<ScannerPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
