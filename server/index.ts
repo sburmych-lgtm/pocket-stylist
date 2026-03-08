@@ -22,7 +22,7 @@ app.get("/health", (_req, res) => {
 });
 
 if (isProd) {
-  const clientDir = path.resolve(__dirname, "../client");
+  const clientDir = path.resolve(__dirname, "../../client");
   app.use(express.static(clientDir));
   app.get("/{*splat}", (_req, res) => {
     res.sendFile(path.join(clientDir, "index.html"));
