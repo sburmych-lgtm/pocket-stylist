@@ -8,8 +8,8 @@
     "strict": true,
     "skipLibCheck": true,
     "outDir": "./dist/server",
-    "rootDir": "./server",
+    "rootDir": ".",
     "types": ["node"]
   },
-  "include": ["server"]
+  "include": ["server", "src/generated/prisma"]
 }
