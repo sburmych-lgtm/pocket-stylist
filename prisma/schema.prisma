@@ -1,12 +1,10 @@
 generator client {
-  provider        = "prisma-client"
-  output          = "../src/generated/prisma"
-  previewFeatures = ["postgresqlExtensions"]
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
-  provider   = "postgresql"
-  extensions = [vector]
+  provider = "postgresql"
 }
 
 model User {
@@ -49,7 +47,6 @@ model WardrobeItem {
   timesWorn      Int      @default(0)
   lastWornAt     DateTime?
   purchasedAt    DateTime?
-  embedding      Unsupported("vector(768)")?
   tags           Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
