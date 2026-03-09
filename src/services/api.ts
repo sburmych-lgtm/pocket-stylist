@@ -69,8 +69,9 @@ export const authApi = {
     });
   },
 
-  getMe(): Promise<AuthUser> {
-    return apiFetch<AuthUser>("/auth/me");
+  async getMe(): Promise<AuthUser> {
+    const res = await apiFetch<{ user: AuthUser }>("/auth/me");
+    return res.user;
   },
 };
 
