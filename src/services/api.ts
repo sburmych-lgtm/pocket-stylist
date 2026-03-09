@@ -125,6 +125,26 @@ export function fetchWardrobe() {
   return apiFetch<Array<Record<string, unknown>>>("/import/wardrobe");
 }
 
+/* ---------- App Status ---------- */
+
+export interface AppStatus {
+  version: string;
+  geminiConfigured: boolean;
+  cloudinaryConfigured: boolean;
+  weatherConfigured: boolean;
+  googleAuthConfigured: boolean;
+  googleClientId: string | null;
+}
+
+let _statusCache: AppStatus | null = null;
+
+export async function getAppStatus(): Promise<AppStatus> {
+  if (_statusCache) return _statusCache;
+  const res = await fetch("/api/status");
+  _statusCache = (await res.json()) as AppStatus;
+  return _statusCache;
+}
+
 /* ---------- Profile types ---------- */
 
 export interface ColorPaletteEntry {

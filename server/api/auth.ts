@@ -75,15 +75,8 @@ authRouter.post("/google", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/auth/demo — Development-only demo token
+// POST /api/auth/demo — Demo user login (always available as fallback)
 authRouter.post("/demo", async (_req: Request, res: Response) => {
-  if (!isDemoMode()) {
-    res
-      .status(404)
-      .json({ error: "Demo auth not available when Google is configured" });
-    return;
-  }
-
   try {
     const user = await prisma.user.upsert({
       where: { email: "demo@pocket-stylist.app" },

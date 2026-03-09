@@ -1,15 +1,22 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as
-  | string
-  | undefined;
+import { getAppStatus } from "../services/api";
 
 export function LoginPage() {
   const { loginWithGoogle, loginDemo, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const googleBtnRef = useRef<HTMLDivElement>(null);
+  const [googleClientId, setGoogleClientId] = useState<string | null>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
+
+  /* Fetch server config at runtime (not build-time env var) */
+  useEffect(() => {
+    getAppStatus()
+      .then((status) => setGoogleClientId(status.googleClientId ?? null))
+      .catch(() => setGoogleClientId(null))
+      .finally(() => setStatusLoading(false));
+  }, []);
 
   /* Redirect if already authenticated */
   useEffect(() => {
@@ -29,12 +36,12 @@ export function LoginPage() {
 
   /* Load GSI script and render button */
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
+    if (!googleClientId) return;
 
     function initGsi() {
       if (!window.google || !googleBtnRef.current) return;
       window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID!,
+        client_id: googleClientId!,
         callback: handleGoogleResponse,
       });
       window.google.accounts.id.renderButton(googleBtnRef.current, {
@@ -59,7 +66,7 @@ export function LoginPage() {
     return () => {
       script.remove();
     };
-  }, [handleGoogleResponse]);
+  }, [googleClientId, handleGoogleResponse]);
 
   /* Demo login handler */
   const handleDemo = useCallback(async () => {
@@ -67,7 +74,7 @@ export function LoginPage() {
     navigate("/", { replace: true });
   }, [loginDemo, navigate]);
 
-  if (isLoading) {
+  if (isLoading || statusLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-neutral-50">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
@@ -90,25 +97,29 @@ export function LoginPage() {
 
         {/* Login options */}
         <div className="space-y-4">
-          {GOOGLE_CLIENT_ID ? (
+          {googleClientId && (
             <div className="flex justify-center">
               <div ref={googleBtnRef} />
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={handleDemo}
-              className="w-full rounded-lg bg-indigo-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-            >
-              Continue as Demo User
-            </button>
           )}
+
+          {/* Always show demo as fallback */}
+          <button
+            type="button"
+            onClick={handleDemo}
+            className={`w-full rounded-lg px-4 py-3 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              googleClientId
+                ? "border border-neutral-300 text-neutral-700 hover:bg-neutral-50 focus:ring-neutral-400"
+                : "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500"
+            }`}
+          >
+            {googleClientId ? "Увійти як Demo" : "Увійти як Demo User"}
+          </button>
         </div>
 
-        {/* Footer hint */}
-        {!GOOGLE_CLIENT_ID && (
+        {!googleClientId && (
           <p className="mt-6 text-center text-xs text-neutral-400">
-            Demo mode — no Google Client ID configured
+            Google Sign-In не налаштовано
           </p>
         )}
       </div>

@@ -12,6 +12,7 @@ import {
   setToken,
   clearToken,
   getToken,
+  getAppStatus,
 } from "../services/api";
 import type { AuthUser } from "../services/api";
 
@@ -43,10 +44,6 @@ export function useAuth(): AuthContextType {
 }
 
 /* ---------- Provider ---------- */
-
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as
-  | string
-  | undefined;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -109,16 +106,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // If still no user and no Google configured → auto-demo
-      if (!cancelled && !getToken() && !GOOGLE_CLIENT_ID) {
+      // If still no user → check server config; auto-demo when no Google
+      if (!cancelled && !getToken()) {
         try {
-          const data = await authApi.loginDemo();
-          if (!cancelled) {
-            setIsDemoMode(true);
-            handleAuthResponse(data);
+          const status = await getAppStatus();
+          if (!cancelled && !status.googleClientId) {
+            const data = await authApi.loginDemo();
+            if (!cancelled) {
+              setIsDemoMode(true);
+              handleAuthResponse(data);
+            }
           }
         } catch {
-          // demo endpoint unavailable — stay logged out
+          // status fetch or demo endpoint unavailable — stay logged out
         }
       }
 

@@ -26,6 +26,7 @@ apiRouter.get("/status", (_req, res) => {
       !!process.env.OPENWEATHER_API_KEY &&
       process.env.OPENWEATHER_API_KEY !== "MOCK_KEY",
     googleAuthConfigured: !!process.env.GOOGLE_CLIENT_ID,
+    googleClientId: process.env.GOOGLE_CLIENT_ID ?? null,
   });
 });
 
