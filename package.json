@@ -8,7 +8,7 @@
     "dev:client": "vite",
     "dev:server": "tsx watch server/index.ts",
     "build": "prisma generate && tsc -p tsconfig.server.json && vite build",
-    "start": "prisma db push && NODE_ENV=production node dist/server/server/index.js",
+    "start": "prisma db push --accept-data-loss && NODE_ENV=production node dist/server/server/index.js",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
     "preview": "vite preview",
