@@ -2,31 +2,17 @@ import { useState, useEffect, useCallback } from "react";
 import { wardrobeApi, type WardrobeItem } from "../services/api";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search } from "lucide-react";
+import { useI18n } from "../i18n";
 
-/* ---------- Category config ---------- */
-
-const CATEGORIES = [
-  { key: "all", label: "Все", icon: "👗" },
-  { key: "tops", label: "Верх", icon: "👕" },
-  { key: "bottoms", label: "Низ", icon: "👖" },
-  { key: "dresses", label: "Сукні", icon: "👗" },
-  { key: "outerwear", label: "Верхній одяг", icon: "🧥" },
-  { key: "shoes", label: "Взуття", icon: "👟" },
-  { key: "accessories", label: "Аксесуари", icon: "👜" },
-  { key: "activewear", label: "Спортивне", icon: "🏃" },
-  { key: "swimwear", label: "Купальне", icon: "🩱" },
-  { key: "suits", label: "Костюми", icon: "🤵" },
+const CATEGORY_KEYS = [
+  "all", "tops", "bottoms", "dresses", "outerwear",
+  "shoes", "accessories", "activewear", "swimwear", "suits",
 ] as const;
 
-const SEASON_LABELS: Record<string, string> = {
-  all: "Усі сезони",
-  spring: "Весна",
-  summer: "Літо",
-  fall: "Осінь",
-  winter: "Зима",
+const CATEGORY_ICONS: Record<string, string> = {
+  all: "👗", tops: "👕", bottoms: "👖", dresses: "👗", outerwear: "🧥",
+  shoes: "👟", accessories: "👜", activewear: "🏃", swimwear: "🩱", suits: "🤵",
 };
-
-/* ---------- Item card ---------- */
 
 function ItemCard({
   item,
@@ -35,12 +21,12 @@ function ItemCard({
   item: WardrobeItem;
   onDelete: (id: string) => void;
 }) {
+  const { t } = useI18n();
   const [showDetails, setShowDetails] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
     <div className="group relative overflow-hidden rounded-xl border border-white/[0.06] bg-[#1a1a2e] shadow-lg shadow-black/20 transition-all duration-300 hover:border-white/[0.12] hover:shadow-xl hover:shadow-black/30 hover:-translate-y-0.5">
-      {/* Image */}
       <button
         type="button"
         onClick={() => setShowDetails(!showDetails)}
@@ -54,7 +40,6 @@ function ItemCard({
         />
       </button>
 
-      {/* Quick info */}
       <div className="p-2">
         <div className="flex items-center gap-1.5">
           {item.colorHex && (
@@ -80,7 +65,6 @@ function ItemCard({
         </div>
       </div>
 
-      {/* Delete button */}
       <button
         type="button"
         onClick={(e) => {
@@ -98,10 +82,9 @@ function ItemCard({
             : "bg-black/50 text-white/80 hover:bg-red-500 hover:text-white"
         }`}
       >
-        {confirmDelete ? "Видалити?" : "✕"}
+        {confirmDelete ? t("wardrobe.deleteConfirm") : "✕"}
       </button>
 
-      {/* Details overlay */}
       {showDetails && (
         <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/90 via-black/50 to-transparent p-3">
           <button
@@ -113,32 +96,32 @@ function ItemCard({
           </button>
           <div className="space-y-1 text-xs text-white/90">
             <p>
-              <span className="font-semibold text-[#c9a55a]">Категорія:</span> {item.category}
+              <span className="font-semibold text-[var(--accent)]">{t("wardrobe.category")}:</span> {item.category}
               {item.subcategory && ` / ${item.subcategory}`}
             </p>
             <p>
-              <span className="font-semibold text-[#c9a55a]">Колір:</span> {item.colorPrimary}
+              <span className="font-semibold text-[var(--accent)]">{t("wardrobe.color")}:</span> {item.colorPrimary}
             </p>
             <p>
-              <span className="font-semibold text-[#c9a55a]">Візерунок:</span> {item.pattern}
+              <span className="font-semibold text-[var(--accent)]">{t("wardrobe.pattern")}:</span> {item.pattern}
             </p>
             {item.fabric && (
               <p>
-                <span className="font-semibold text-[#c9a55a]">Тканина:</span> {item.fabric}
+                <span className="font-semibold text-[var(--accent)]">{t("wardrobe.fabric")}:</span> {item.fabric}
               </p>
             )}
             <p>
-              <span className="font-semibold text-[#c9a55a]">Сезон:</span>{" "}
-              {SEASON_LABELS[item.season] ?? item.season}
+              <span className="font-semibold text-[var(--accent)]">{t("wardrobe.season")}:</span>{" "}
+              {t(`seasons.${item.season}`)}
             </p>
             <p>
-              <span className="font-semibold text-[#c9a55a]">Формальність:</span>{" "}
+              <span className="font-semibold text-[var(--accent)]">{t("wardrobe.formality")}:</span>{" "}
               {"⬛".repeat(item.formalityLevel)}
               {"⬜".repeat(5 - item.formalityLevel)}
             </p>
             <p>
-              <span className="font-semibold text-[#c9a55a]">Носили:</span> {item.timesWorn}{" "}
-              раз
+              <span className="font-semibold text-[var(--accent)]">{t("wardrobe.timesWorn")}:</span> {item.timesWorn}{" "}
+              {t("common.times")}
             </p>
           </div>
         </div>
@@ -147,34 +130,31 @@ function ItemCard({
   );
 }
 
-/* ---------- Empty state ---------- */
-
 function EmptyWardrobe() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   return (
-    <div className="flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed border-[#c9a55a]/20 p-12 text-center">
+    <div className="flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed border-[var(--accent)]/20 p-12 text-center">
       <div className="text-5xl">👗</div>
-      <h3 className="text-lg font-semibold text-[#f0ece4]">
-        Ваш гардероб порожній
+      <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+        {t("wardrobe.emptyTitle")}
       </h3>
-      <p className="max-w-sm text-sm text-[#f0ece4]/45">
-        Завантажте фото свого одягу, і AI проаналізує кожну річ — категорію,
-        колір, тканину, сезон.
+      <p className="max-w-sm text-sm text-[var(--text-secondary)]">
+        {t("wardrobe.emptyDesc")}
       </p>
       <button
         type="button"
         onClick={() => navigate("/import")}
         className="gold-btn px-6 py-2.5 text-sm"
       >
-        Завантажити одяг
+        {t("wardrobe.uploadClothing")}
       </button>
     </div>
   );
 }
 
-/* ---------- Main page ---------- */
-
 export function WardrobePage() {
+  const { t } = useI18n();
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -187,11 +167,11 @@ export function WardrobePage() {
       const data = await wardrobeApi.getAll();
       setItems(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Помилка завантаження");
+      setError(e instanceof Error ? e.message : t("common.error"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadItems();
@@ -203,16 +183,14 @@ export function WardrobePage() {
         await wardrobeApi.deleteItem(itemId);
         setItems((prev) => prev.filter((i) => i.id !== itemId));
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Помилка видалення");
+        setError(e instanceof Error ? e.message : t("common.error"));
       }
     },
-    [],
+    [t],
   );
 
-  /* Filtering */
   const filtered = items.filter((item) => {
-    if (activeCategory !== "all" && item.category !== activeCategory)
-      return false;
+    if (activeCategory !== "all" && item.category !== activeCategory) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return (
@@ -226,7 +204,6 @@ export function WardrobePage() {
     return true;
   });
 
-  /* Category counts */
   const categoryCounts = items.reduce<Record<string, number>>((acc, item) => {
     acc[item.category] = (acc[item.category] ?? 0) + 1;
     return acc;
@@ -253,15 +230,13 @@ export function WardrobePage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
-      {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-wide text-[#c9a55a]">
-            Мій гардероб
+          <h1 className="font-display text-2xl font-semibold tracking-wide text-[var(--accent)]">
+            {t("wardrobe.title")}
           </h1>
-          <p className="mt-1 text-sm text-[#f0ece4]/45">
-            {items.length} {items.length === 1 ? "річ" : items.length < 5 ? "речі" : "речей"}{" "}
-            в гардеробі
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            {items.length} {t("common.items")}
           </p>
         </div>
         <button
@@ -270,7 +245,7 @@ export function WardrobePage() {
           className="gold-btn flex items-center gap-2 px-4 py-2 text-sm"
         >
           <Plus size={16} />
-          Додати одяг
+          {t("wardrobe.addClothing")}
         </button>
       </div>
 
@@ -284,44 +259,41 @@ export function WardrobePage() {
         <EmptyWardrobe />
       ) : (
         <>
-          {/* Search */}
           <div className="mb-4">
             <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#f0ece4]/35" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Шукати по назві, кольору, бренду..."
-                className="w-full rounded-xl border border-white/[0.06] bg-white/[0.05] py-2.5 pl-10 pr-4 text-sm text-[#f0ece4] placeholder-[#f0ece4]/25 focus:border-[#c9a55a]/40 focus:outline-none focus:ring-1 focus:ring-[#c9a55a]/20"
+                placeholder={t("wardrobe.searchPlaceholder")}
+                className="w-full rounded-xl border border-white/[0.06] bg-white/[0.05] py-2.5 pl-10 pr-4 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--accent)]/40 focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/20"
               />
             </div>
           </div>
 
-          {/* Category tabs */}
           <div className="mb-6 flex gap-1.5 overflow-x-auto pb-1">
-            {CATEGORIES.map((cat) => {
-              const count =
-                cat.key === "all" ? items.length : (categoryCounts[cat.key] ?? 0);
-              if (cat.key !== "all" && count === 0) return null;
+            {CATEGORY_KEYS.map((key) => {
+              const count = key === "all" ? items.length : (categoryCounts[key] ?? 0);
+              if (key !== "all" && count === 0) return null;
               return (
                 <button
-                  key={cat.key}
+                  key={key}
                   type="button"
-                  onClick={() => setActiveCategory(cat.key)}
+                  onClick={() => setActiveCategory(key)}
                   className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-all duration-300 ${
-                    activeCategory === cat.key
-                      ? "bg-[#c9a55a] text-[#0f0f1a]"
-                      : "bg-white/[0.05] text-[#f0ece4]/55 hover:bg-white/[0.08] hover:text-[#f0ece4]/80"
+                    activeCategory === key
+                      ? "bg-[var(--accent)] text-[#0a0c12]"
+                      : "bg-white/[0.05] text-[var(--text-secondary)] hover:bg-white/[0.08] hover:text-[var(--text-primary)]"
                   }`}
                 >
-                  <span>{cat.icon}</span>
-                  <span>{cat.label}</span>
+                  <span>{CATEGORY_ICONS[key]}</span>
+                  <span>{t(`categories.${key}`)}</span>
                   <span
                     className={`rounded-full px-1.5 py-0.5 text-[10px] ${
-                      activeCategory === cat.key
-                        ? "bg-[#0f0f1a]/20 text-[#0f0f1a]"
-                        : "bg-white/[0.06] text-[#f0ece4]/35"
+                      activeCategory === key
+                        ? "bg-[#0a0c12]/20 text-[#0a0c12]"
+                        : "bg-white/[0.06] text-[var(--text-muted)]"
                     }`}
                   >
                     {count}
@@ -331,13 +303,10 @@ export function WardrobePage() {
             })}
           </div>
 
-          {/* Items grid */}
           {filtered.length === 0 ? (
             <div className="rounded-xl border border-dashed border-white/[0.06] p-8 text-center">
-              <p className="text-[#f0ece4]/35">
-                {searchQuery
-                  ? "Нічого не знайдено за запитом"
-                  : "Немає речей у цій категорії"}
+              <p className="text-[var(--text-muted)]">
+                {searchQuery ? t("wardrobe.notFound") : t("wardrobe.emptyCategory")}
               </p>
             </div>
           ) : (

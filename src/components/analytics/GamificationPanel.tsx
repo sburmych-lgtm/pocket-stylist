@@ -1,3 +1,5 @@
+import { useI18n } from "../../i18n";
+
 interface Challenge {
   id: string;
   name: string;
@@ -38,6 +40,7 @@ const BADGE_ICONS: Record<string, string> = {
 };
 
 export function GamificationPanel({ data }: GamificationPanelProps) {
+  const { t } = useI18n();
   const currentLevelProgress = data.points % 100;
 
   return (
@@ -45,38 +48,38 @@ export function GamificationPanel({ data }: GamificationPanelProps) {
       <div className="luxe-card p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="section-subtitle">Wardrobe XP</p>
+            <p className="section-subtitle">{t("analytics.xpKicker")}</p>
             <h3 className="section-title mt-2">{data.levelName}</h3>
             <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-              Рівень {data.level} · {data.points} очок за щоденну роботу з гардеробом.
+              {t("analytics.levelDesc", { level: data.level, points: data.points })}
             </p>
           </div>
-          <div className="spotlight-ring flex h-16 w-16 items-center justify-center rounded-full bg-[rgba(214,177,111,0.12)] text-2xl font-semibold text-[var(--accent)]">
+          <div className="spotlight-ring flex h-16 w-16 items-center justify-center rounded-full bg-[rgba(201,165,90,0.12)] text-2xl font-semibold text-[var(--accent)]">
             {data.level}
           </div>
         </div>
 
         <div className="mt-6 h-2.5 overflow-hidden rounded-full bg-white/[0.06]">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-[rgba(214,177,111,0.62)] to-[var(--accent)]"
+            className="h-full rounded-full bg-gradient-to-r from-[rgba(201,165,90,0.62)] to-[var(--accent)]"
             style={{ width: `${currentLevelProgress}%` }}
           />
         </div>
         <p className="mt-3 text-sm text-[var(--text-secondary)]">
-          {currentLevelProgress}/100 до наступного рівня
+          {t("analytics.toNextLevel", { progress: currentLevelProgress })}
         </p>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="rounded-[1.3rem] border border-white/8 bg-white/[0.03] p-4">
-            <p className="section-subtitle">Current streak</p>
+            <p className="section-subtitle">{t("analytics.currentStreak")}</p>
             <p className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">
-              {data.streaks.currentDays} днів
+              {t("analytics.days", { count: data.streaks.currentDays })}
             </p>
           </div>
           <div className="rounded-[1.3rem] border border-white/8 bg-white/[0.03] p-4">
-            <p className="section-subtitle">Best streak</p>
+            <p className="section-subtitle">{t("analytics.bestStreak")}</p>
             <p className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">
-              {data.streaks.bestDays} днів
+              {t("analytics.days", { count: data.streaks.bestDays })}
             </p>
           </div>
         </div>
@@ -86,8 +89,8 @@ export function GamificationPanel({ data }: GamificationPanelProps) {
         <div className="luxe-card p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="section-subtitle">Challenges</p>
-              <h3 className="section-title mt-2">Поточні fashion-завдання</h3>
+              <p className="section-subtitle">{t("analytics.challengesKicker")}</p>
+              <h3 className="section-title mt-2">{t("analytics.challengesTitle")}</h3>
             </div>
           </div>
           <div className="mt-5 space-y-3">
@@ -109,7 +112,7 @@ export function GamificationPanel({ data }: GamificationPanelProps) {
                     ].join(" ")}
                   >
                     {challenge.completed
-                      ? "Done"
+                      ? t("analytics.challengeDone")
                       : `${Math.round((challenge.progress / Math.max(challenge.target, 1)) * 100)}%`}
                   </span>
                 </div>
@@ -128,8 +131,8 @@ export function GamificationPanel({ data }: GamificationPanelProps) {
         </div>
 
         <div className="luxe-card p-6">
-          <p className="section-subtitle">Badges</p>
-          <h3 className="section-title mt-2">Колекція досягнень</h3>
+          <p className="section-subtitle">{t("analytics.badgesKicker")}</p>
+          <h3 className="section-title mt-2">{t("analytics.badgesTitle")}</h3>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {data.badges.map((badge) => (
               <div
@@ -137,7 +140,7 @@ export function GamificationPanel({ data }: GamificationPanelProps) {
                 className={[
                   "rounded-[1.2rem] border p-4 text-center",
                   badge.earned
-                    ? "border-[rgba(214,177,111,0.24)] bg-[rgba(214,177,111,0.08)]"
+                    ? "border-[rgba(201,165,90,0.24)] bg-[rgba(201,165,90,0.08)]"
                     : "border-white/8 bg-white/[0.03] opacity-55",
                 ].join(" ")}
                 title={badge.description}

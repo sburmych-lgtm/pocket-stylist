@@ -7,10 +7,10 @@
   --bg-surface-soft: #1c2131;
   --bg-overlay: rgba(9, 11, 17, 0.82);
   --border-soft: rgba(247, 242, 235, 0.08);
-  --border-strong: rgba(214, 177, 111, 0.24);
-  --accent: #d6b16f;
-  --accent-strong: #f0cf91;
-  --accent-soft: rgba(214, 177, 111, 0.14);
+  --border-strong: rgba(201, 165, 90, 0.24);
+  --accent: #c9a55a;
+  --accent-strong: #e0be7a;
+  --accent-soft: rgba(201, 165, 90, 0.14);
   --accent-cool: #88c6bd;
   --text-primary: #f7f2eb;
   --text-secondary: rgba(247, 242, 235, 0.68);

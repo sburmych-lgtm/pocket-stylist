@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useI18n } from "../../i18n";
 
 export interface ShareCardProps {
   referenceImageUrl: string;
@@ -96,7 +97,7 @@ function scoreColor(score: number): string {
     return "#6fd4ab";
   }
   if (score >= 40) {
-    return "#d6b16f";
+    return "#c9a55a";
   }
   return "#ef8a80";
 }
@@ -131,7 +132,7 @@ async function renderCanvas(canvas: HTMLCanvasElement, props: ShareCardProps): P
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
   ctx.globalAlpha = 0.12;
-  ctx.fillStyle = "#d6b16f";
+  ctx.fillStyle = "#c9a55a";
   ctx.beginPath();
   ctx.arc(860, 230, 250, 0, Math.PI * 2);
   ctx.fill();
@@ -141,7 +142,7 @@ async function renderCanvas(canvas: HTMLCanvasElement, props: ShareCardProps): P
   ctx.fill();
   ctx.globalAlpha = 1;
 
-  ctx.fillStyle = "#d6b16f";
+  ctx.fillStyle = "#c9a55a";
   ctx.font = "700 30px Manrope, sans-serif";
   ctx.textAlign = "center";
   ctx.fillText("POCKET STYLIST", CANVAS_W / 2, 110);
@@ -152,7 +153,7 @@ async function renderCanvas(canvas: HTMLCanvasElement, props: ShareCardProps): P
 
   const headerLine = ctx.createLinearGradient(280, 0, 800, 0);
   headerLine.addColorStop(0, "transparent");
-  headerLine.addColorStop(0.5, "rgba(214,177,111,0.7)");
+  headerLine.addColorStop(0.5, "rgba(201,165,90,0.7)");
   headerLine.addColorStop(1, "transparent");
   ctx.strokeStyle = headerLine;
   ctx.lineWidth = 2;
@@ -175,11 +176,11 @@ async function renderCanvas(canvas: HTMLCanvasElement, props: ShareCardProps): P
   ctx.fillText("YOUR LOOK", 790, 346);
 
   drawCover(ctx, referenceImg, 110, 382, 360, 520, 36);
-  strokeRoundRect(ctx, 110, 382, 360, 520, 36, "rgba(214,177,111,0.32)", 4);
+  strokeRoundRect(ctx, 110, 382, 360, 520, 36, "rgba(201,165,90,0.32)", 4);
 
-  fillRoundRect(ctx, 487, 584, 106, 64, 32, "rgba(214,177,111,0.18)");
-  strokeRoundRect(ctx, 487, 584, 106, 64, 32, "rgba(214,177,111,0.52)", 2);
-  ctx.fillStyle = "#d6b16f";
+  fillRoundRect(ctx, 487, 584, 106, 64, 32, "rgba(201,165,90,0.18)");
+  strokeRoundRect(ctx, 487, 584, 106, 64, 32, "rgba(201,165,90,0.52)", 2);
+  ctx.fillStyle = "#c9a55a";
   ctx.font = "700 28px Manrope, sans-serif";
   ctx.fillText("VS", 540, 627);
 
@@ -243,7 +244,7 @@ async function renderCanvas(canvas: HTMLCanvasElement, props: ShareCardProps): P
     1405,
   );
 
-  ctx.fillStyle = "#d6b16f";
+  ctx.fillStyle = "#c9a55a";
   ctx.font = "600 48px 'Cormorant Garamond', Georgia, serif";
   ctx.fillText("Digital Atelier", CANVAS_W / 2, 1720);
   ctx.fillStyle = "rgba(247,242,235,0.42)";
@@ -259,6 +260,7 @@ async function renderCanvas(canvas: HTMLCanvasElement, props: ShareCardProps): P
 }
 
 export function ShareCard({ referenceImageUrl, recreationItems, matchScore, onShare }: ShareCardProps) {
+  const { t } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -298,10 +300,10 @@ export function ShareCard({ referenceImageUrl, recreationItems, matchScore, onSh
       {rendering && (
         <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
-          <span>Генерую editorial poster...</span>
+          <span>{t("matching.generatingPoster")}</span>
         </div>
       )}
-      {error && <p className="text-sm text-[var(--danger)]">Помилка генерації: {error}</p>}
+      {error && <p className="text-sm text-[var(--danger)]">{t("matching.generationError")} {error}</p>}
     </>
   );
 }

@@ -1,4 +1,5 @@
 import { BadgeCheck, CircleHelp, CircleX, Layers, Sparkles, Wallet } from "lucide-react";
+import { useI18n } from "../../i18n";
 
 interface VerdictCardProps {
   verdict: "BUY" | "SKIP" | "CONSIDER";
@@ -19,31 +20,6 @@ interface VerdictCardProps {
     newOutfitPotential: number;
     projectedCostPerWear: string;
     avgWearsInWardrobe: number;
-  };
-}
-
-function verdictMeta(verdict: VerdictCardProps["verdict"]) {
-  if (verdict === "BUY") {
-    return {
-      title: "BUY",
-      copy: "Сильне підсилення гардеробу з високим outfit-potential.",
-      tone: "border-[rgba(111,212,171,0.28)] bg-[linear-gradient(180deg,rgba(111,212,171,0.12),rgba(13,16,24,0.96))] text-[var(--success)]",
-      icon: BadgeCheck,
-    };
-  }
-  if (verdict === "SKIP") {
-    return {
-      title: "SKIP",
-      copy: "Річ не додає достатньо нової цінності до вашої капсули.",
-      tone: "border-[rgba(239,138,128,0.28)] bg-[linear-gradient(180deg,rgba(239,138,128,0.12),rgba(13,16,24,0.96))] text-[var(--danger)]",
-      icon: CircleX,
-    };
-  }
-  return {
-    title: "CONSIDER",
-    copy: "Потенціал є, але рішення залежить від стилістичного пріоритету.",
-    tone: "border-[rgba(241,195,121,0.28)] bg-[linear-gradient(180deg,rgba(241,195,121,0.12),rgba(13,16,24,0.96))] text-[var(--warning)]",
-    icon: CircleHelp,
   };
 }
 
@@ -68,6 +44,33 @@ function StatTile({
 }
 
 export function VerdictCard({ verdict, reasons, tags, stats }: VerdictCardProps) {
+  const { t } = useI18n();
+
+  const verdictMeta = (v: VerdictCardProps["verdict"]) => {
+    if (v === "BUY") {
+      return {
+        title: t("verdict.buyTitle"),
+        copy: t("verdict.buyCopy"),
+        tone: "border-[rgba(111,212,171,0.28)] bg-[linear-gradient(180deg,rgba(111,212,171,0.12),rgba(13,16,24,0.96))] text-[var(--success)]",
+        icon: BadgeCheck,
+      };
+    }
+    if (v === "SKIP") {
+      return {
+        title: t("verdict.skipTitle"),
+        copy: t("verdict.skipCopy"),
+        tone: "border-[rgba(239,138,128,0.28)] bg-[linear-gradient(180deg,rgba(239,138,128,0.12),rgba(13,16,24,0.96))] text-[var(--danger)]",
+        icon: CircleX,
+      };
+    }
+    return {
+      title: t("verdict.considerTitle"),
+      copy: t("verdict.considerCopy"),
+      tone: "border-[rgba(241,195,121,0.28)] bg-[linear-gradient(180deg,rgba(241,195,121,0.12),rgba(13,16,24,0.96))] text-[var(--warning)]",
+      icon: CircleHelp,
+    };
+  };
+
   const meta = verdictMeta(verdict);
   const Icon = meta.icon;
 
@@ -79,7 +82,7 @@ export function VerdictCard({ verdict, reasons, tags, stats }: VerdictCardProps)
             <div>
               <span className="page-kicker">
                 <Icon size={14} />
-                Scanner Verdict
+                {t("verdict.scannerVerdict")}
               </span>
               <h2 className="mt-4 text-[2.6rem] font-semibold leading-none">{meta.title}</h2>
               <p className="mt-3 max-w-sm text-sm leading-6 text-[var(--text-secondary)]">
@@ -95,12 +98,12 @@ export function VerdictCard({ verdict, reasons, tags, stats }: VerdictCardProps)
           </div>
 
           <div className="rounded-[1.4rem] border border-white/8 bg-black/15 p-4">
-            <p className="section-subtitle">Detected Item</p>
+            <p className="section-subtitle">{t("verdict.detectedItem")}</p>
             <p className="mt-3 text-xl font-semibold text-[var(--text-primary)]">
               {tags.subcategory ?? tags.category}
             </p>
             <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-              {tags.colorPrimary} · {tags.pattern} · {tags.fabric ?? "unknown fabric"}
+              {tags.colorPrimary} · {tags.pattern} · {tags.fabric ?? "—"}
             </p>
           </div>
 
@@ -119,30 +122,30 @@ export function VerdictCard({ verdict, reasons, tags, stats }: VerdictCardProps)
 
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <StatTile label="Та ж категорія" value={String(stats.sameCategoryCount)} Icon={Layers} />
-            <StatTile label="Той самий колір" value={String(stats.sameColorCount)} Icon={Sparkles} />
-            <StatTile label="Нові образи" value={`${stats.newOutfitPotential}+`} Icon={BadgeCheck} />
-            <StatTile label="Ціна / носіння" value={stats.projectedCostPerWear} Icon={Wallet} />
+            <StatTile label={t("verdict.sameCategory")} value={String(stats.sameCategoryCount)} Icon={Layers} />
+            <StatTile label={t("verdict.sameColor")} value={String(stats.sameColorCount)} Icon={Sparkles} />
+            <StatTile label={t("verdict.newOutfits")} value={`${stats.newOutfitPotential}+`} Icon={BadgeCheck} />
+            <StatTile label={t("verdict.costPerWear")} value={stats.projectedCostPerWear} Icon={Wallet} />
           </div>
 
           <div className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-5">
-            <p className="section-subtitle">Scanner Readiness</p>
+            <p className="section-subtitle">{t("verdict.scannerReadiness")}</p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div>
                 <p className="text-3xl font-semibold text-[var(--text-primary)]">
                   {Math.round(tags.confidence * 100)}%
                 </p>
-                <p className="mt-2 text-sm text-[var(--text-secondary)]">AI confidence</p>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">{t("verdict.aiConfidence")}</p>
               </div>
               <div>
                 <p className="text-3xl font-semibold text-[var(--text-primary)]">
                   {tags.formalityLevel}/5
                 </p>
-                <p className="mt-2 text-sm text-[var(--text-secondary)]">Formality fit</p>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">{t("verdict.formalityFit")}</p>
               </div>
             </div>
             <p className="mt-4 text-sm leading-6 text-[var(--text-secondary)]">
-              У середньому подібні речі у вашому гардеробі носяться {stats.avgWearsInWardrobe} разів.
+              {t("verdict.avgWearsHint", { count: stats.avgWearsInWardrobe })}
             </p>
           </div>
         </div>

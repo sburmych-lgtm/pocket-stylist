@@ -1,56 +1,21 @@
 import { AlertTriangle, BadgeCheck, LoaderCircle, Sparkles, Trash2 } from "lucide-react";
 import type { ImportItem, WardrobeItemTag } from "../../types/wardrobe";
+import { useI18n } from "../../i18n";
 
 const CATEGORIES = [
-  "tops",
-  "bottoms",
-  "dresses",
-  "outerwear",
-  "shoes",
-  "accessories",
-  "activewear",
-  "swimwear",
-  "sleepwear",
-  "suits",
+  "tops", "bottoms", "dresses", "outerwear", "shoes",
+  "accessories", "activewear", "swimwear", "sleepwear", "suits",
 ];
 
 const COLORS = [
-  "black",
-  "white",
-  "grey",
-  "navy",
-  "blue",
-  "light-blue",
-  "red",
-  "burgundy",
-  "pink",
-  "green",
-  "olive",
-  "beige",
-  "brown",
-  "tan",
-  "cream",
-  "yellow",
-  "orange",
-  "purple",
-  "lavender",
-  "gold",
-  "silver",
-  "multicolor",
+  "black", "white", "grey", "navy", "blue", "light-blue", "red", "burgundy",
+  "pink", "green", "olive", "beige", "brown", "tan", "cream", "yellow",
+  "orange", "purple", "lavender", "gold", "silver", "multicolor",
 ];
 
 const PATTERNS = [
-  "solid",
-  "striped",
-  "plaid",
-  "floral",
-  "polka-dot",
-  "geometric",
-  "animal-print",
-  "abstract",
-  "paisley",
-  "camouflage",
-  "graphic",
+  "solid", "striped", "plaid", "floral", "polka-dot", "geometric",
+  "animal-print", "abstract", "paisley", "camouflage", "graphic",
 ];
 
 const SEASONS = ["spring", "summer", "fall", "winter", "all"];
@@ -62,11 +27,7 @@ interface TagEditorProps {
 }
 
 function SelectField({
-  label,
-  value,
-  options,
-  onChange,
-  lowConfidence,
+  label, value, options, onChange, lowConfidence,
 }: {
   label: string;
   value: string;
@@ -103,6 +64,8 @@ function SelectField({
 }
 
 export function TagEditor({ item, onUpdate, onRemove }: TagEditorProps) {
+  const { t } = useI18n();
+
   if (item.status === "pending" || item.status === "uploading" || item.status === "analyzing") {
     return (
       <article className="luxe-card flex items-center gap-4 p-5">
@@ -114,7 +77,7 @@ export function TagEditor({ item, onUpdate, onRemove }: TagEditorProps) {
           <div className="flex items-center gap-3 text-sm text-[var(--text-secondary)]">
             <LoaderCircle className="animate-spin text-[var(--accent)]" size={18} />
             <span className="capitalize">
-              {item.status === "pending" ? "Готуємо файл..." : `${item.status}...`}
+              {item.status === "pending" ? t("tagEditor.pending") : `${item.status}...`}
             </span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
@@ -138,7 +101,7 @@ export function TagEditor({ item, onUpdate, onRemove }: TagEditorProps) {
               <p className="truncate text-lg font-semibold">{item.fileName}</p>
             </div>
             <p className="text-sm leading-6 text-[var(--text-secondary)]">
-              {item.error ?? "Analysis failed"}
+              {item.error ?? t("common.error")}
             </p>
           </div>
           <button type="button" onClick={() => onRemove(item.id)} className="icon-action h-11 w-11">
@@ -170,7 +133,7 @@ export function TagEditor({ item, onUpdate, onRemove }: TagEditorProps) {
 
           <div className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-4">
             <div className="flex items-center justify-between">
-              <p className="section-subtitle">AI Confidence</p>
+              <p className="section-subtitle">{t("tagEditor.aiConfidence")}</p>
               <div
                 className={[
                   "status-chip",
@@ -192,9 +155,7 @@ export function TagEditor({ item, onUpdate, onRemove }: TagEditorProps) {
               />
             </div>
             <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
-              {lowConfidence
-                ? "AI сумнівається у частині атрибутів. Перевірте поля нижче перед збереженням."
-                : "Розпізнавання виглядає стабільно. Можна швидко переглянути й зберігати."}
+              {lowConfidence ? t("tagEditor.lowConfidenceHint") : t("tagEditor.stableRecognition")}
             </p>
           </div>
         </div>
@@ -204,13 +165,13 @@ export function TagEditor({ item, onUpdate, onRemove }: TagEditorProps) {
             <div>
               <span className="page-kicker">
                 {lowConfidence ? <AlertTriangle size={14} /> : <BadgeCheck size={14} />}
-                {lowConfidence ? "Needs Review" : "Ready To Save"}
+                {lowConfidence ? t("tagEditor.needsReview") : t("tagEditor.readyToSave")}
               </span>
               <h3 className="mt-4 text-2xl font-semibold text-[var(--text-primary)]">
-                Перевірте fashion metadata
+                {t("tagEditor.checkMetadata")}
               </h3>
               <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-                Категорія, колір і сезон безпосередньо впливають на quality ваших AI-рекомендацій.
+                {t("tagEditor.metadataDesc")}
               </p>
             </div>
 
@@ -221,28 +182,28 @@ export function TagEditor({ item, onUpdate, onRemove }: TagEditorProps) {
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <SelectField
-              label="Категорія"
+              label={t("wardrobe.category")}
               value={tags.category}
               options={CATEGORIES}
               onChange={(value) => onUpdate(item.id, { category: value })}
               lowConfidence={lowConfidence}
             />
             <SelectField
-              label="Колір"
+              label={t("wardrobe.color")}
               value={tags.colorPrimary}
               options={COLORS}
               onChange={(value) => onUpdate(item.id, { colorPrimary: value })}
               lowConfidence={lowConfidence}
             />
             <SelectField
-              label="Візерунок"
+              label={t("wardrobe.pattern")}
               value={tags.pattern}
               options={PATTERNS}
               onChange={(value) => onUpdate(item.id, { pattern: value })}
               lowConfidence={lowConfidence}
             />
             <SelectField
-              label="Сезон"
+              label={t("wardrobe.season")}
               value={tags.season}
               options={SEASONS}
               onChange={(value) => onUpdate(item.id, { season: value })}
@@ -254,14 +215,14 @@ export function TagEditor({ item, onUpdate, onRemove }: TagEditorProps) {
 
           <div className="flex flex-wrap gap-2">
             {tags.subcategory && (
-              <span className="metric-pill">Subcategory: {tags.subcategory}</span>
+              <span className="metric-pill">{t("tagEditor.subcategory")}: {tags.subcategory}</span>
             )}
-            {tags.fabric && <span className="metric-pill">Fabric: {tags.fabric}</span>}
-            {tags.brand && <span className="metric-pill">Brand: {tags.brand}</span>}
-            <span className="metric-pill">Formality: {tags.formalityLevel}/5</span>
+            {tags.fabric && <span className="metric-pill">{t("wardrobe.fabric")}: {tags.fabric}</span>}
+            {tags.brand && <span className="metric-pill">{t("tagEditor.brand")}: {tags.brand}</span>}
+            <span className="metric-pill">{t("tagEditor.formality")}: {tags.formalityLevel}/5</span>
             {tags.colorHex && (
               <span className="metric-pill">
-                Tone
+                {t("tagEditor.tone")}
                 <span
                   className="inline-block h-3.5 w-3.5 rounded-full border border-white/10"
                   style={{ backgroundColor: tags.colorHex }}

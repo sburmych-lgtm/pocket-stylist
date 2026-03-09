@@ -1,3 +1,5 @@
+import { useI18n } from "../../i18n";
+
 interface CostPerWearItem {
   id: string;
   category: string;
@@ -16,10 +18,12 @@ interface CostPerWearTableProps {
 }
 
 export function CostPerWearTable({ items }: CostPerWearTableProps) {
+  const { t } = useI18n();
+
   if (items.length === 0) {
     return (
       <section className="luxe-card p-6 text-center text-sm text-[var(--text-secondary)]">
-        Додайте ціни до речей, щоб побачити cost-per-wear аналітику.
+        {t("analytics.costEmpty")}
       </section>
     );
   }
@@ -28,8 +32,8 @@ export function CostPerWearTable({ items }: CostPerWearTableProps) {
     <section className="luxe-card p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="section-subtitle">Cost Intelligence</p>
-          <h3 className="section-title mt-2">Вартість носіння</h3>
+          <p className="section-subtitle">{t("analytics.costIntelKicker")}</p>
+          <h3 className="section-title mt-2">{t("analytics.costIntelTitle")}</h3>
         </div>
       </div>
 
@@ -54,7 +58,7 @@ export function CostPerWearTable({ items }: CostPerWearTableProps) {
                 {item.subcategory ?? item.category}
               </p>
               <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                {item.colorPrimary} · {item.timesWorn} носінь
+                {item.colorPrimary} · {t("analytics.wears", { count: item.timesWorn })}
               </p>
             </div>
             <div className="text-left sm:text-right">
@@ -73,11 +77,11 @@ export function CostPerWearTable({ items }: CostPerWearTableProps) {
                     ${item.costPerWear.toFixed(2)}
                   </p>
                   <p className="text-xs uppercase tracking-[0.16em] text-[var(--text-muted)]">
-                    / носіння
+                    {t("analytics.perWear")}
                   </p>
                 </>
               ) : (
-                <p className="text-sm text-[var(--text-secondary)]">Без ціни</p>
+                <p className="text-sm text-[var(--text-secondary)]">{t("analytics.noPrice")}</p>
               )}
             </div>
           </div>

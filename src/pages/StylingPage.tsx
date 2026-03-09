@@ -7,9 +7,11 @@ import { WeatherBadge } from "../components/styling/WeatherBadge";
 import { useAuth } from "../contexts/AuthContext";
 import { stylingApi } from "../services/api";
 import type { StylingResponse } from "../services/api";
+import { useI18n } from "../i18n";
 
 export function StylingPage() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const isMaleMode = user?.genderMode === "male";
 
   const [mood, setMood] = useState({ energy: 50, boldness: 50 });
@@ -73,53 +75,39 @@ export function StylingPage() {
           <div className="space-y-5">
             <span className="page-kicker">
               <Sparkles size={14} />
-              AI Styling Studio
+              {t("styling.kicker")}
             </span>
             <div className="space-y-4">
               <h1 className="page-title">
-                {isMaleMode ? "Outfit optimizer" : "Style Me"}
-                <br />
-                для реального життя.
+                {t(isMaleMode ? "styling.headingMale" : "styling.heading").split("\n").map((line, i) => (
+                  <span key={i}>{i > 0 && <br />}{line}</span>
+                ))}
               </h1>
               <p className="page-copy">
-                {isMaleMode
-                  ? "Обирайте ситуацію, а ми дамо зібраний, практичний і дорогий на вигляд look."
-                  : "Працюємо як персональний fashion-консультант: зчитуємо настрій, погоду і складаємо три образи."}
+                {t(isMaleMode ? "styling.descriptionMale" : "styling.description")}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <span className="metric-pill">
-                3 curated outfits
-              </span>
-              <span className="metric-pill">
-                Weather-aware
-              </span>
-              <span className="metric-pill">
-                Wardrobe-based
-              </span>
+              <span className="metric-pill">{t("styling.curatedOutfits")}</span>
+              <span className="metric-pill">{t("styling.weatherAware")}</span>
+              <span className="metric-pill">{t("styling.wardrobeBased")}</span>
             </div>
           </div>
 
           <div className="luxe-card flex flex-col gap-4 p-6">
-            <p className="section-subtitle">Studio Notes</p>
+            <p className="section-subtitle">{t("styling.studioNotes")}</p>
             <div className="space-y-3 text-sm leading-6 text-[var(--text-secondary)]">
-              <p>
-                Ми не просто комбінуємо речі. Ми шукаємо look з правильним балансом
-                пропорцій, формальності та настрою.
-              </p>
-              <p>
-                Чим якісніше протегований гардероб, тим точніше AI розпізнає стильові
-                можливості речей.
-              </p>
+              <p>{t("styling.note1")}</p>
+              <p>{t("styling.note2")}</p>
             </div>
             {isMaleMode && result?.avgCostPerWear !== undefined && (
               <div className="mt-auto rounded-[1.3rem] border border-[rgba(111,212,171,0.22)] bg-[rgba(111,212,171,0.08)] p-4">
-                <p className="section-subtitle text-[var(--success)]">Wardrobe Efficiency</p>
+                <p className="section-subtitle text-[var(--success)]">{t("styling.wardrobeEfficiency")}</p>
                 <p className="mt-2 text-3xl font-semibold text-[var(--text-primary)]">
                   {Math.round(result.avgCostPerWear)}%
                 </p>
                 <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-                  Ваш гардероб уже видає сильні practical combinations.
+                  {t("styling.efficiencyDesc")}
                 </p>
               </div>
             )}
@@ -144,7 +132,7 @@ export function StylingPage() {
                 disabled={loading}
                 className="primary-action inline-flex w-full items-center justify-center gap-2 px-5 py-3.5 text-sm disabled:opacity-50"
               >
-                {loading ? "Генеруємо образи..." : "Побачити три образи"}
+                {loading ? t("styling.generating") : t("styling.seeThreeOutfits")}
                 <ArrowRight size={15} />
               </button>
             </>
@@ -162,10 +150,8 @@ export function StylingPage() {
             <div className="luxe-card flex min-h-[22rem] flex-col items-center justify-center gap-4 p-10 text-center">
               <LoaderCircle size={28} className="animate-spin text-[var(--accent)]" />
               <div>
-                <p className="text-lg font-semibold text-[var(--text-primary)]">Стилізуємо ваш look</p>
-                <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                  Аналізуємо настрій, wardrobe-coverage та погодний контекст.
-                </p>
+                <p className="text-lg font-semibold text-[var(--text-primary)]">{t("styling.stylingLook")}</p>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">{t("styling.stylingDesc")}</p>
               </div>
             </div>
           )}
@@ -175,13 +161,13 @@ export function StylingPage() {
               <section className="luxe-card space-y-5 p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="section-subtitle">Session Result</p>
-                    <h2 className="section-title mt-2">Ваш сьогоднішній fashion brief</h2>
+                    <p className="section-subtitle">{t("styling.sessionResult")}</p>
+                    <h2 className="section-title mt-2">{t("styling.todaysBrief")}</h2>
                   </div>
                   {result.candidateCount !== undefined && (
-                    <span className="status-chip bg-[rgba(214,177,111,0.12)] text-[var(--accent)]">
+                    <span className="status-chip bg-[rgba(201,165,90,0.12)] text-[var(--accent)]">
                       <BadgeCheck size={12} />
-                      {result.candidateCount} речей у грі
+                      {t("styling.itemsInPlay", { count: result.candidateCount })}
                     </span>
                   )}
                 </div>
@@ -215,12 +201,8 @@ export function StylingPage() {
               ) : (
                 !result.message && (
                   <div className="luxe-card p-8 text-center">
-                    <p className="text-lg font-semibold text-[var(--text-primary)]">
-                      Поки не вдалося скласти сильний образ.
-                    </p>
-                    <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
-                      Спробуйте інший настрій, змініть контекст або поповніть гардероб новими речами.
-                    </p>
+                    <p className="text-lg font-semibold text-[var(--text-primary)]">{t("styling.noOutfit")}</p>
+                    <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">{t("styling.noOutfitHint")}</p>
                   </div>
                 )
               )}
@@ -229,11 +211,10 @@ export function StylingPage() {
 
           {!result && !loading && (
             <div className="luxe-card p-8">
-              <p className="section-subtitle">Studio Prompt</p>
-              <h2 className="section-title mt-2">Сформуйте запит і ми покажемо три образи</h2>
+              <p className="section-subtitle">{t("styling.studioPrompt")}</p>
+              <h2 className="section-title mt-2">{t("styling.promptTitle")}</h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
-                Почніть із настрою або пресету контексту. Далі система збере ready-to-wear
-                комбінації, які виглядають цілісно й працюють у реальному гардеробі.
+                {t("styling.promptDesc")}
               </p>
             </div>
           )}

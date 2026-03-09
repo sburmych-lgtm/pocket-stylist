@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { CloudUpload, ImagePlus, Sparkles } from "lucide-react";
+import { useI18n } from "../../i18n";
 
 interface DropZoneProps {
   onFiles: (files: File[]) => void;
@@ -7,6 +8,7 @@ interface DropZoneProps {
 }
 
 export function DropZone({ onFiles, disabled }: DropZoneProps) {
+  const { t } = useI18n();
   const [isDragging, setIsDragging] = useState(false);
 
   const handleDragOver = useCallback(
@@ -72,39 +74,38 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
       onClick={handleClick}
       className={[
         "luxe-card relative cursor-pointer overflow-hidden p-6 sm:p-8",
-        isDragging ? "gold-glow border-[rgba(214,177,111,0.36)]" : "luxe-card-hover",
+        isDragging ? "gold-glow border-[rgba(201,165,90,0.36)]" : "luxe-card-hover",
         disabled ? "cursor-not-allowed opacity-55" : "",
       ].join(" ")}
     >
-      <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[rgba(214,177,111,0.6)] to-transparent" />
+      <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[rgba(201,165,90,0.6)] to-transparent" />
 
       <div className="relative z-10 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-5">
           <span className="page-kicker">
             <Sparkles size={14} />
-            Atelier Import
+            {t("import.dropzone.kicker")}
           </span>
 
           <div className="space-y-4">
             <h2 className="page-title text-[clamp(2rem,4vw,3.4rem)]">
-              Перетягніть фото,
-              <br />
-              і ми зберемо fashion archive.
+              {t("import.dropzone.heading").split("\n").map((line, i) => (
+                <span key={i}>{i > 0 && <br />}{line}</span>
+              ))}
             </h2>
             <p className="page-copy max-w-2xl">
-              Обробляємо до 50 фото за раз, визначаємо категорії, тканини, кольори,
-              сезонність і готуємо картки до збереження в гардероб.
+              {t("import.dropzone.description")}
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
             <span className="metric-pill">
               <CloudUpload size={14} className="text-[var(--accent)]" />
-              Drag, drop або tap
+              {t("import.dropzone.dragDrop")}
             </span>
             <span className="metric-pill">
               <ImagePlus size={14} className="text-[var(--accent-cool)]" />
-              JPG, PNG, WebP
+              {t("import.dropzone.formats")}
             </span>
           </div>
         </div>
@@ -114,23 +115,23 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
             className={[
               "flex min-h-[18rem] flex-col items-center justify-center rounded-[1.5rem] border border-dashed px-6 py-8 text-center transition-all duration-200",
               isDragging
-                ? "border-[rgba(214,177,111,0.55)] bg-[rgba(214,177,111,0.08)]"
+                ? "border-[rgba(201,165,90,0.55)] bg-[rgba(201,165,90,0.08)]"
                 : "border-white/10 bg-[rgba(255,255,255,0.02)]",
             ].join(" ")}
           >
-            <div className="spotlight-ring flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full bg-[rgba(214,177,111,0.12)] text-[var(--accent)]">
+            <div className="spotlight-ring flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full bg-[rgba(201,165,90,0.12)] text-[var(--accent)]">
               {isDragging ? <CloudUpload size={30} /> : <ImagePlus size={30} />}
             </div>
             <h3 className="mt-6 text-xl font-semibold text-[var(--text-primary)]">
-              {isDragging ? "Відпустіть фото для аналізу" : "Drop your fashion shots here"}
+              {isDragging ? t("import.dropzone.titleDragging") : t("import.dropzone.title")}
             </h3>
             <p className="mt-3 max-w-xs text-sm leading-6 text-[var(--text-secondary)]">
               {disabled
-                ? "Поточна партія ще обробляється. Зачекайте кілька секунд."
-                : "Можна завантажити flat lays, дзеркальні селфі або окремі предмети одягу."}
+                ? t("import.dropzone.descDisabled")
+                : t("import.dropzone.desc")}
             </p>
-            <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-[rgba(214,177,111,0.24)] bg-[rgba(214,177,111,0.08)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
-              Натисніть для вибору
+            <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-[rgba(201,165,90,0.24)] bg-[rgba(201,165,90,0.08)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
+              {t("import.dropzone.clickToSelect")}
             </div>
           </div>
         </div>

@@ -5,10 +5,12 @@ import { SharePreview } from "../components/matching/SharePreview.js";
 import { shareImage, downloadBlob } from "../utils/share.js";
 import { matchingApi } from "../services/api";
 import type { MatchResult } from "../services/api";
+import { useI18n } from "../i18n";
 
 type ShareState = "idle" | "generating" | "shared" | "downloaded";
 
 export function MatchingPage() {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<MatchResult | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -89,13 +91,13 @@ export function MatchingPage() {
   const shareButtonLabel = (state: ShareState): string => {
     switch (state) {
       case "generating":
-        return "Генерую...";
+        return t("matching.generating");
       case "shared":
-        return "Надіслано!";
+        return t("matching.shared");
       case "downloaded":
-        return "Збережено!";
+        return t("matching.downloaded");
       default:
-        return "Поділитися";
+        return t("matching.share");
     }
   };
 
@@ -106,27 +108,22 @@ export function MatchingPage() {
           <div className="space-y-5">
             <span className="page-kicker">
               <Star size={14} />
-              Celebrity Match
+              {t("matching.kicker")}
             </span>
             <h1 className="page-title">
-              Відтворіть чужий look
-              <br />
-              зі свого гардеробу.
+              {t("matching.heading").split("\n").map((line, i) => (
+                <span key={i}>{i > 0 && <br />}{line}</span>
+              ))}
             </h1>
             <p className="page-copy">
-              Завантажте референс із селебріті, street style чи editorial-shoot, а ми
-              підберемо найближчі речі з вашої шафи й побудуємо share-ready poster.
+              {t("matching.description")}
             </p>
           </div>
 
           <div className="luxe-card p-6">
-            <p className="section-subtitle">How it works</p>
+            <p className="section-subtitle">{t("matching.howItWorks")}</p>
             <div className="mt-5 space-y-3">
-              {[
-                "Зчитуємо категорії, кольори, патерни та пропорції референсу.",
-                "Шукаємо найсильніші збіги в реальному гардеробі.",
-                "Показуємо кілька recreation options і готуємо share-постер.",
-              ].map((item) => (
+              {[t("matching.tip1"), t("matching.tip2"), t("matching.tip3")].map((item) => (
                 <div key={item} className="flex items-start gap-3 rounded-[1.1rem] border border-white/8 bg-white/[0.03] px-4 py-3">
                   <span className="mt-2 h-2 w-2 rounded-full bg-[var(--accent)]" />
                   <p className="text-sm leading-6 text-[var(--text-secondary)]">{item}</p>
@@ -141,22 +138,21 @@ export function MatchingPage() {
         <section className="page-header p-6 sm:p-8">
           <div
             onClick={handleUpload}
-            className="relative z-10 flex cursor-pointer flex-col items-center gap-5 rounded-[1.8rem] border border-dashed border-[rgba(214,177,111,0.28)] bg-[rgba(255,255,255,0.03)] px-8 py-14 text-center transition-all hover:border-[rgba(214,177,111,0.46)] hover:bg-[rgba(214,177,111,0.05)]"
+            className="relative z-10 flex cursor-pointer flex-col items-center gap-5 rounded-[1.8rem] border border-dashed border-[rgba(201,165,90,0.28)] bg-[rgba(255,255,255,0.03)] px-8 py-14 text-center transition-all hover:border-[rgba(201,165,90,0.46)] hover:bg-[rgba(201,165,90,0.05)]"
           >
-            <div className="spotlight-ring flex h-20 w-20 items-center justify-center rounded-full bg-[rgba(214,177,111,0.12)] text-[var(--accent)]">
+            <div className="spotlight-ring flex h-20 w-20 items-center justify-center rounded-full bg-[rgba(201,165,90,0.12)] text-[var(--accent)]">
               <Sparkles size={32} />
             </div>
             <div className="space-y-3">
               <h2 className="text-2xl font-semibold text-[var(--text-primary)]">
-                Завантажте фото-референс
+                {t("matching.uploadRef")}
               </h2>
               <p className="mx-auto max-w-xl text-sm leading-6 text-[var(--text-secondary)]">
-                Це може бути celebrity outfit, fashion-week street style або будь-який образ,
-                який ви хочете recreate зі своєї капсули.
+                {t("matching.uploadRefDesc")}
               </p>
             </div>
             <div className="primary-action inline-flex items-center gap-2 px-5 py-3 text-sm">
-              Обрати референс
+              {t("matching.selectRef")}
             </div>
           </div>
         </section>
@@ -171,9 +167,9 @@ export function MatchingPage() {
           )}
           <LoaderCircle size={28} className="animate-spin text-[var(--accent)]" />
           <div>
-            <p className="text-lg font-semibold text-[var(--text-primary)]">Шукаємо найкращі збіги</p>
+            <p className="text-lg font-semibold text-[var(--text-primary)]">{t("matching.searching")}</p>
             <p className="mt-2 text-sm text-[var(--text-secondary)]">
-              Аналізуємо референс і звіряємо його з вашим wardrobe inventory.
+              {t("matching.searchingDesc")}
             </p>
           </div>
         </section>
@@ -192,8 +188,8 @@ export function MatchingPage() {
 
                 <div className="space-y-5 p-1">
                   <div>
-                    <p className="section-subtitle">Decoded Reference</p>
-                    <h2 className="section-title mt-2">AI зчитав структуру образу</h2>
+                    <p className="section-subtitle">{t("matching.decoded")}</p>
+                    <h2 className="section-title mt-2">{t("matching.structureRead")}</h2>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {result.breakdown.map((group, index) => (
@@ -215,7 +211,7 @@ export function MatchingPage() {
                     <div className="space-y-5">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                          <span className="page-kicker">Recreation Option</span>
+                          <span className="page-kicker">{t("matching.recreationOption")}</span>
                           <h3 className="mt-4 text-2xl font-semibold text-[var(--text-primary)]">
                             {option.name}
                           </h3>
@@ -262,12 +258,12 @@ export function MatchingPage() {
 
                     <div className="space-y-5">
                       <div className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-5">
-                        <p className="section-subtitle">Share Tools</p>
+                        <p className="section-subtitle">{t("matching.shareTools")}</p>
                         <h4 className="mt-2 text-lg font-semibold text-[var(--text-primary)]">
-                          Створіть social-ready poster
+                          {t("matching.createPoster")}
                         </h4>
                         <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
-                          Генеруємо візуальний board зі score, reference image і вашою recreation-комбінацією.
+                          {t("matching.posterDesc")}
                         </p>
 
                         <div className="mt-5 flex flex-wrap gap-2">
@@ -297,7 +293,7 @@ export function MatchingPage() {
                             className="ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm disabled:opacity-60"
                           >
                             <Download size={15} />
-                            Завантажити
+                            {t("matching.download")}
                           </button>
 
                           <button
@@ -306,7 +302,7 @@ export function MatchingPage() {
                             className="ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm"
                           >
                             <Eye size={15} />
-                            {showPreview === index ? "Сховати preview" : "Попередній перегляд"}
+                            {showPreview === index ? t("matching.hidePreview") : t("matching.showPreview")}
                           </button>
                         </div>
                       </div>
@@ -338,7 +334,7 @@ export function MatchingPage() {
             </div>
           ) : (
             <div className="luxe-card border-[rgba(241,195,121,0.22)] p-6 text-sm text-[var(--warning)]">
-              Відповідних речей не знайдено. Спробуйте імпортувати більше одягу, щоб recreation-пошук став точнішим.
+              {t("matching.noItems")}
             </div>
           )}
 
@@ -355,7 +351,7 @@ export function MatchingPage() {
             className="ghost-action inline-flex w-full items-center justify-center gap-2 px-5 py-3 text-sm"
           >
             <RefreshCcw size={15} />
-            Спробувати інший референс
+            {t("matching.tryAnother")}
           </button>
         </div>
       )}

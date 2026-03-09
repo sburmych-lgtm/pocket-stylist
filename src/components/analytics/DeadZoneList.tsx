@@ -1,3 +1,5 @@
+import { useI18n } from "../../i18n";
+
 interface DeadZoneItem {
   id: string;
   category: string;
@@ -14,10 +16,12 @@ interface DeadZoneListProps {
 }
 
 export function DeadZoneList({ items }: DeadZoneListProps) {
+  const { t } = useI18n();
+
   if (items.length === 0) {
     return (
       <section className="luxe-card border-[rgba(111,212,171,0.22)] p-6 text-center text-sm text-[var(--success)]">
-        Немає забутих речей. Гардероб працює рівномірно.
+        {t("analytics.deadZoneEmpty")}
       </section>
     );
   }
@@ -25,8 +29,8 @@ export function DeadZoneList({ items }: DeadZoneListProps) {
   return (
     <section className="luxe-card p-6">
       <div>
-        <p className="section-subtitle">Dead Zone Radar</p>
-        <h3 className="section-title mt-2">Речі поза rotation</h3>
+        <p className="section-subtitle">{t("analytics.deadZoneKicker")}</p>
+        <h3 className="section-title mt-2">{t("analytics.deadZoneTitle")}</h3>
       </div>
 
       <div className="mt-5 space-y-3">
@@ -52,9 +56,9 @@ export function DeadZoneList({ items }: DeadZoneListProps) {
               <p className="mt-1 text-sm text-[var(--text-secondary)]">{item.colorPrimary}</p>
             </div>
             <div className="text-left sm:text-right">
-              <p className="text-lg font-semibold text-[var(--danger)]">{item.daysSinceWorn}д</p>
+              <p className="text-lg font-semibold text-[var(--danger)]">{item.daysSinceWorn}d</p>
               <p className="text-xs uppercase tracking-[0.16em] text-[var(--text-muted)]">
-                {item.timesWorn === 0 ? "не вдягано" : `${item.timesWorn} носінь`}
+                {item.timesWorn === 0 ? t("analytics.neverWorn") : t("analytics.wears", { count: item.timesWorn })}
               </p>
             </div>
           </div>

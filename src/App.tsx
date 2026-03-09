@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { LanguageProvider } from "./i18n";
 import { HomePage } from "./pages/HomePage";
 import { ImportPage } from "./pages/ImportPage";
 import { StylingPage } from "./pages/StylingPage";
@@ -30,8 +31,8 @@ function ProtectedRoute() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-neutral-50">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg-canvas)]">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
       </div>
     );
   }
@@ -48,6 +49,7 @@ function ProtectedRoute() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <LanguageProvider>
       <BrowserRouter>
         <AuthProvider>
           <Routes>
@@ -69,6 +71,7 @@ export default function App() {
           </Routes>
         </AuthProvider>
       </BrowserRouter>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

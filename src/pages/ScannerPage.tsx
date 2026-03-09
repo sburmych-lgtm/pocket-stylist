@@ -4,8 +4,10 @@ import { CameraCapture } from "../components/scanner/CameraCapture";
 import { VerdictCard } from "../components/scanner/VerdictCard";
 import { scannerApi } from "../services/api";
 import type { ScanResult } from "../services/api";
+import { useI18n } from "../i18n";
 
 export function ScannerPage() {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -38,32 +40,25 @@ export function ScannerPage() {
           <div className="space-y-5">
             <span className="page-kicker">
               <ScanLine size={14} />
-              Buy Decision Engine
+              {t("scanner.kicker")}
             </span>
             <div className="space-y-4">
               <h1 className="page-title">
-                Сканер у магазині
-                <br />
-                для smarter покупки.
+                {t("scanner.heading").split("\n").map((line, i) => (
+                  <span key={i}>{i > 0 && <br />}{line}</span>
+                ))}
               </h1>
-              <p className="page-copy">
-                Швидко зрозумійте, чи справді нова річ підсилює ваш гардероб, чи просто
-                дублює вже наявні сценарії.
-              </p>
+              <p className="page-copy">{t("scanner.description")}</p>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-3">
             <span className="metric-pill">
               <Sparkles size={14} className="text-[var(--accent)]" />
-              BUY / SKIP verdict
+              {t("scanner.verdict")}
             </span>
-            <span className="metric-pill">
-              Cost-per-wear projection
-            </span>
-            <span className="metric-pill">
-              Closet overlap analysis
-            </span>
+            <span className="metric-pill">{t("scanner.costProjection")}</span>
+            <span className="metric-pill">{t("scanner.overlapAnalysis")}</span>
           </div>
         </div>
       </section>
@@ -74,19 +69,13 @@ export function ScannerPage() {
         <section className="luxe-card flex flex-col items-center gap-5 p-8 text-center">
           {capturedImage && (
             <div className="overflow-hidden rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-2">
-              <img
-                src={capturedImage}
-                alt="Scanned item"
-                className="h-72 w-auto rounded-[1.1rem] object-contain"
-              />
+              <img src={capturedImage} alt="" className="h-72 w-auto rounded-[1.1rem] object-contain" />
             </div>
           )}
           <LoaderCircle size={28} className="animate-spin text-[var(--accent)]" />
           <div>
-            <p className="text-lg font-semibold text-[var(--text-primary)]">Аналізуємо покупку</p>
-            <p className="mt-2 text-sm text-[var(--text-secondary)]">
-              Порівнюємо річ із поточним гардеробом та новими outfit-сценаріями.
-            </p>
+            <p className="text-lg font-semibold text-[var(--text-primary)]">{t("scanner.analyzing")}</p>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">{t("scanner.analyzingDesc")}</p>
           </div>
         </section>
       )}
@@ -99,18 +88,12 @@ export function ScannerPage() {
             <section className="luxe-card overflow-hidden p-4">
               <div className="grid gap-4 md:grid-cols-[0.8fr_1.2fr]">
                 <div className="overflow-hidden rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-2">
-                  <img
-                    src={capturedImage}
-                    alt="Scanned item"
-                    className="h-full w-full rounded-[1rem] object-cover"
-                  />
+                  <img src={capturedImage} alt="" className="h-full w-full rounded-[1rem] object-cover" />
                 </div>
                 <div className="flex flex-col justify-center gap-3 p-2">
-                  <p className="section-subtitle">Captured Piece</p>
-                  <h2 className="section-title">Fashion candidate ready for verdict</h2>
-                  <p className="text-sm leading-6 text-[var(--text-secondary)]">
-                    Нижче ви бачите не просто рішення, а й контекст: дублювання, потенціал нових образів і очікувану реальну корисність речі.
-                  </p>
+                  <p className="section-subtitle">{t("scanner.capturedPiece")}</p>
+                  <h2 className="section-title">{t("scanner.readyForVerdict")}</h2>
+                  <p className="text-sm leading-6 text-[var(--text-secondary)]">{t("scanner.capturedDesc")}</p>
                 </div>
               </div>
             </section>
@@ -124,7 +107,7 @@ export function ScannerPage() {
             className="ghost-action inline-flex w-full items-center justify-center gap-2 px-5 py-3 text-sm"
           >
             <RefreshCcw size={15} />
-            Сканувати іншу річ
+            {t("scanner.scanAnother")}
           </button>
         </div>
       )}

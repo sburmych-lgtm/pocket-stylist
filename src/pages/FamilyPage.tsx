@@ -17,21 +17,23 @@ import {
   type WardrobeItem,
 } from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
+import { useI18n } from "../i18n";
 
 function RoleBadge({ role }: { role: string }) {
-  const map: Record<string, { label: string; cls: string; icon: string }> = {
+  const { t } = useI18n();
+  const map: Record<string, { labelKey: string; cls: string; icon: string }> = {
     owner: {
-      label: "Власник",
-      cls: "bg-[rgba(214,177,111,0.12)] text-[var(--accent)]",
+      labelKey: "family.owner",
+      cls: "bg-[rgba(201,165,90,0.12)] text-[var(--accent)]",
       icon: "♛",
     },
     admin: {
-      label: "Адмін",
+      labelKey: "family.admin",
       cls: "bg-[rgba(136,198,189,0.12)] text-[var(--accent-cool)]",
       icon: "✦",
     },
     member: {
-      label: "Учасник",
+      labelKey: "family.member",
       cls: "bg-white/[0.05] text-[var(--text-secondary)]",
       icon: "•",
     },
@@ -41,7 +43,7 @@ function RoleBadge({ role }: { role: string }) {
   return (
     <span className={`status-chip ${badge.cls}`}>
       <span>{badge.icon}</span>
-      {badge.label}
+      {t(badge.labelKey)}
     </span>
   );
 }
@@ -52,14 +54,14 @@ function MemberAvatar({ member }: { member: FamilyMembership["user"] }) {
       <img
         src={member.avatarUrl}
         alt={member.name ?? member.email}
-        className="h-12 w-12 rounded-full object-cover ring-1 ring-[rgba(214,177,111,0.28)]"
+        className="h-12 w-12 rounded-full object-cover ring-1 ring-[rgba(201,165,90,0.28)]"
         referrerPolicy="no-referrer"
       />
     );
   }
 
   return (
-    <div className="spotlight-ring flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(214,177,111,0.12)] text-base font-semibold text-[var(--accent)]">
+    <div className="spotlight-ring flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(201,165,90,0.12)] text-base font-semibold text-[var(--accent)]">
       {(member.name ?? member.email).charAt(0).toUpperCase()}
     </div>
   );
@@ -74,21 +76,23 @@ function WardrobePreview({
   onClose: () => void;
   memberName: string;
 }) {
+  const { t } = useI18n();
+
   return (
     <div className="mt-5 rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-4">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <p className="section-subtitle">Shared Wardrobe</p>
+          <p className="section-subtitle">{t("family.sharedWardrobe")}</p>
           <h4 className="section-title mt-2">
-            {memberName} · {items.length} речей
+            {memberName} · {items.length} {t("common.items")}
           </h4>
         </div>
         <button type="button" onClick={onClose} className="ghost-action px-4 py-2 text-sm">
-          Сховати
+          {t("family.hide")}
         </button>
       </div>
       {items.length === 0 ? (
-        <p className="text-sm text-[var(--text-secondary)]">Гардероб порожній</p>
+        <p className="text-sm text-[var(--text-secondary)]">{t("family.emptyWardrobe")}</p>
       ) : (
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
           {items.slice(0, 18).map((item) => (
@@ -119,6 +123,7 @@ function FamilyCard({
   currentUserId: string;
   onRefresh: () => void;
 }) {
+  const { t } = useI18n();
   const [addEmail, setAddEmail] = useState("");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -144,7 +149,7 @@ function FamilyCard({
       setAddEmail("");
       onRefresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Помилка додавання");
+      setError(e instanceof Error ? e.message : t("common.error"));
     } finally {
       setAdding(false);
     }
@@ -156,7 +161,7 @@ function FamilyCard({
       await familyApi.removeMember(family.id, userId);
       onRefresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Помилка видалення");
+      setError(e instanceof Error ? e.message : t("common.error"));
     }
   };
 
@@ -166,7 +171,7 @@ function FamilyCard({
       await familyApi.removeMember(family.id, currentUserId);
       onRefresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Помилка виходу");
+      setError(e instanceof Error ? e.message : t("common.error"));
     }
   };
 
@@ -176,7 +181,7 @@ function FamilyCard({
       await familyApi.remove(family.id);
       onRefresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Помилка видалення");
+      setError(e instanceof Error ? e.message : t("common.error"));
     }
   };
 
@@ -190,7 +195,7 @@ function FamilyCard({
       setEditing(false);
       onRefresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Помилка оновлення");
+      setError(e instanceof Error ? e.message : t("common.error"));
     }
   };
 
@@ -203,19 +208,19 @@ function FamilyCard({
         name: member.user.name ?? member.user.email,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Помилка завантаження");
+      setError(e instanceof Error ? e.message : t("common.error"));
     } finally {
       setLoadingWardrobe(null);
     }
   };
 
   return (
-    <article className={`luxe-card p-5 sm:p-6 ${isOwner ? "border-[rgba(214,177,111,0.24)]" : ""}`}>
+    <article className={`luxe-card p-5 sm:p-6 ${isOwner ? "border-[rgba(201,165,90,0.24)]" : ""}`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-3">
           <span className="page-kicker">
             {isOwner ? <Crown size={14} /> : <ShieldCheck size={14} />}
-            Family Atelier
+            {t("family.atelier")}
           </span>
 
           {editing ? (
@@ -228,7 +233,7 @@ function FamilyCard({
                 onKeyDown={(e) => e.key === "Enter" && handleRename()}
               />
               <button type="button" onClick={handleRename} className="primary-action px-4 py-3 text-sm">
-                Зберегти
+                {t("family.save")}
               </button>
               <button
                 type="button"
@@ -238,14 +243,14 @@ function FamilyCard({
                 }}
                 className="ghost-action px-4 py-3 text-sm"
               >
-                Скасувати
+                {t("family.cancel")}
               </button>
             </div>
           ) : (
             <div>
               <h3 className="text-3xl font-semibold text-[var(--text-primary)]">{family.name}</h3>
               <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                {family.members.length} учасників у спільному wardrobe-space.
+                {t("family.membersCount", { count: family.members.length })}
               </p>
             </div>
           )}
@@ -258,7 +263,7 @@ function FamilyCard({
             className="ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm"
           >
             <PencilLine size={15} />
-            Перейменувати
+            {t("family.rename")}
           </button>
         )}
       </div>
@@ -291,7 +296,7 @@ function FamilyCard({
                   className="ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm disabled:opacity-50"
                 >
                   {loadingWardrobe === member.userId ? <LoaderCircle size={15} className="animate-spin" /> : <Eye size={15} />}
-                  Гардероб
+                  {t("family.wardrobe")}
                 </button>
 
                 {member.userId === currentUserId && !isOwner && (
@@ -300,7 +305,7 @@ function FamilyCard({
                     onClick={handleLeave}
                     className="ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm text-[var(--danger)]"
                   >
-                    Вийти
+                    {t("family.leave")}
                   </button>
                 )}
 
@@ -311,7 +316,7 @@ function FamilyCard({
                     className="ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm text-[var(--danger)]"
                   >
                     <Trash2 size={15} />
-                    Видалити
+                    {t("family.deleteUser")}
                   </button>
                 )}
               </div>
@@ -332,12 +337,12 @@ function FamilyCard({
         <div className="mt-6 rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="section-subtitle">Invite Member</p>
-              <h4 className="section-title mt-2">Додайте нового учасника</h4>
+              <p className="section-subtitle">{t("family.inviteMember")}</p>
+              <h4 className="section-title mt-2">{t("family.addMember")}</h4>
             </div>
             <span className="metric-pill">
               <UserPlus size={14} className="text-[var(--accent)]" />
-              Shared access
+              {t("family.sharedAccess")}
             </span>
           </div>
 
@@ -346,7 +351,7 @@ function FamilyCard({
               type="email"
               value={addEmail}
               onChange={(e) => setAddEmail(e.target.value)}
-              placeholder="Email учасника"
+              placeholder={t("family.emailPlaceholder")}
               className="input-surface flex-1 px-4 py-3 text-sm"
               onKeyDown={(e) => e.key === "Enter" && handleAddMember()}
             />
@@ -357,7 +362,7 @@ function FamilyCard({
               className="primary-action inline-flex items-center justify-center gap-2 px-5 py-3 text-sm disabled:opacity-50"
             >
               {adding ? <LoaderCircle size={15} className="animate-spin" /> : <ArrowRight size={15} />}
-              Додати
+              {t("family.add")}
             </button>
           </div>
         </div>
@@ -371,7 +376,7 @@ function FamilyCard({
             className="ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm text-[var(--danger)]"
           >
             <Trash2 size={15} />
-            Видалити родину
+            {t("family.deleteFamily")}
           </button>
         </div>
       )}
@@ -381,6 +386,7 @@ function FamilyCard({
 
 export default function FamilyPage() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const [families, setFamilies] = useState<FamilyData[]>([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
@@ -392,11 +398,11 @@ export default function FamilyPage() {
       const data = await familyApi.list();
       setFamilies(data.families);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Помилка завантаження");
+      setError(e instanceof Error ? e.message : t("common.error"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadFamilies();
@@ -413,7 +419,7 @@ export default function FamilyPage() {
       setNewName("");
       await loadFamilies();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Помилка створення");
+      setError(e instanceof Error ? e.message : t("common.error"));
     } finally {
       setCreating(false);
     }
@@ -434,28 +440,27 @@ export default function FamilyPage() {
           <div className="space-y-5">
             <span className="page-kicker">
               <Users size={14} />
-              Family Hub
+              {t("family.kicker")}
             </span>
             <h1 className="page-title">
-              Спільний гардероб
-              <br />
-              для всієї родини.
+              {t("family.heading").split("\n").map((line, i) => (
+                <span key={i}>{i > 0 && <br />}{line}</span>
+              ))}
             </h1>
             <p className="page-copy">
-              Обʼєднуйте близьких у shared wardrobe-space, дивіться гардероб одне одного і
-              керуйте доступом як до сімейного fashion-архіву.
+              {t("family.description")}
             </p>
           </div>
 
           <div className="luxe-card p-6">
-            <p className="section-subtitle">Create A Family</p>
-            <h2 className="section-title mt-2">Запустіть новий shared hub</h2>
+            <p className="section-subtitle">{t("family.createFamily")}</p>
+            <h2 className="section-title mt-2">{t("family.startHub")}</h2>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
               <input
                 type="text"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="Назва родини"
+                placeholder={t("family.familyName")}
                 className="input-surface flex-1 px-4 py-3 text-sm"
                 onKeyDown={(e) => e.key === "Enter" && handleCreate()}
               />
@@ -466,7 +471,7 @@ export default function FamilyPage() {
                 className="primary-action inline-flex items-center justify-center gap-2 px-5 py-3 text-sm disabled:opacity-50"
               >
                 {creating ? <LoaderCircle size={15} className="animate-spin" /> : <ArrowRight size={15} />}
-                Створити
+                {t("family.create")}
               </button>
             </div>
           </div>
@@ -477,12 +482,12 @@ export default function FamilyPage() {
 
       {families.length === 0 ? (
         <section className="luxe-card p-10 text-center">
-          <p className="section-subtitle">No Shared Spaces Yet</p>
+          <p className="section-subtitle">{t("family.noHubs")}</p>
           <h2 className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">
-            У вас поки немає сімейних hub-ів.
+            {t("family.noHubsTitle")}
           </h2>
           <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
-            Створіть першу родину вище, щоб почати спільну роботу з гардеробом.
+            {t("family.noHubsDesc")}
           </p>
         </section>
       ) : (

@@ -7,56 +7,51 @@ import type {
   ColorPaletteEntry,
   UserProfile,
 } from "../services/api";
+import { useI18n } from "../i18n";
 
 /* ---------- Season display map ---------- */
 
 const SEASON_EMOJI: Record<string, string> = {
-  "Bright Spring": "\uD83C\uDF3B",
-  "True Spring": "\uD83C\uDF37",
-  "Light Spring": "\uD83C\uDF38",
-  "Light Summer": "\u2600\uFE0F",
-  "True Summer": "\uD83C\uDF0A",
-  "Soft Summer": "\uD83C\uDF2B\uFE0F",
-  "Soft Autumn": "\uD83C\uDF42",
-  "True Autumn": "\uD83C\uDF41",
-  "Deep Autumn": "\uD83C\uDF3E",
-  "Deep Winter": "\u2744\uFE0F",
-  "True Winter": "\uD83C\uDF28\uFE0F",
-  "Bright Winter": "\u2728",
+  "Bright Spring": "🌻",
+  "True Spring": "🌷",
+  "Light Spring": "🌸",
+  "Light Summer": "☀️",
+  "True Summer": "🌊",
+  "Soft Summer": "🌫️",
+  "Soft Autumn": "🍂",
+  "True Autumn": "🍁",
+  "Deep Autumn": "🌾",
+  "Deep Winter": "❄️",
+  "True Winter": "🌨️",
+  "Bright Winter": "✨",
 };
 
-const SEASON_UA: Record<string, string> = {
-  "Bright Spring": "\u042F\u0441\u043A\u0440\u0430\u0432\u0430 \u0412\u0435\u0441\u043D\u0430",
-  "True Spring": "\u0421\u043F\u0440\u0430\u0432\u0436\u043D\u044F \u0412\u0435\u0441\u043D\u0430",
-  "Light Spring": "\u0421\u0432\u0456\u0442\u043B\u0430 \u0412\u0435\u0441\u043D\u0430",
-  "Light Summer": "\u0421\u0432\u0456\u0442\u043B\u0435 \u041B\u0456\u0442\u043E",
-  "True Summer": "\u0421\u043F\u0440\u0430\u0432\u0436\u043D\u0454 \u041B\u0456\u0442\u043E",
-  "Soft Summer": "\u041C\u2019\u044F\u043A\u0435 \u041B\u0456\u0442\u043E",
-  "Soft Autumn": "\u041C\u2019\u044F\u043A\u0430 \u041E\u0441\u0456\u043D\u044C",
-  "True Autumn": "\u0421\u043F\u0440\u0430\u0432\u0436\u043D\u044F \u041E\u0441\u0456\u043D\u044C",
-  "Deep Autumn": "\u0413\u043B\u0438\u0431\u043E\u043A\u0430 \u041E\u0441\u0456\u043D\u044C",
-  "Deep Winter": "\u0413\u043B\u0438\u0431\u043E\u043A\u0430 \u0417\u0438\u043C\u0430",
-  "True Winter": "\u0421\u043F\u0440\u0430\u0432\u0436\u043D\u044F \u0417\u0438\u043C\u0430",
-  "Bright Winter": "\u042F\u0441\u043A\u0440\u0430\u0432\u0430 \u0417\u0438\u043C\u0430",
+const SEASON_KEY: Record<string, string> = {
+  "Bright Spring": "profile.seasonBrightSpring",
+  "True Spring": "profile.seasonTrueSpring",
+  "Light Spring": "profile.seasonLightSpring",
+  "Light Summer": "profile.seasonLightSummer",
+  "True Summer": "profile.seasonTrueSummer",
+  "Soft Summer": "profile.seasonSoftSummer",
+  "Soft Autumn": "profile.seasonSoftAutumn",
+  "True Autumn": "profile.seasonTrueAutumn",
+  "Deep Autumn": "profile.seasonDeepAutumn",
+  "Deep Winter": "profile.seasonDeepWinter",
+  "True Winter": "profile.seasonTrueWinter",
+  "Bright Winter": "profile.seasonBrightWinter",
 };
 
-const UNDERTONE_UA: Record<string, string> = {
-  warm: "\u0442\u0435\u043F\u043B\u0438\u0439",
-  cool: "\u0445\u043E\u043B\u043E\u0434\u043D\u0438\u0439",
-  neutral: "\u043D\u0435\u0439\u0442\u0440\u0430\u043B\u044C\u043D\u0438\u0439",
+const UNDERTONE_KEY: Record<string, string> = {
+  warm: "profile.undertoneWarm",
+  cool: "profile.undertoneCool",
+  neutral: "profile.undertoneNeutral",
 };
 
-const CONTRAST_UA: Record<string, string> = {
-  high: "\u0432\u0438\u0441\u043E\u043A\u0438\u0439",
-  medium: "\u0441\u0435\u0440\u0435\u0434\u043D\u0456\u0439",
-  low: "\u043D\u0438\u0437\u044C\u043A\u0438\u0439",
+const CONTRAST_KEY: Record<string, string> = {
+  high: "profile.contrastHigh",
+  medium: "profile.contrastMedium",
+  low: "profile.contrastLow",
 };
-
-const GENDER_OPTIONS = [
-  { value: "neutral", label: "\u041D\u0435\u0439\u0442\u0440\u0430\u043B\u044C\u043D\u0438\u0439" },
-  { value: "male", label: "\u0427\u043E\u043B\u043E\u0432\u0456\u0447\u0438\u0439" },
-  { value: "female", label: "\u0416\u0456\u043D\u043E\u0447\u0438\u0439" },
-] as const;
 
 /* ---------- Sub-components ---------- */
 
@@ -96,15 +91,18 @@ function ColorResultDisplay({
   palette: ColorPaletteEntry[];
   avoid: ColorPaletteEntry[];
 }) {
-  const emoji = SEASON_EMOJI[result.season] ?? "\uD83C\uDFA8";
-  const seasonUa = SEASON_UA[result.season] ?? result.season;
+  const { t } = useI18n();
+  const emoji = SEASON_EMOJI[result.season] ?? "🎨";
+  const seasonLabel = SEASON_KEY[result.season] ? t(SEASON_KEY[result.season]) : result.season;
+  const undertoneLabel = UNDERTONE_KEY[result.undertone] ? t(UNDERTONE_KEY[result.undertone]) : result.undertone;
+  const contrastLabel = CONTRAST_KEY[result.contrast] ? t(CONTRAST_KEY[result.contrast]) : result.contrast;
 
   return (
     <div className="space-y-6">
       {/* Season header */}
       <div className="text-center">
         <h3 className="text-2xl font-bold text-[#f0ece4]">
-          {emoji} {seasonUa}
+          {emoji} {seasonLabel}
         </h3>
         <p className="mt-1 text-sm text-[#f0ece4]/45">{result.season}</p>
       </div>
@@ -112,10 +110,10 @@ function ColorResultDisplay({
       {/* Badges */}
       <div className="flex justify-center gap-3">
         <span className="rounded-full bg-[#c9a55a]/10 px-3 py-1 text-sm font-medium text-[#c9a55a]">
-          {"\u041F\u0456\u0434\u0442\u043E\u043D: "}{UNDERTONE_UA[result.undertone] ?? result.undertone}
+          {t("profile.undertone")}: {undertoneLabel}
         </span>
         <span className="rounded-full bg-amber-500/10 px-3 py-1 text-sm font-medium text-amber-400">
-          {"\u041A\u043E\u043D\u0442\u0440\u0430\u0441\u0442: "}{CONTRAST_UA[result.contrast] ?? result.contrast}
+          {t("profile.contrast")}: {contrastLabel}
         </span>
       </div>
 
@@ -125,7 +123,7 @@ function ColorResultDisplay({
       {/* Your colors */}
       <div>
         <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#f0ece4]/35">
-          {"\u0412\u0430\u0448\u0456 \u043A\u043E\u043B\u044C\u043E\u0440\u0438"}
+          {t("profile.yourColors")}
         </h4>
         <div className="grid grid-cols-6 gap-3">
           {palette.map((c) => (
@@ -137,7 +135,7 @@ function ColorResultDisplay({
       {/* Avoid colors */}
       <div>
         <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#f0ece4]/35">
-          {"\u0423\u043D\u0438\u043A\u0430\u0442\u0438"}
+          {t("profile.avoidColors")}
         </h4>
         <div className="grid grid-cols-6 gap-3">
           {avoid.map((c) => (
@@ -153,6 +151,7 @@ function ColorResultDisplay({
 
 export function ProfilePage() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const [analysisResult, setAnalysisResult] = useState<ColorAnalysisResult | null>(null);
 
@@ -178,6 +177,12 @@ export function ProfilePage() {
       void queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
+
+  const genderOptions = [
+    { value: "neutral", label: t("profile.neutral") },
+    { value: "male", label: t("profile.male") },
+    { value: "female", label: t("profile.female") },
+  ] as const;
 
   // Handle selfie capture via file input
   const handleFileCapture = useCallback(() => {
@@ -233,10 +238,10 @@ export function ProfilePage() {
       {/* Gender mode selector */}
       <div className="mb-8 rounded-2xl border border-white/[0.06] bg-[#1a1a2e] p-6">
         <h2 className="mb-4 text-lg font-semibold text-[#f0ece4]">
-          {"\u0420\u0435\u0436\u0438\u043C \u0441\u0442\u0438\u043B\u044E"}
+          {t("profile.styleMode")}
         </h2>
         <div className="flex gap-2">
-          {GENDER_OPTIONS.map((opt) => (
+          {genderOptions.map((opt) => (
             <button
               key={opt.value}
               type="button"
@@ -257,7 +262,7 @@ export function ProfilePage() {
       {/* Color analysis section */}
       <div className="rounded-2xl border border-white/[0.06] bg-[#1a1a2e] p-6">
         <h2 className="mb-4 text-lg font-semibold text-[#f0ece4]">
-          {"\u0412\u0438\u0437\u043D\u0430\u0447\u0438\u0442\u0438 \u043A\u043E\u043B\u044C\u043E\u0440\u043E\u0442\u0438\u043F"}
+          {t("profile.determineColorType")}
         </h2>
 
         {/* Loading state */}
@@ -265,7 +270,7 @@ export function ProfilePage() {
           <div className="flex flex-col items-center gap-4 py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#c9a55a] border-t-transparent" />
             <p className="text-sm text-[#f0ece4]/45">
-              {"\u0410\u043D\u0430\u043B\u0456\u0437\u0443\u0454\u043C\u043E \u0432\u0430\u0448 \u043A\u043E\u043B\u044C\u043E\u0440\u043E\u0442\u0438\u043F..."}
+              {t("profile.analyzing")}
             </p>
           </div>
         )}
@@ -275,7 +280,7 @@ export function ProfilePage() {
           <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
             {colorMutation.error instanceof Error
               ? colorMutation.error.message
-              : "\u041F\u043E\u043C\u0438\u043B\u043A\u0430 \u0430\u043D\u0430\u043B\u0456\u0437\u0443"}
+              : t("profile.analysisError")}
           </div>
         )}
 
@@ -283,17 +288,17 @@ export function ProfilePage() {
         {!colorMutation.isPending && !hasColorData && (
           <div className="flex flex-col items-center gap-4 rounded-xl border-2 border-dashed border-[#c9a55a]/20 py-12">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#c9a55a]/10">
-              <span className="text-3xl">{"\uD83E\uDDD1\u200D\uD83C\uDFA8"}</span>
+              <span className="text-3xl">🧑‍🎨</span>
             </div>
             <p className="text-sm text-[#f0ece4]/45">
-              {"\u0417\u0440\u043E\u0431\u0456\u0442\u044C \u0441\u0435\u043B\u0444\u0456 \u0434\u043B\u044F \u0432\u0438\u0437\u043D\u0430\u0447\u0435\u043D\u043D\u044F \u0432\u0430\u0448\u043E\u0433\u043E \u043A\u043E\u043B\u044C\u043E\u0440\u043E\u0442\u0438\u043F\u0443"}
+              {t("profile.selfiePrompt")}
             </p>
             <button
               type="button"
               onClick={handleFileCapture}
               className="gold-btn px-6 py-2.5 text-sm"
             >
-              {"\uD83D\uDCF8 \u0417\u0440\u043E\u0431\u0438\u0442\u0438 \u0441\u0435\u043B\u0444\u0456"}
+              {t("profile.takeSelfie")}
             </button>
           </div>
         )}
@@ -318,7 +323,7 @@ export function ProfilePage() {
                 onClick={handleFileCapture}
                 className="gold-ghost-btn w-full px-6 py-3 text-base"
               >
-                {"\u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0438 \u0430\u043D\u0430\u043B\u0456\u0437"}
+                {t("profile.repeatAnalysis")}
               </button>
             </div>
           </div>

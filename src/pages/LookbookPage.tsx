@@ -2,12 +2,11 @@ import { useState, useCallback } from "react";
 import { CalendarDays, LoaderCircle, RefreshCcw, Sparkles } from "lucide-react";
 import { lookbookApi } from "../services/api";
 import type { LookbookDay } from "../services/api";
+import { useI18n } from "../i18n";
 
-const DAY_NAMES_UK = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
-
-function formatDate(dateStr: string): { dayName: string; display: string } {
+function formatDate(dateStr: string, dayNames: string[]): { dayName: string; display: string } {
   const date = new Date(`${dateStr}T00:00:00`);
-  const dayName = DAY_NAMES_UK[date.getDay()];
+  const dayName = dayNames[date.getDay()];
   const dd = String(date.getDate()).padStart(2, "0");
   const mm = String(date.getMonth() + 1).padStart(2, "0");
   return { dayName, display: `${dd}.${mm}` };
@@ -42,7 +41,12 @@ interface DayCardProps {
 }
 
 function DayCard({ day, index, onWear, onRegenerate, wornDays, regenerating }: DayCardProps) {
-  const { dayName, display } = formatDate(day.date);
+  const { t } = useI18n();
+  const dayNames = [
+    t("lookbook.daySun"), t("lookbook.dayMon"), t("lookbook.dayTue"),
+    t("lookbook.dayWed"), t("lookbook.dayThu"), t("lookbook.dayFri"), t("lookbook.daySat"),
+  ];
+  const { dayName, display } = formatDate(day.date, dayNames);
   const isWorn = wornDays.has(index);
   const isRegenerating = regenerating === index;
 
@@ -50,7 +54,7 @@ function DayCard({ day, index, onWear, onRegenerate, wornDays, regenerating }: D
     <article className="luxe-card flex w-[20rem] shrink-0 flex-col p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="section-subtitle">Day Edit</p>
+          <p className="section-subtitle">{t("lookbook.dayEdit")}</p>
           <h3 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">
             {dayName}
             <span className="ml-2 text-base font-medium text-[var(--text-secondary)]">{display}</span>
@@ -86,7 +90,7 @@ function DayCard({ day, index, onWear, onRegenerate, wornDays, regenerating }: D
         </>
       ) : (
         <div className="mt-5 flex flex-1 items-center justify-center rounded-[1.3rem] border border-dashed border-white/10 bg-white/[0.02] px-4 py-10 text-sm text-[var(--text-secondary)]">
-          Немає аутфіту
+          {t("lookbook.noOutfit")}
         </div>
       )}
 
@@ -103,7 +107,7 @@ function DayCard({ day, index, onWear, onRegenerate, wornDays, regenerating }: D
                 : "primary-action",
             ].join(" ")}
           >
-            {isWorn ? "Вдягнено" : "Вдягну"}
+            {isWorn ? t("lookbook.worn") : t("lookbook.willWear")}
           </button>
         )}
         <button
@@ -111,7 +115,7 @@ function DayCard({ day, index, onWear, onRegenerate, wornDays, regenerating }: D
           onClick={() => onRegenerate(index)}
           disabled={isRegenerating}
           className="ghost-action inline-flex items-center justify-center gap-2 px-4 py-3 text-sm disabled:opacity-50"
-          title="Інший варіант"
+          title={t("lookbook.altOption")}
         >
           {isRegenerating ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCcw size={15} />}
         </button>
@@ -121,6 +125,7 @@ function DayCard({ day, index, onWear, onRegenerate, wornDays, regenerating }: D
 }
 
 export function LookbookPage() {
+  const { t } = useI18n();
   const [days, setDays] = useState<LookbookDay[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -195,27 +200,22 @@ export function LookbookPage() {
           <div className="space-y-5">
             <span className="page-kicker">
               <CalendarDays size={14} />
-              Weekly Lookbook
+              {t("lookbook.kicker")}
             </span>
             <h1 className="page-title">
-              Тиждень образів,
-              <br />
-              зібраний як журнал.
+              {t("lookbook.heading").split("\n").map((line, i) => (
+                <span key={i}>{i > 0 && <br />}{line}</span>
+              ))}
             </h1>
             <p className="page-copy">
-              Плануємо 7 днів уперед із урахуванням погоди, rotation і реальних речей,
-              які вже є у вас у шафі.
+              {t("lookbook.description")}
             </p>
           </div>
 
           <div className="luxe-card p-6">
-            <p className="section-subtitle">Lookbook Promise</p>
+            <p className="section-subtitle">{t("lookbook.promise")}</p>
             <div className="mt-5 space-y-3">
-              {[
-                "Побачите тижневий rhythm носіння замість хаотичних рішень вранці.",
-                "Можна перегенерувати окремий день, якщо потрібен інший сценарій.",
-                "Лог wear-дій одразу підсилює всю аналітику гардеробу.",
-              ].map((item) => (
+              {[t("lookbook.promise1"), t("lookbook.promise2"), t("lookbook.promise3")].map((item) => (
                 <div key={item} className="flex items-start gap-3 rounded-[1.1rem] border border-white/8 bg-white/[0.03] px-4 py-3">
                   <Sparkles size={15} className="mt-1 text-[var(--accent)]" />
                   <p className="text-sm leading-6 text-[var(--text-secondary)]">{item}</p>
@@ -228,8 +228,8 @@ export function LookbookPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="section-subtitle">Weekly Generator</p>
-          <h2 className="section-title mt-2">Створіть свій 7-day fashion plan</h2>
+          <p className="section-subtitle">{t("lookbook.weeklyGenerator")}</p>
+          <h2 className="section-title mt-2">{t("lookbook.createPlan")}</h2>
         </div>
         <button
           type="button"
@@ -238,7 +238,7 @@ export function LookbookPage() {
           className="primary-action inline-flex items-center gap-2 px-5 py-3 text-sm disabled:opacity-50"
         >
           {loading ? <LoaderCircle size={15} className="animate-spin" /> : <CalendarDays size={15} />}
-          {loading ? "Генеруємо..." : days ? "Перезібрати тиждень" : "Згенерувати тиждень"}
+          {loading ? t("lookbook.generating") : days ? t("lookbook.regenerate") : t("lookbook.generate")}
         </button>
       </div>
 
@@ -247,7 +247,7 @@ export function LookbookPage() {
       {loading && (
         <section className="luxe-card flex min-h-[18rem] flex-col items-center justify-center gap-4 p-8 text-center">
           <LoaderCircle size={28} className="animate-spin text-[var(--accent)]" />
-          <p className="text-sm text-[var(--text-secondary)]">Генеруємо аутфіти на 7 днів...</p>
+          <p className="text-sm text-[var(--text-secondary)]">{t("lookbook.generatingOutfits")}</p>
         </section>
       )}
 
@@ -275,19 +275,19 @@ export function LookbookPage() {
       {!loading && days && days.length === 0 && (
         <section className="luxe-card p-8 text-center">
           <p className="text-lg font-semibold text-[var(--text-primary)]">
-            Немає речей у гардеробі.
+            {t("lookbook.noWardrobe")}
           </p>
           <p className="mt-3 text-sm text-[var(--text-secondary)]">
-            Спершу імпортуйте одяг, щоб генератор тижня мав із чого збирати образи.
+            {t("lookbook.noWardrobeDesc")}
           </p>
         </section>
       )}
 
       {!loading && !days && (
         <section className="luxe-card p-10 text-center">
-          <p className="section-subtitle">Ready When You Are</p>
+          <p className="section-subtitle">{t("lookbook.readyWhenYouAre")}</p>
           <h2 className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">
-            Натисніть “Згенерувати тиждень”, щоб отримати fashion-plan на 7 днів.
+            {t("lookbook.readyPrompt")}
           </h2>
         </section>
       )}

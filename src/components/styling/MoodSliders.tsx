@@ -1,29 +1,10 @@
 import { Flame, Gem, Sparkles } from "lucide-react";
+import { useI18n } from "../../i18n";
 
 interface MoodSlidersProps {
   energy: number;
   boldness: number;
   onChange: (mood: { energy: number; boldness: number }) => void;
-}
-
-function energyLabel(value: number) {
-  if (value < 35) {
-    return "Quiet luxury";
-  }
-  if (value < 70) {
-    return "Balanced momentum";
-  }
-  return "High-energy statement";
-}
-
-function boldnessLabel(value: number) {
-  if (value < 35) {
-    return "Soft minimalism";
-  }
-  if (value < 70) {
-    return "Curated confidence";
-  }
-  return "Runway-ready impact";
 }
 
 function SliderRow({
@@ -79,40 +60,54 @@ function SliderRow({
 }
 
 export function MoodSliders({ energy, boldness, onChange }: MoodSlidersProps) {
+  const { t } = useI18n();
+
+  function energyLabel(value: number) {
+    if (value < 35) return t("mood.quietLuxury");
+    if (value < 70) return t("mood.balanced");
+    return t("mood.highEnergy");
+  }
+
+  function boldnessLabel(value: number) {
+    if (value < 35) return t("mood.softMinimalism");
+    if (value < 70) return t("mood.curatedConfidence");
+    return t("mood.runwayImpact");
+  }
+
   return (
     <div className="luxe-card space-y-6 p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <span className="page-kicker">
             <Sparkles size={14} />
-            Mood Engine
+            {t("mood.kicker")}
           </span>
           <h3 className="mt-4 text-2xl font-semibold text-[var(--text-primary)]">
-            Налаштуйте настрій образу
+            {t("mood.title")}
           </h3>
           <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--text-secondary)]">
-            Працюємо як персональний стиліст: від тихої впевненості до statement-образу.
+            {t("mood.desc")}
           </p>
         </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <SliderRow
-          label="Енергія"
+          label={t("mood.energy")}
           value={energy}
           onChange={(value) => onChange({ energy: value, boldness })}
-          leftLabel="Спокійно"
-          rightLabel="Динамічно"
-          accentClass="bg-[rgba(214,177,111,0.12)] text-[var(--accent)]"
+          leftLabel={t("mood.calm")}
+          rightLabel={t("mood.dynamic")}
+          accentClass="bg-[rgba(201,165,90,0.12)] text-[var(--accent)]"
           Icon={Flame}
           descriptor={energyLabel(energy)}
         />
         <SliderRow
-          label="Сміливість"
+          label={t("mood.boldness")}
           value={boldness}
           onChange={(value) => onChange({ energy, boldness: value })}
-          leftLabel="Стримано"
-          rightLabel="Яскраво"
+          leftLabel={t("mood.subtle")}
+          rightLabel={t("mood.bright")}
           accentClass="bg-[rgba(136,198,189,0.12)] text-[var(--accent-cool)]"
           Icon={Gem}
           descriptor={boldnessLabel(boldness)}

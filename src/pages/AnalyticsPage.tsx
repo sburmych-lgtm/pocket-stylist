@@ -7,6 +7,7 @@ import { GapAnalysis } from "../components/analytics/GapAnalysis";
 import { EcoDashboard } from "../components/analytics/EcoDashboard";
 import { GamificationPanel } from "../components/analytics/GamificationPanel";
 import { analyticsApi } from "../services/api";
+import { useI18n } from "../i18n";
 
 async function fetchDashboard() {
   return analyticsApi.getDashboard() as Promise<{
@@ -20,6 +21,7 @@ async function fetchDashboard() {
 }
 
 export function AnalyticsPage() {
+  const { t } = useI18n();
   const { data, isLoading, error } = useQuery({
     queryKey: ["analytics-dashboard"],
     queryFn: fetchDashboard,
@@ -30,7 +32,7 @@ export function AnalyticsPage() {
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex items-center gap-3 text-[var(--text-secondary)]">
           <LoaderCircle size={20} className="animate-spin text-[var(--accent)]" />
-          Аналізуємо ваш гардероб...
+          {t("analytics.loading")}
         </div>
       </div>
     );
@@ -40,7 +42,7 @@ export function AnalyticsPage() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
         <p className="text-[var(--danger)]">
-          Помилка завантаження аналітики. {error instanceof Error ? error.message : ""}
+          {t("analytics.error")} {error instanceof Error ? error.message : ""}
         </p>
       </div>
     );
@@ -53,30 +55,29 @@ export function AnalyticsPage() {
           <div className="space-y-5">
             <span className="page-kicker">
               <BarChart3 size={14} />
-              Wardrobe Intelligence
+              {t("analytics.kicker")}
             </span>
             <h1 className="page-title">
-              Аналітика, яка показує
-              <br />
-              реальну цінність гардеробу.
+              {t("analytics.heading").split("\n").map((line, i) => (
+                <span key={i}>{i > 0 && <br />}{line}</span>
+              ))}
             </h1>
             <p className="page-copy">
-              Від cost-per-wear до sustainability score: бачимо не просто речі, а те,
-              як ваш wardrobe працює, зношується і де потребує нового фокусу.
+              {t("analytics.description")}
             </p>
           </div>
 
           <div className="luxe-card p-6">
-            <p className="section-subtitle">Key Signal</p>
+            <p className="section-subtitle">{t("analytics.keySignal")}</p>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <div className="rounded-[1.3rem] border border-white/8 bg-white/[0.03] p-4">
-                <p className="section-subtitle">Avg wear count</p>
+                <p className="section-subtitle">{t("analytics.avgWearCount")}</p>
                 <p className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">
                   {data.summary.avgWearCount}
                 </p>
               </div>
               <div className="rounded-[1.3rem] border border-white/8 bg-white/[0.03] p-4">
-                <p className="section-subtitle">Eco score</p>
+                <p className="section-subtitle">{t("analytics.ecoScore")}</p>
                 <p className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">
                   {data.eco.sustainabilityScore}
                 </p>
@@ -85,7 +86,7 @@ export function AnalyticsPage() {
             <div className="mt-5 flex items-start gap-3 rounded-[1.2rem] border border-white/8 bg-white/[0.03] px-4 py-3">
               <Sparkles size={16} className="mt-1 text-[var(--accent)]" />
               <p className="text-sm leading-6 text-[var(--text-secondary)]">
-                Найсильніший гардероб не завжди найбільший. Він просто краще працює у щоденному rotation.
+                {t("analytics.insightHint")}
               </p>
             </div>
           </div>

@@ -2,15 +2,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { getAppStatus } from "../services/api";
+import { useI18n } from "../i18n";
 
 export function LoginPage() {
   const { loginWithGoogle, loginDemo, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const googleBtnRef = useRef<HTMLDivElement>(null);
   const [googleClientId, setGoogleClientId] = useState<string | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
 
-  /* Fetch server config at runtime (not build-time env var) */
   useEffect(() => {
     getAppStatus()
       .then((status) => setGoogleClientId(status.googleClientId ?? null))
@@ -18,14 +19,12 @@ export function LoginPage() {
       .finally(() => setStatusLoading(false));
   }, []);
 
-  /* Redirect if already authenticated */
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
       navigate("/", { replace: true });
     }
   }, [isAuthenticated, isLoading, navigate]);
 
-  /* Google Sign-In callback */
   const handleGoogleResponse = useCallback(
     async (response: { credential: string }) => {
       await loginWithGoogle(response.credential);
@@ -34,7 +33,6 @@ export function LoginPage() {
     [loginWithGoogle, navigate],
   );
 
-  /* Load GSI script and render button */
   useEffect(() => {
     if (!googleClientId) return;
 
@@ -68,7 +66,6 @@ export function LoginPage() {
     };
   }, [googleClientId, handleGoogleResponse]);
 
-  /* Demo login handler */
   const handleDemo = useCallback(async () => {
     await loginDemo();
     navigate("/", { replace: true });
@@ -76,29 +73,26 @@ export function LoginPage() {
 
   if (isLoading || statusLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0f0f1a]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#c9a55a] border-t-transparent" />
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg-canvas)]">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0f0f1a] px-4">
-      {/* Subtle radial gradient overlay */}
+    <div className="flex min-h-screen items-center justify-center bg-[var(--bg-canvas)] px-4">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(201,165,90,0.05)_0%,transparent_60%)]" />
 
-      <div className="animate-fade-in-up relative w-full max-w-sm rounded-3xl border border-white/[0.06] bg-[#1a1a2e] p-8 shadow-2xl shadow-black/40">
-        {/* Branding */}
+      <div className="animate-fade-in-up relative w-full max-w-sm rounded-3xl border border-white/[0.06] bg-[var(--bg-surface)] p-8 shadow-2xl shadow-black/40">
         <div className="mb-10 text-center">
-          <h1 className="font-display text-3xl font-semibold tracking-wide text-[#c9a55a]">
-            Pocket Stylist
+          <h1 className="font-display text-3xl font-semibold tracking-wide text-[var(--accent)]">
+            {t("brand.name")}
           </h1>
-          <p className="mt-2 text-sm text-[#f0ece4]/45">
-            Ваш AI-асистент по гардеробу
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+            {t("login.subtitle")}
           </p>
         </div>
 
-        {/* Login options */}
         <div className="space-y-4">
           {googleClientId && (
             <div className="flex justify-center">
@@ -106,23 +100,22 @@ export function LoginPage() {
             </div>
           )}
 
-          {/* Always show demo as fallback */}
           <button
             type="button"
             onClick={handleDemo}
-            className={`w-full rounded-full px-4 py-3.5 text-sm font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#c9a55a]/40 focus:ring-offset-2 focus:ring-offset-[#1a1a2e] ${
+            className={`w-full rounded-full px-4 py-3.5 text-sm font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40 focus:ring-offset-2 focus:ring-offset-[var(--bg-surface)] ${
               googleClientId
                 ? "gold-ghost-btn"
                 : "gold-btn"
             }`}
           >
-            {googleClientId ? "Увійти як Demo" : "Увійти як Demo User"}
+            {googleClientId ? t("login.demoLogin") : t("login.demoLoginFull")}
           </button>
         </div>
 
         {!googleClientId && (
-          <p className="mt-8 text-center text-xs text-[#f0ece4]/25">
-            Google Sign-In не налаштовано
+          <p className="mt-8 text-center text-xs text-[var(--text-muted)]">
+            {t("login.googleNotConfigured")}
           </p>
         )}
       </div>
