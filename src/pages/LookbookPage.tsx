@@ -39,16 +39,16 @@ function DayCard({ day, index, onWear, onRegenerate, wornDays, regenerating }: D
   const isRegenerating = regenerating === index;
 
   return (
-    <div className="flex w-64 flex-shrink-0 flex-col rounded-xl border border-neutral-200 bg-white p-4">
+    <div className="flex w-64 flex-shrink-0 flex-col rounded-xl border border-white/[0.06] bg-[#1a1a2e] p-4 transition-all hover:border-white/[0.12]">
       {/* Header: day + weather */}
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <span className="text-lg font-bold text-neutral-800">{dayName}</span>
-          <span className="ml-1 text-sm text-neutral-500">{display}</span>
+          <span className="text-lg font-bold text-[#f0ece4]">{dayName}</span>
+          <span className="ml-1 text-sm text-[#f0ece4]/45">{display}</span>
         </div>
         <div className="flex items-center gap-1">
           <span className="text-xl">{weatherIcon(day.weather.condition)}</span>
-          <span className="text-sm font-medium text-neutral-700">
+          <span className="text-sm font-medium text-[#f0ece4]/80">
             {Math.round(day.weather.temp)}{"\u00B0"}
           </span>
         </div>
@@ -60,7 +60,7 @@ function DayCard({ day, index, onWear, onRegenerate, wornDays, regenerating }: D
           <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
             {day.outfit.items.map((item) => (
               <div key={item.id} className="flex-shrink-0">
-                <div className="h-16 w-14 overflow-hidden rounded-lg bg-neutral-100">
+                <div className="h-16 w-14 overflow-hidden rounded-lg bg-white/[0.05]">
                   {item.imageUrl.startsWith("data:") || item.imageUrl.startsWith("http") ? (
                     <img
                       src={item.thumbnailUrl ?? item.imageUrl}
@@ -68,7 +68,7 @@ function DayCard({ day, index, onWear, onRegenerate, wornDays, regenerating }: D
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-[10px] text-neutral-400">
+                    <div className="flex h-full w-full items-center justify-center text-[10px] text-[#f0ece4]/35">
                       {item.subcategory ?? item.category}
                     </div>
                   )}
@@ -76,12 +76,12 @@ function DayCard({ day, index, onWear, onRegenerate, wornDays, regenerating }: D
               </div>
             ))}
           </div>
-          <p className="mb-3 line-clamp-2 text-xs text-neutral-500">
+          <p className="mb-3 line-clamp-2 text-xs text-[#f0ece4]/45">
             {day.outfit.stylingTip}
           </p>
         </>
       ) : (
-        <div className="mb-3 flex flex-1 items-center justify-center py-6 text-sm text-neutral-400">
+        <div className="mb-3 flex flex-1 items-center justify-center py-6 text-sm text-[#f0ece4]/35">
           Немає аутфіту
         </div>
       )}
@@ -95,8 +95,8 @@ function DayCard({ day, index, onWear, onRegenerate, wornDays, regenerating }: D
             disabled={isWorn}
             className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
               isWorn
-                ? "bg-emerald-100 text-emerald-700"
-                : "bg-indigo-600 text-white hover:bg-indigo-700"
+                ? "bg-emerald-500/10 text-emerald-400"
+                : "bg-[#c9a55a] text-[#0f0f1a] hover:bg-[#dbb978]"
             }`}
           >
             {isWorn ? "\u2713 Вдягнено" : "Вдягну"}
@@ -106,8 +106,8 @@ function DayCard({ day, index, onWear, onRegenerate, wornDays, regenerating }: D
           type="button"
           onClick={() => onRegenerate(index)}
           disabled={isRegenerating}
-          className="rounded-lg border border-neutral-200 px-3 py-2 text-xs font-medium
-            text-neutral-600 transition-colors hover:bg-neutral-50 disabled:opacity-50"
+          className="rounded-lg border border-white/[0.06] px-3 py-2 text-xs font-medium
+            text-[#f0ece4]/55 transition-colors hover:bg-white/[0.05] disabled:opacity-50"
           title="Інший варіант"
         >
           {isRegenerating ? "\u23F3" : "\uD83D\uDD04"}
@@ -184,10 +184,10 @@ export function LookbookPage() {
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
+          <h1 className="font-display text-2xl font-semibold tracking-wide text-[#c9a55a]">
             Lookbook
           </h1>
-          <p className="mt-1 text-neutral-500">
+          <p className="mt-1 text-sm text-[#f0ece4]/45">
             Аутфіти на тиждень з урахуванням погоди.
           </p>
         </div>
@@ -195,15 +195,14 @@ export function LookbookPage() {
           type="button"
           onClick={handleGenerate}
           disabled={loading}
-          className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold
-            text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+          className="gold-btn px-5 py-2.5 text-sm disabled:opacity-50"
         >
           {loading ? "Генерую..." : days ? "Перегенерувати" : "Згенерувати тиждень"}
         </button>
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+        <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
           {error}
         </div>
       )}
@@ -211,8 +210,8 @@ export function LookbookPage() {
       {loading && (
         <div className="flex items-center justify-center py-16">
           <div className="flex flex-col items-center gap-3">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-            <p className="text-sm text-neutral-500">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#c9a55a] border-t-transparent" />
+            <p className="text-sm text-[#f0ece4]/45">
               Генерую аутфіти на 7 днів...
             </p>
           </div>
@@ -238,17 +237,17 @@ export function LookbookPage() {
       )}
 
       {!loading && days && days.length === 0 && (
-        <div className="rounded-xl border border-neutral-200 bg-white p-8 text-center">
-          <p className="text-neutral-500">
+        <div className="rounded-xl border border-white/[0.06] bg-[#1a1a2e] p-8 text-center">
+          <p className="text-[#f0ece4]/45">
             Немає речей у гардеробі. Спершу імпортуйте одяг.
           </p>
         </div>
       )}
 
       {!loading && !days && (
-        <div className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-12 text-center">
-          <p className="text-lg text-neutral-400">
-            {"\uD83D\uDCC5"} Натисніть "Згенерувати тиждень" щоб отримати план аутфітів
+        <div className="rounded-xl border-2 border-dashed border-[#c9a55a]/20 bg-[#1a1a2e] p-12 text-center">
+          <p className="text-lg text-[#f0ece4]/35">
+            {"\uD83D\uDCC5"} Натисніть «Згенерувати тиждень» щоб отримати план аутфітів
           </p>
         </div>
       )}

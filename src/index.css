@@ -1,1 +1,213 @@
 @import "tailwindcss";
+
+/* ===== Design Tokens ===== */
+:root {
+  --bg-primary: #0f0f1a;
+  --bg-card: #1a1a2e;
+  --bg-card-hover: #1f1f35;
+  --bg-elevated: #232340;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-medium: rgba(255, 255, 255, 0.12);
+  --accent-gold: #c9a55a;
+  --accent-gold-hover: #dbb978;
+  --accent-gold-muted: rgba(201, 165, 90, 0.15);
+  --text-primary: #f0ece4;
+  --text-secondary: rgba(240, 236, 228, 0.55);
+  --text-muted: rgba(240, 236, 228, 0.35);
+  --success: #4a9d6e;
+  --error: #c97b7b;
+  --warning: #d4b156;
+}
+
+/* ===== Typography ===== */
+body {
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-display {
+  font-family: "Playfair Display", Georgia, serif;
+}
+
+/* ===== Glass Card ===== */
+.glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 1rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-card-hover {
+  transition: all 0.3s ease-out;
+}
+.glass-card-hover:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-medium);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* ===== Gold Button ===== */
+.gold-btn {
+  background: var(--accent-gold);
+  color: var(--bg-primary);
+  font-weight: 600;
+  border-radius: 9999px;
+  transition: all 0.3s ease-out;
+}
+.gold-btn:hover {
+  background: var(--accent-gold-hover);
+  box-shadow: 0 4px 20px rgba(201, 165, 90, 0.3);
+  transform: translateY(-1px);
+}
+.gold-btn:active {
+  transform: translateY(0);
+}
+
+/* ===== Gold Ghost Button ===== */
+.gold-ghost-btn {
+  background: transparent;
+  color: var(--accent-gold);
+  border: 1px solid rgba(201, 165, 90, 0.3);
+  border-radius: 9999px;
+  font-weight: 500;
+  transition: all 0.3s ease-out;
+}
+.gold-ghost-btn:hover {
+  background: var(--accent-gold-muted);
+  border-color: var(--accent-gold);
+}
+
+/* ===== Skeleton Loader ===== */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-card) 25%,
+    var(--bg-card-hover) 50%,
+    var(--bg-card) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 0.75rem;
+}
+
+/* ===== Gold Glow (for drop zones, focus rings) ===== */
+.gold-glow {
+  box-shadow: 0 0 30px rgba(201, 165, 90, 0.1), 0 0 60px rgba(201, 165, 90, 0.05);
+}
+
+/* ===== Custom Scrollbar ===== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ===== Custom Range Slider ===== */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(201, 165, 90, 0.2), rgba(201, 165, 90, 0.5));
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-gold);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 0 3px rgba(201, 165, 90, 0.2);
+  transition: box-shadow 0.2s ease;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5), 0 0 0 5px rgba(201, 165, 90, 0.25);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-gold);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 0 3px rgba(201, 165, 90, 0.2);
+}
+
+/* ===== Keyframes ===== */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(201, 165, 90, 0.1); }
+  50% { box-shadow: 0 0 40px rgba(201, 165, 90, 0.2); }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== Utility Animations ===== */
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out both;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.5s ease-out both;
+}
+
+/* Staggered children animation */
+.stagger-children > * {
+  animation: fade-in-up 0.4s ease-out both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.1s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.2s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.3s; }
+.stagger-children > *:nth-child(7) { animation-delay: 0.35s; }
+.stagger-children > *:nth-child(8) { animation-delay: 0.4s; }
+.stagger-children > *:nth-child(9) { animation-delay: 0.45s; }
+
+/* ===== Selection ===== */
+::selection {
+  background: rgba(201, 165, 90, 0.3);
+  color: var(--text-primary);
+}

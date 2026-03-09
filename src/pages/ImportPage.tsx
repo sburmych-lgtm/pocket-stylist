@@ -9,7 +9,6 @@ function fileToBase64(file: File): Promise<string> {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      // Strip the data URL prefix to get raw base64
       resolve(result.split(",")[1]);
     };
     reader.onerror = reject;
@@ -29,34 +28,22 @@ export function ImportPage() {
       setItems((prev) =>
         prev.map((it) => (it.id === id ? { ...it, status: "uploading" as const } : it)),
       );
-
       const base64 = await fileToBase64(file);
-
       setItems((prev) =>
         prev.map((it) => (it.id === id ? { ...it, status: "analyzing" as const } : it)),
       );
-
       const result = await analyzeImage(base64, file.type, file.name);
-
       setItems((prev) =>
         prev.map((it) =>
           it.id === id
-            ? {
-                ...it,
-                status: "done" as const,
-                tags: result.tags,
-                imageUrl: result.imageUrl,
-                thumbnailUrl: result.thumbnailUrl,
-              }
+            ? { ...it, status: "done" as const, tags: result.tags, imageUrl: result.imageUrl, thumbnailUrl: result.thumbnailUrl }
             : it,
         ),
       );
     } catch (err) {
       setItems((prev) =>
         prev.map((it) =>
-          it.id === id
-            ? { ...it, status: "error" as const, error: (err as Error).message }
-            : it,
+          it.id === id ? { ...it, status: "error" as const, error: (err as Error).message } : it,
         ),
       );
     }
@@ -71,13 +58,9 @@ export function ImportPage() {
         previewUrl: URL.createObjectURL(file),
         status: "pending" as const,
       }));
-
       setItems((prev) => [...prev, ...newItems]);
-
-      // Process in parallel with concurrency limit of 3
       const queue = [...newItems];
       const fileMap = new Map(files.map((f, i) => [newItems[i].id, f]));
-
       const processNext = async () => {
         const item = queue.shift();
         if (!item) return;
@@ -85,8 +68,6 @@ export function ImportPage() {
         if (file) await processFile(file, item.id);
         await processNext();
       };
-
-      // Start 3 parallel workers
       void Promise.all([processNext(), processNext(), processNext()]);
     },
     [processFile],
@@ -117,28 +98,20 @@ export function ImportPage() {
     if (!doneItems.length) return;
     setSaving(true);
     setSaveResult(null);
-
     try {
       const payload = doneItems.map((it) => ({
-        imageUrl: it.imageUrl!,
-        thumbnailUrl: it.thumbnailUrl!,
-        category: it.tags!.category,
-        subcategory: it.tags!.subcategory,
-        colorPrimary: it.tags!.colorPrimary,
-        colorHex: it.tags!.colorHex,
-        pattern: it.tags!.pattern,
-        fabric: it.tags!.fabric,
-        formalityLevel: it.tags!.formalityLevel,
-        season: it.tags!.season,
-        brand: it.tags!.brand ?? undefined,
-        confidence: it.tags!.confidence,
+        imageUrl: it.imageUrl!, thumbnailUrl: it.thumbnailUrl!,
+        category: it.tags!.category, subcategory: it.tags!.subcategory,
+        colorPrimary: it.tags!.colorPrimary, colorHex: it.tags!.colorHex,
+        pattern: it.tags!.pattern, fabric: it.tags!.fabric,
+        formalityLevel: it.tags!.formalityLevel, season: it.tags!.season,
+        brand: it.tags!.brand ?? undefined, confidence: it.tags!.confidence,
       }));
-
       const result = await saveItems(payload);
-      setSaveResult(`Saved ${result.saved} items to your wardrobe!`);
+      setSaveResult(`Збережено ${result.saved} речей у гардероб!`);
       setItems((prev) => prev.filter((it) => it.status !== "done"));
     } catch (err) {
-      setSaveResult(`Error: ${(err as Error).message}`);
+      setSaveResult(`Помилка: ${(err as Error).message}`);
     } finally {
       setSaving(false);
     }
@@ -147,11 +120,11 @@ export function ImportPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
-          Import Wardrobe
+        <h1 className="font-display text-2xl font-semibold tracking-wide text-[#c9a55a]">
+          Імпорт гардеробу
         </h1>
-        <p className="mt-1 text-neutral-500">
-          Upload photos of your clothes — AI will automatically tag them.
+        <p className="mt-1 text-[#f0ece4]/45">
+          Завантажте фото одягу — AI автоматично їх протегує.
         </p>
       </div>
 
@@ -161,57 +134,40 @@ export function ImportPage() {
         <div className="mt-8">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-4 text-sm">
-              <span className="font-medium text-neutral-700">
-                {items.length} item{items.length !== 1 ? "s" : ""}
+              <span className="font-medium text-[#f0ece4]/80">
+                {items.length} {items.length !== 1 ? "файлів" : "файл"}
               </span>
               {pendingCount > 0 && (
-                <span className="text-indigo-600">
-                  {pendingCount} processing...
-                </span>
+                <span className="text-[#c9a55a]">{pendingCount} обробляється...</span>
               )}
               {doneItems.length > 0 && (
-                <span className="text-green-600">
-                  {doneItems.length} ready
-                </span>
+                <span className="text-emerald-400">{doneItems.length} готово</span>
               )}
               {errorCount > 0 && (
-                <span className="text-red-600">
-                  {errorCount} failed
-                </span>
+                <span className="text-red-400">{errorCount} помилок</span>
               )}
             </div>
             {doneItems.length > 0 && (
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white
-                  transition-colors hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {saving ? "Saving..." : `Save ${doneItems.length} to Wardrobe`}
+              <button onClick={handleSave} disabled={saving}
+                className="gold-btn px-4 py-2 text-sm disabled:opacity-50">
+                {saving ? "Зберігаю..." : `Зберегти ${doneItems.length} у гардероб`}
               </button>
             )}
           </div>
 
           {saveResult && (
-            <div
-              className={`mb-4 rounded-lg p-3 text-sm ${
-                saveResult.startsWith("Error")
-                  ? "bg-red-50 text-red-700"
-                  : "bg-green-50 text-green-700"
-              }`}
-            >
+            <div className={`mb-4 rounded-lg border p-3 text-sm ${
+              saveResult.startsWith("Помилка")
+                ? "border-red-500/20 bg-red-500/10 text-red-400"
+                : "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+            }`}>
               {saveResult}
             </div>
           )}
 
           <div className="space-y-3">
             {items.map((item) => (
-              <TagEditor
-                key={item.id}
-                item={item}
-                onUpdate={handleUpdateTags}
-                onRemove={handleRemove}
-              />
+              <TagEditor key={item.id} item={item} onUpdate={handleUpdateTags} onRemove={handleRemove} />
             ))}
           </div>
         </div>

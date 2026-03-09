@@ -71,7 +71,7 @@ function ColorCircle({
     <div className="flex flex-col items-center gap-1.5">
       <div className="relative">
         <div
-          className="h-12 w-12 rounded-full border-2 border-white shadow-md"
+          className="h-12 w-12 rounded-full border-2 border-white/[0.1] shadow-md shadow-black/30"
           style={{ backgroundColor: color.hex }}
         />
         {crossed && (
@@ -80,7 +80,7 @@ function ColorCircle({
           </div>
         )}
       </div>
-      <span className="max-w-16 text-center text-xs leading-tight text-neutral-600">
+      <span className="max-w-16 text-center text-xs leading-tight text-[#f0ece4]/55">
         {color.name}
       </span>
     </div>
@@ -103,28 +103,28 @@ function ColorResultDisplay({
     <div className="space-y-6">
       {/* Season header */}
       <div className="text-center">
-        <h3 className="text-2xl font-bold text-neutral-900">
+        <h3 className="text-2xl font-bold text-[#f0ece4]">
           {emoji} {seasonUa}
         </h3>
-        <p className="mt-1 text-sm text-neutral-500">{result.season}</p>
+        <p className="mt-1 text-sm text-[#f0ece4]/45">{result.season}</p>
       </div>
 
       {/* Badges */}
       <div className="flex justify-center gap-3">
-        <span className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700">
+        <span className="rounded-full bg-[#c9a55a]/10 px-3 py-1 text-sm font-medium text-[#c9a55a]">
           {"\u041F\u0456\u0434\u0442\u043E\u043D: "}{UNDERTONE_UA[result.undertone] ?? result.undertone}
         </span>
-        <span className="rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
+        <span className="rounded-full bg-amber-500/10 px-3 py-1 text-sm font-medium text-amber-400">
           {"\u041A\u043E\u043D\u0442\u0440\u0430\u0441\u0442: "}{CONTRAST_UA[result.contrast] ?? result.contrast}
         </span>
       </div>
 
       {/* Description */}
-      <p className="text-center text-sm text-neutral-600">{result.description}</p>
+      <p className="text-center text-sm text-[#f0ece4]/55">{result.description}</p>
 
       {/* Your colors */}
       <div>
-        <h4 className="mb-3 text-sm font-semibold uppercase tracking-wider text-neutral-500">
+        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#f0ece4]/35">
           {"\u0412\u0430\u0448\u0456 \u043A\u043E\u043B\u044C\u043E\u0440\u0438"}
         </h4>
         <div className="grid grid-cols-6 gap-3">
@@ -136,7 +136,7 @@ function ColorResultDisplay({
 
       {/* Avoid colors */}
       <div>
-        <h4 className="mb-3 text-sm font-semibold uppercase tracking-wider text-neutral-500">
+        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#f0ece4]/35">
           {"\u0423\u043D\u0438\u043A\u0430\u0442\u0438"}
         </h4>
         <div className="grid grid-cols-6 gap-3">
@@ -214,25 +214,25 @@ export function ProfilePage() {
           <img
             src={user.avatarUrl}
             alt={user.name ?? "avatar"}
-            className="h-16 w-16 rounded-full object-cover"
+            className="h-16 w-16 rounded-full object-cover ring-2 ring-[#c9a55a] ring-offset-2 ring-offset-[#0f0f1a]"
             referrerPolicy="no-referrer"
           />
         ) : (
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 text-2xl font-bold text-indigo-700">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#c9a55a]/15 text-2xl font-bold text-[#c9a55a] ring-2 ring-[#c9a55a] ring-offset-2 ring-offset-[#0f0f1a]">
             {(user?.name ?? user?.email ?? "U").charAt(0).toUpperCase()}
           </div>
         )}
         <div>
-          <h1 className="text-xl font-bold text-neutral-900">
+          <h1 className="font-display text-xl font-semibold text-[#f0ece4]">
             {user?.name ?? user?.email}
           </h1>
-          <p className="text-sm text-neutral-500">{user?.email}</p>
+          <p className="text-sm text-[#f0ece4]/45">{user?.email}</p>
         </div>
       </div>
 
       {/* Gender mode selector */}
-      <div className="mb-8 rounded-2xl border border-neutral-200 bg-white p-6">
-        <h2 className="mb-4 text-lg font-semibold text-neutral-900">
+      <div className="mb-8 rounded-2xl border border-white/[0.06] bg-[#1a1a2e] p-6">
+        <h2 className="mb-4 text-lg font-semibold text-[#f0ece4]">
           {"\u0420\u0435\u0436\u0438\u043C \u0441\u0442\u0438\u043B\u044E"}
         </h2>
         <div className="flex gap-2">
@@ -244,8 +244,8 @@ export function ProfilePage() {
               disabled={genderMutation.isPending}
               className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                 (profile?.genderMode ?? "neutral") === opt.value
-                  ? "bg-indigo-600 text-white"
-                  : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+                  ? "bg-[#c9a55a] text-[#0f0f1a]"
+                  : "bg-white/[0.06] text-[#f0ece4]/55 hover:bg-white/[0.1]"
               }`}
             >
               {opt.label}
@@ -255,16 +255,16 @@ export function ProfilePage() {
       </div>
 
       {/* Color analysis section */}
-      <div className="rounded-2xl border border-neutral-200 bg-white p-6">
-        <h2 className="mb-4 text-lg font-semibold text-neutral-900">
+      <div className="rounded-2xl border border-white/[0.06] bg-[#1a1a2e] p-6">
+        <h2 className="mb-4 text-lg font-semibold text-[#f0ece4]">
           {"\u0412\u0438\u0437\u043D\u0430\u0447\u0438\u0442\u0438 \u043A\u043E\u043B\u044C\u043E\u0440\u043E\u0442\u0438\u043F"}
         </h2>
 
         {/* Loading state */}
         {colorMutation.isPending && (
           <div className="flex flex-col items-center gap-4 py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-            <p className="text-sm text-neutral-600">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#c9a55a] border-t-transparent" />
+            <p className="text-sm text-[#f0ece4]/45">
               {"\u0410\u043D\u0430\u043B\u0456\u0437\u0443\u0454\u043C\u043E \u0432\u0430\u0448 \u043A\u043E\u043B\u044C\u043E\u0440\u043E\u0442\u0438\u043F..."}
             </p>
           </div>
@@ -272,7 +272,7 @@ export function ProfilePage() {
 
         {/* Error state */}
         {colorMutation.isError && (
-          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
             {colorMutation.error instanceof Error
               ? colorMutation.error.message
               : "\u041F\u043E\u043C\u0438\u043B\u043A\u0430 \u0430\u043D\u0430\u043B\u0456\u0437\u0443"}
@@ -281,15 +281,17 @@ export function ProfilePage() {
 
         {/* No data yet - show capture button */}
         {!colorMutation.isPending && !hasColorData && (
-          <div className="flex flex-col items-center gap-4 rounded-xl border-2 border-dashed border-neutral-300 py-12">
-            <div className="text-5xl">{"\uD83E\uDDD1\u200D\uD83C\uDFA8"}</div>
-            <p className="text-sm text-neutral-500">
+          <div className="flex flex-col items-center gap-4 rounded-xl border-2 border-dashed border-[#c9a55a]/20 py-12">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#c9a55a]/10">
+              <span className="text-3xl">{"\uD83E\uDDD1\u200D\uD83C\uDFA8"}</span>
+            </div>
+            <p className="text-sm text-[#f0ece4]/45">
               {"\u0417\u0440\u043E\u0431\u0456\u0442\u044C \u0441\u0435\u043B\u0444\u0456 \u0434\u043B\u044F \u0432\u0438\u0437\u043D\u0430\u0447\u0435\u043D\u043D\u044F \u0432\u0430\u0448\u043E\u0433\u043E \u043A\u043E\u043B\u044C\u043E\u0440\u043E\u0442\u0438\u043F\u0443"}
             </p>
             <button
               type="button"
               onClick={handleFileCapture}
-              className="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+              className="gold-btn px-6 py-2.5 text-sm"
             >
               {"\uD83D\uDCF8 \u0417\u0440\u043E\u0431\u0438\u0442\u0438 \u0441\u0435\u043B\u0444\u0456"}
             </button>
@@ -314,7 +316,7 @@ export function ProfilePage() {
               <button
                 type="button"
                 onClick={handleFileCapture}
-                className="w-full rounded-xl border border-neutral-300 px-6 py-3 text-base font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+                className="gold-ghost-btn w-full px-6 py-3 text-base"
               >
                 {"\u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u0438 \u0430\u043D\u0430\u043B\u0456\u0437"}
               </button>

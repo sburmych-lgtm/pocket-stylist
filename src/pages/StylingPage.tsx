@@ -26,7 +26,6 @@ export function StylingPage() {
     }) => {
       setLoading(true);
       setError(null);
-
       try {
         const data = await stylingApi.suggest({
           mood: { energy: params.energy, boldness: params.boldness },
@@ -69,21 +68,21 @@ export function StylingPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
-          {isMaleMode ? "Outfit Optimizer" : "Style Me"}
+        <h1 className="font-display text-2xl font-semibold tracking-wide text-[#c9a55a]">
+          {isMaleMode ? "Outfit Optimizer" : "Підібрати стиль"}
         </h1>
-        <p className="mt-1 text-neutral-500">
+        <p className="mt-1 text-[#f0ece4]/45">
           {isMaleMode
             ? "Оберіть ситуацію — отримайте оптимальний аутфіт."
-            : "Set your mood and get AI-powered outfit suggestions."}
+            : "Налаштуйте настрій і отримайте AI-поради щодо образу."}
         </p>
       </div>
 
       {/* Male mode: wardrobe efficiency stat */}
       {isMaleMode && result?.avgCostPerWear !== undefined && (
-        <div className="mb-6 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+        <div className="mb-6 flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
           <span className="text-lg">{"\uD83D\uDCB0"}</span>
-          <span className="text-sm font-medium text-emerald-800">
+          <span className="text-sm font-medium text-emerald-400">
             Ефективність гардеробу:{" "}
             <span className="text-base font-bold">
               {Math.round(result.avgCostPerWear)}%
@@ -105,23 +104,22 @@ export function StylingPage() {
             <button
               onClick={handleGenerate}
               disabled={loading}
-              className="w-full rounded-xl bg-indigo-600 px-6 py-3 text-base font-semibold
-                text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+              className="gold-btn w-full px-6 py-3.5 text-base font-semibold disabled:opacity-50"
             >
-              {loading ? "Generating outfits..." : "Get Outfit Suggestions"}
+              {loading ? "Генерую образи..." : "Підібрати образ"}
             </button>
           </>
         )}
 
         {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
             {error}
           </div>
         )}
 
         {loading && isMaleMode && (
           <div className="flex items-center justify-center py-8">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#c9a55a] border-t-transparent" />
           </div>
         )}
 
@@ -134,14 +132,14 @@ export function StylingPage() {
                 location={result.weather.location}
               />
               {result.candidateCount !== undefined && (
-                <p className="text-sm text-neutral-500">
-                  {result.candidateCount} items matched your criteria
+                <p className="text-sm text-[#f0ece4]/45">
+                  {result.candidateCount} речей відповідають критеріям
                 </p>
               )}
             </div>
 
             {result.message && (
-              <div className="rounded-lg bg-amber-50 p-4 text-sm text-amber-700">
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-400">
                 {result.message}
               </div>
             )}
@@ -160,8 +158,8 @@ export function StylingPage() {
               </div>
             ) : (
               !result.message && (
-                <p className="text-center text-neutral-500">
-                  No outfits could be generated. Try adjusting your mood or adding more items.
+                <p className="text-center text-[#f0ece4]/45">
+                  Не вдалося згенерувати образи. Спробуйте змінити настрій або додати більше речей.
                 </p>
               )
             )}

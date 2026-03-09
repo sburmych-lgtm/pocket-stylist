@@ -45,7 +45,7 @@ export function LoginPage() {
         callback: handleGoogleResponse,
       });
       window.google.accounts.id.renderButton(googleBtnRef.current, {
-        theme: "outline",
+        theme: "filled_black",
         size: "large",
         width: 320,
       });
@@ -76,22 +76,25 @@ export function LoginPage() {
 
   if (isLoading || statusLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-neutral-50">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+      <div className="flex min-h-screen items-center justify-center bg-[#0f0f1a]">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#c9a55a] border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-[#0f0f1a] px-4">
+      {/* Subtle radial gradient overlay */}
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(201,165,90,0.05)_0%,transparent_60%)]" />
+
+      <div className="animate-fade-in-up relative w-full max-w-sm rounded-3xl border border-white/[0.06] bg-[#1a1a2e] p-8 shadow-2xl shadow-black/40">
         {/* Branding */}
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
+        <div className="mb-10 text-center">
+          <h1 className="font-display text-3xl font-semibold tracking-wide text-[#c9a55a]">
             Pocket Stylist
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            Your AI wardrobe assistant
+          <p className="mt-2 text-sm text-[#f0ece4]/45">
+            Ваш AI-асистент по гардеробу
           </p>
         </div>
 
@@ -107,10 +110,10 @@ export function LoginPage() {
           <button
             type="button"
             onClick={handleDemo}
-            className={`w-full rounded-lg px-4 py-3 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+            className={`w-full rounded-full px-4 py-3.5 text-sm font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#c9a55a]/40 focus:ring-offset-2 focus:ring-offset-[#1a1a2e] ${
               googleClientId
-                ? "border border-neutral-300 text-neutral-700 hover:bg-neutral-50 focus:ring-neutral-400"
-                : "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500"
+                ? "gold-ghost-btn"
+                : "gold-btn"
             }`}
           >
             {googleClientId ? "Увійти як Demo" : "Увійти як Demo User"}
@@ -118,7 +121,7 @@ export function LoginPage() {
         </div>
 
         {!googleClientId && (
-          <p className="mt-6 text-center text-xs text-neutral-400">
+          <p className="mt-8 text-center text-xs text-[#f0ece4]/25">
             Google Sign-In не налаштовано
           </p>
         )}

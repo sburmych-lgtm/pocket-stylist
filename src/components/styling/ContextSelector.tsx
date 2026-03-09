@@ -30,7 +30,7 @@ interface ContextSelectorProps {
 export function ContextSelector({ selected, loading, onSelect }: ContextSelectorProps) {
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-[#f0ece4]/45">
         Оберіть контекст
       </h3>
       <div className="grid grid-cols-2 gap-3">
@@ -51,14 +51,14 @@ export function ContextSelector({ selected, loading, onSelect }: ContextSelector
                 })
               }
               className={`flex flex-col items-center gap-2 rounded-xl border-2 px-4 py-5 text-center
-                transition-all disabled:opacity-50 ${
+                transition-all duration-300 disabled:opacity-50 ${
                   isSelected
-                    ? "border-indigo-500 bg-indigo-50 shadow-sm"
-                    : "border-neutral-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50"
+                    ? "border-[#c9a55a] bg-[#c9a55a]/10 shadow-lg shadow-[#c9a55a]/5"
+                    : "border-white/[0.06] bg-[#1a1a2e] hover:border-[#c9a55a]/30 hover:bg-[#1a1a2e]/80"
                 }`}
             >
               <span className="text-3xl">{preset.emoji}</span>
-              <span className={`text-sm font-semibold ${isSelected ? "text-indigo-700" : "text-neutral-700"}`}>
+              <span className={`text-sm font-semibold ${isSelected ? "text-[#c9a55a]" : "text-[#f0ece4]/80"}`}>
                 {preset.label}
               </span>
             </button>

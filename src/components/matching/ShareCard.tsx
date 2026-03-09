@@ -85,15 +85,15 @@ async function renderCanvas(
 
   // --- Background gradient ---
   const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
-  grad.addColorStop(0, "#1a1a2e");
-  grad.addColorStop(0.5, "#16213e");
-  grad.addColorStop(1, "#0f3460");
+  grad.addColorStop(0, "#0f0f1a");
+  grad.addColorStop(0.5, "#1a1a2e");
+  grad.addColorStop(1, "#0f0f1a");
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
   // --- Decorative subtle circles ---
-  ctx.globalAlpha = 0.05;
-  ctx.fillStyle = "#ffffff";
+  ctx.globalAlpha = 0.04;
+  ctx.fillStyle = "#c9a55a";
   ctx.beginPath();
   ctx.arc(900, 200, 300, 0, Math.PI * 2);
   ctx.fill();
@@ -103,7 +103,7 @@ async function renderCanvas(
   ctx.globalAlpha = 1;
 
   // --- Title "STYLE MATCH" ---
-  ctx.fillStyle = "#e2e8f0";
+  ctx.fillStyle = "#f0ece4";
   ctx.font = "bold 36px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   ctx.textAlign = "center";
   ctx.fillText("STYLE MATCH", CANVAS_W / 2, 100);
@@ -111,8 +111,8 @@ async function renderCanvas(
   // --- Decorative line under title ---
   const lineGrad = ctx.createLinearGradient(340, 0, 740, 0);
   lineGrad.addColorStop(0, "transparent");
-  lineGrad.addColorStop(0.3, "#6366f1");
-  lineGrad.addColorStop(0.7, "#a78bfa");
+  lineGrad.addColorStop(0.3, "#c9a55a");
+  lineGrad.addColorStop(0.7, "#dbb978");
   lineGrad.addColorStop(1, "transparent");
   ctx.strokeStyle = lineGrad;
   ctx.lineWidth = 2;
@@ -135,24 +135,26 @@ async function renderCanvas(
   const refH = 620;
 
   // Label above reference
-  ctx.fillStyle = "#94a3b8";
+  ctx.fillStyle = "#f0ece4";
+  ctx.globalAlpha = 0.45;
   ctx.font = "600 22px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   ctx.textAlign = "center";
   ctx.fillText("REFERENCE", refX + refW / 2, refY - 15);
+  ctx.globalAlpha = 1;
 
   // Reference image with rounded corners
-  fillRoundRect(ctx, refX - 4, refY - 4, refW + 8, refH + 8, 20, "rgba(99,102,241,0.3)");
+  fillRoundRect(ctx, refX - 4, refY - 4, refW + 8, refH + 8, 20, "rgba(201,165,90,0.3)");
   drawCover(ctx, referenceImg, refX, refY, refW, refH, 16);
 
   // --- VS badge ---
   const vsX = CANVAS_W / 2;
   const vsY = refY + refH / 2;
   ctx.save();
-  ctx.shadowColor = "rgba(99,102,241,0.5)";
+  ctx.shadowColor = "rgba(201,165,90,0.5)";
   ctx.shadowBlur = 20;
-  fillRoundRect(ctx, vsX - 40, vsY - 30, 80, 60, 30, "#6366f1");
+  fillRoundRect(ctx, vsX - 40, vsY - 30, 80, 60, 30, "#c9a55a");
   ctx.restore();
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = "#0f0f1a";
   ctx.font = "bold 28px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -167,10 +169,12 @@ async function renderCanvas(
   const cols = 2;
 
   // Label above grid
-  ctx.fillStyle = "#94a3b8";
+  ctx.fillStyle = "#f0ece4";
+  ctx.globalAlpha = 0.45;
   ctx.font = "600 22px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   ctx.textAlign = "center";
   ctx.fillText("YOUR LOOK", gridX + (cols * gridItemSize + (cols - 1) * gridGap) / 2, gridY - 15);
+  ctx.globalAlpha = 1;
 
   itemImages.forEach((img, i) => {
     const col = i % cols;
@@ -179,13 +183,14 @@ async function renderCanvas(
     const y = gridY + row * (gridItemSize + gridGap + 40);
 
     // Card background
-    fillRoundRect(ctx, x - 4, y - 4, gridItemSize + 8, gridItemSize + 8, 16, "rgba(255,255,255,0.08)");
+    fillRoundRect(ctx, x - 4, y - 4, gridItemSize + 8, gridItemSize + 8, 16, "rgba(255,255,255,0.06)");
     drawCover(ctx, img, x, y, gridItemSize, gridItemSize, 12);
 
     // Category label below
     const item = props.recreationItems[i];
     if (item) {
-      ctx.fillStyle = "#cbd5e1";
+      ctx.fillStyle = "#f0ece4";
+      ctx.globalAlpha = 0.55;
       ctx.font = "500 18px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(
@@ -193,6 +198,7 @@ async function renderCanvas(
         x + gridItemSize / 2,
         y + gridItemSize + 26,
       );
+      ctx.globalAlpha = 1;
     }
   });
 
@@ -230,20 +236,22 @@ async function renderCanvas(
   ctx.stroke();
 
   // Score text
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = "#f0ece4";
   ctx.font = "bold 64px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(`${props.matchScore}%`, CANVAS_W / 2, scoreY - 6);
 
   ctx.font = "500 20px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.fillStyle = "#94a3b8";
+  ctx.fillStyle = "#f0ece4";
+  ctx.globalAlpha = 0.45;
   ctx.fillText("MATCH", CANVAS_W / 2, scoreY + 36);
+  ctx.globalAlpha = 1;
   ctx.textBaseline = "alphabetic";
 
   // --- Fun text based on score ---
   const tagline = getScoreTagline(props.matchScore);
-  ctx.fillStyle = "#e2e8f0";
+  ctx.fillStyle = "#f0ece4";
   ctx.font = "italic 28px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   ctx.textAlign = "center";
   ctx.fillText(tagline, CANVAS_W / 2, scoreY + scoreRadius + 60);
@@ -254,8 +262,8 @@ async function renderCanvas(
   // Separator line
   const wmLineGrad = ctx.createLinearGradient(200, 0, 880, 0);
   wmLineGrad.addColorStop(0, "transparent");
-  wmLineGrad.addColorStop(0.3, "rgba(148,163,184,0.3)");
-  wmLineGrad.addColorStop(0.7, "rgba(148,163,184,0.3)");
+  wmLineGrad.addColorStop(0.3, "rgba(201,165,90,0.3)");
+  wmLineGrad.addColorStop(0.7, "rgba(201,165,90,0.3)");
   wmLineGrad.addColorStop(1, "transparent");
   ctx.strokeStyle = wmLineGrad;
   ctx.lineWidth = 1;
@@ -264,14 +272,16 @@ async function renderCanvas(
   ctx.lineTo(880, wmY - 40);
   ctx.stroke();
 
-  ctx.fillStyle = "#e2e8f0";
+  ctx.fillStyle = "#c9a55a";
   ctx.font = "bold 32px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   ctx.textAlign = "center";
   ctx.fillText("Pocket Stylist", CANVAS_W / 2, wmY);
 
-  ctx.fillStyle = "#64748b";
+  ctx.fillStyle = "#f0ece4";
+  ctx.globalAlpha = 0.35;
   ctx.font = "400 22px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   ctx.fillText("pocket-stylist.app", CANVAS_W / 2, wmY + 38);
+  ctx.globalAlpha = 1;
 
   // --- Generate blob ---
   return new Promise<Blob>((resolve, reject) => {
@@ -284,7 +294,7 @@ async function renderCanvas(
 
 function scoreColor(score: number): string {
   if (score >= 70) return "#22c55e";
-  if (score >= 40) return "#f59e0b";
+  if (score >= 40) return "#c9a55a";
   return "#ef4444";
 }
 
@@ -337,14 +347,14 @@ export function ShareCard({ referenceImageUrl, recreationItems, matchScore, onSh
         aria-hidden="true"
       />
       {rendering && (
-        <div className="flex items-center gap-2 text-sm text-neutral-500">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
-          <span>Generating share image...</span>
+        <div className="flex items-center gap-2 text-sm text-[#f0ece4]/45">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#c9a55a] border-t-transparent" />
+          <span>Генерую зображення...</span>
         </div>
       )}
       {error && (
-        <p className="text-sm text-red-500">
-          Failed to generate image: {error}
+        <p className="text-sm text-red-400">
+          Помилка генерації: {error}
         </p>
       )}
     </>

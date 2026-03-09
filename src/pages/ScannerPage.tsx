@@ -14,7 +14,6 @@ export function ScannerPage() {
     setLoading(true);
     setError(null);
     setCapturedImage(`data:${mimeType};base64,${base64}`);
-
     try {
       const data = await scannerApi.analyze(base64, mimeType);
       setResult(data);
@@ -34,11 +33,11 @@ export function ScannerPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
-          In-Store Scanner
+        <h1 className="font-display text-2xl font-semibold tracking-wide text-[#c9a55a]">
+          Сканер у магазині
         </h1>
-        <p className="mt-1 text-neutral-500">
-          Photograph an item in store to get a BUY or SKIP verdict.
+        <p className="mt-1 text-[#f0ece4]/45">
+          Сфотографуйте річ у магазині — отримайте вердикт BUY або SKIP.
         </p>
       </div>
 
@@ -47,23 +46,20 @@ export function ScannerPage() {
       )}
 
       {loading && (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-neutral-200 bg-white p-12">
+        <div className="flex flex-col items-center gap-4 rounded-2xl border border-white/[0.06] bg-[#1a1a2e] p-12">
           {capturedImage && (
-            <img
-              src={capturedImage}
-              alt="Scanned item"
-              className="h-48 w-auto rounded-lg object-contain"
-            />
+            <img src={capturedImage} alt="Scanned item"
+              className="h-48 w-auto rounded-lg object-contain" />
           )}
           <div className="flex items-center gap-3">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
-            <span className="text-neutral-600">Analyzing item...</span>
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#c9a55a] border-t-transparent" />
+            <span className="text-[#f0ece4]/55">Аналізую річ...</span>
           </div>
         </div>
       )}
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+        <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
           {error}
         </div>
       )}
@@ -72,27 +68,14 @@ export function ScannerPage() {
         <div className="space-y-4">
           {capturedImage && (
             <div className="flex justify-center">
-              <img
-                src={capturedImage}
-                alt="Scanned item"
-                className="h-48 w-auto rounded-lg object-contain shadow"
-              />
+              <img src={capturedImage} alt="Scanned item"
+                className="h-48 w-auto rounded-lg object-contain shadow-xl shadow-black/30" />
             </div>
           )}
-
-          <VerdictCard
-            verdict={result.verdict}
-            reasons={result.reasons}
-            tags={result.tags}
-            stats={result.stats}
-          />
-
-          <button
-            onClick={handleReset}
-            className="w-full rounded-xl border border-neutral-300 px-6 py-3 text-base font-medium
-              text-neutral-700 transition-colors hover:bg-neutral-50"
-          >
-            Scan Another Item
+          <VerdictCard verdict={result.verdict} reasons={result.reasons} tags={result.tags} stats={result.stats} />
+          <button onClick={handleReset}
+            className="gold-ghost-btn w-full px-6 py-3.5 text-base">
+            Сканувати іншу річ
           </button>
         </div>
       )}

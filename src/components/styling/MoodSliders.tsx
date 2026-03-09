@@ -20,8 +20,8 @@ function SliderRow({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-neutral-700">{label}</span>
-        <span className="text-xs text-neutral-500">{value}%</span>
+        <span className="text-sm font-medium text-[#f0ece4]/80">{label}</span>
+        <span className="text-xs text-[#c9a55a]">{value}%</span>
       </div>
       <input
         type="range"
@@ -29,9 +29,9 @@ function SliderRow({
         max={100}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-indigo-600"
+        className="w-full"
       />
-      <div className="flex justify-between text-xs text-neutral-400">
+      <div className="flex justify-between text-xs text-[#f0ece4]/35">
         <span>{leftLabel}</span>
         <span>{rightLabel}</span>
       </div>
@@ -41,23 +41,23 @@ function SliderRow({
 
 export function MoodSliders({ energy, boldness, onChange }: MoodSlidersProps) {
   return (
-    <div className="space-y-6 rounded-xl border border-neutral-200 bg-white p-5">
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
-        How are you feeling?
+    <div className="space-y-6 rounded-xl border border-white/[0.06] bg-[#1a1a2e] p-5">
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-[#f0ece4]/45">
+        Як ви себе почуваєте?
       </h3>
       <SliderRow
-        label="Energy"
+        label="Енергія"
         value={energy}
         onChange={(v) => onChange({ energy: v, boldness })}
-        leftLabel="Chill"
-        rightLabel="Active"
+        leftLabel="Спокійно"
+        rightLabel="Активно"
       />
       <SliderRow
-        label="Boldness"
+        label="Сміливість"
         value={boldness}
         onChange={(v) => onChange({ energy, boldness: v })}
-        leftLabel="Subtle"
-        rightLabel="Bold"
+        leftLabel="Стримано"
+        rightLabel="Яскраво"
       />
     </div>
   );

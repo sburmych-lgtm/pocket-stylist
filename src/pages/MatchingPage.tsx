@@ -105,11 +105,11 @@ export function MatchingPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
+        <h1 className="font-display text-2xl font-semibold tracking-wide text-[#c9a55a]">
           Celebrity Match
         </h1>
-        <p className="mt-1 text-neutral-500">
-          Upload any outfit photo — we'll recreate the look from your wardrobe.
+        <p className="mt-1 text-sm text-[#f0ece4]/45">
+          Завантажте фото будь-якого образу — ми відтворимо його з вашого гардеробу.
         </p>
       </div>
 
@@ -117,49 +117,51 @@ export function MatchingPage() {
         <div
           onClick={handleUpload}
           className="flex cursor-pointer flex-col items-center gap-4 rounded-2xl border-2 border-dashed
-            border-neutral-300 bg-white p-12 transition-colors hover:border-indigo-400 hover:bg-indigo-50"
+            border-[#c9a55a]/20 bg-[#1a1a2e] p-12 transition-all hover:border-[#c9a55a] hover:bg-[#c9a55a]/5 hover:shadow-[0_0_30px_rgba(201,165,90,0.08)]"
         >
-          <div className="text-5xl">{"\u2B50"}</div>
-          <p className="text-lg font-medium text-neutral-700">
-            Upload a reference photo
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#c9a55a]/10">
+            <span className="text-3xl">⭐</span>
+          </div>
+          <p className="text-lg font-medium text-[#f0ece4]/80">
+            Завантажте фото-референс
           </p>
-          <p className="text-sm text-neutral-500">
-            Celebrity outfit, street style, or any look you want to recreate
+          <p className="text-sm text-[#f0ece4]/35">
+            Аутфіт селебріті, вуличний стиль або будь-який образ
           </p>
         </div>
       )}
 
       {loading && (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-neutral-200 bg-white p-12">
+        <div className="flex flex-col items-center gap-4 rounded-2xl border border-white/[0.06] bg-[#1a1a2e] p-12">
           {previewUrl && (
             <img src={previewUrl} alt="Reference" className="h-48 w-auto rounded-lg object-contain" />
           )}
           <div className="flex items-center gap-3">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
-            <span className="text-neutral-600">Analyzing outfit & finding matches...</span>
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#c9a55a] border-t-transparent" />
+            <span className="text-[#f0ece4]/45">Аналізую образ та шукаю відповідності...</span>
           </div>
         </div>
       )}
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">{error}</div>
       )}
 
       {result && (
         <div className="space-y-6">
           {previewUrl && (
             <div className="flex justify-center">
-              <img src={previewUrl} alt="Reference" className="h-48 w-auto rounded-lg shadow" />
+              <img src={previewUrl} alt="Reference" className="h-48 w-auto rounded-lg shadow-lg shadow-black/30" />
             </div>
           )}
 
-          <div className="rounded-xl border border-neutral-200 bg-white p-5">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-neutral-500">
-              Detected Garments
+          <div className="rounded-xl border border-white/[0.06] bg-[#1a1a2e] p-5">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#f0ece4]/35">
+              Знайдені елементи
             </h3>
             <div className="flex flex-wrap gap-2">
               {result.breakdown.map((g, i) => (
-                <span key={i} className="rounded-full bg-neutral-100 px-3 py-1 text-sm text-neutral-700">
+                <span key={i} className="rounded-full bg-white/[0.06] px-3 py-1 text-sm text-[#f0ece4]/70">
                   {g.color} {g.category} ({g.pattern})
                 </span>
               ))}
@@ -168,49 +170,48 @@ export function MatchingPage() {
 
           {result.recreations.length > 0 ? (
             result.recreations.map((option, i) => (
-              <div key={i} className="rounded-xl border border-neutral-200 bg-white p-5">
+              <div key={i} className="rounded-xl border border-white/[0.06] bg-[#1a1a2e] p-5">
                 <div className="mb-3 flex items-center justify-between">
-                  <h3 className="font-semibold text-neutral-800">{option.name}</h3>
+                  <h3 className="font-semibold text-[#f0ece4]">{option.name}</h3>
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                    option.overallScore >= 50 ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                    option.overallScore >= 50 ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"
                   }`}>
-                    {option.overallScore}% match
+                    {option.overallScore}% збіг
                   </span>
                 </div>
                 <div className="flex gap-3 overflow-x-auto pb-2">
                   {option.items.map((item) => (
                     <div key={item.id} className="flex-shrink-0 text-center">
-                      <div className="h-28 w-22 overflow-hidden rounded-lg bg-neutral-100">
+                      <div className="h-28 w-22 overflow-hidden rounded-lg bg-white/[0.05]">
                         {item.imageUrl.startsWith("data:") ? (
                           <img src={item.imageUrl} alt={item.category} className="h-full w-full object-cover" />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-xs text-neutral-400">
+                          <div className="flex h-full w-full items-center justify-center text-xs text-[#f0ece4]/35">
                             {item.category}
                           </div>
                         )}
                       </div>
-                      <p className="mt-1 text-xs text-neutral-600">{item.subcategory ?? item.category}</p>
-                      <p className="text-xs text-neutral-400">{item.matchScore}% match</p>
+                      <p className="mt-1 text-xs text-[#f0ece4]/55">{item.subcategory ?? item.category}</p>
+                      <p className="text-xs text-[#f0ece4]/35">{item.matchScore}% збіг</p>
                     </div>
                   ))}
                 </div>
 
                 {/* Share & Download buttons */}
-                <div className="mt-4 flex items-center gap-3 border-t border-neutral-100 pt-3">
+                <div className="mt-4 flex items-center gap-3 border-t border-white/[0.06] pt-3">
                   <button
                     onClick={() => {
                       if (shareStates[i] === "generating") return;
                       handleShareClick(i);
                     }}
                     disabled={shareStates[i] === "generating"}
-                    className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm
-                      font-medium text-white transition-colors hover:bg-indigo-700
+                    className="gold-btn flex items-center gap-2 px-4 py-2 text-sm
                       disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {shareStates[i] === "generating" ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#0f0f1a] border-t-transparent" />
                     ) : (
-                      <span>{"📸"}</span>
+                      <span>📸</span>
                     )}
                     {shareButtonLabel(shareStates[i] ?? "idle")}
                   </button>
@@ -218,11 +219,10 @@ export function MatchingPage() {
                   <button
                     onClick={() => handleDownload(i)}
                     disabled={shareStates[i] === "generating"}
-                    className="flex items-center gap-2 rounded-lg border border-neutral-300 px-4 py-2
-                      text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50
+                    className="gold-ghost-btn flex items-center gap-2 px-4 py-2 text-sm
                       disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <span>{"💾"}</span>
+                    <span>💾</span>
                     Завантажити
                   </button>
 
@@ -230,7 +230,7 @@ export function MatchingPage() {
                     onClick={() =>
                       setShowPreview((prev) => (prev === i ? null : i))
                     }
-                    className="ml-auto text-sm text-indigo-600 hover:text-indigo-700"
+                    className="ml-auto text-sm text-[#c9a55a] hover:text-[#dbb978] transition-colors"
                   >
                     {showPreview === i ? "Сховати" : "Попередній перегляд"}
                   </button>
@@ -259,8 +259,8 @@ export function MatchingPage() {
               </div>
             ))
           ) : (
-            <div className="rounded-lg bg-amber-50 p-4 text-sm text-amber-700">
-              No matching items found in your wardrobe. Try importing more clothes!
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-400">
+              Відповідних речей не знайдено. Спробуйте імпортувати більше одягу!
             </div>
           )}
 
@@ -273,10 +273,9 @@ export function MatchingPage() {
               setActiveShareIndex(null);
               setShowPreview(null);
             }}
-            className="w-full rounded-xl border border-neutral-300 px-6 py-3 text-base font-medium
-              text-neutral-700 hover:bg-neutral-50"
+            className="gold-ghost-btn w-full px-6 py-3 text-base"
           >
-            Try Another Photo
+            Спробувати інше фото
           </button>
         </div>
       )}

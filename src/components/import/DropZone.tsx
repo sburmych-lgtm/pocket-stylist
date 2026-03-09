@@ -26,10 +26,7 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
       e.stopPropagation();
       setIsDragging(false);
       if (disabled) return;
-
-      const files = Array.from(e.dataTransfer.files).filter((f) =>
-        f.type.startsWith("image/"),
-      );
+      const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith("image/"));
       if (files.length) onFiles(files);
     },
     [onFiles, disabled],
@@ -56,10 +53,10 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
       onClick={handleClick}
       className={`
         flex cursor-pointer flex-col items-center justify-center
-        rounded-2xl border-2 border-dashed p-12 transition-all
+        rounded-2xl border-2 border-dashed p-12 transition-all duration-300
         ${isDragging
-          ? "border-indigo-400 bg-indigo-50"
-          : "border-neutral-300 bg-white hover:border-neutral-400 hover:bg-neutral-50"
+          ? "border-[#c9a55a] bg-[#c9a55a]/5 gold-glow"
+          : "border-[#c9a55a]/20 bg-[#1a1a2e] hover:border-[#c9a55a]/40 hover:bg-[#1a1a2e]/80"
         }
         ${disabled ? "cursor-not-allowed opacity-50" : ""}
       `}
@@ -67,14 +64,14 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
       <div className="mb-4 text-5xl">
         {isDragging ? "\u{1F4E5}" : "\u{1F4F7}"}
       </div>
-      <p className="text-lg font-medium text-neutral-700">
-        {isDragging ? "Drop photos here" : "Drag & drop clothing photos"}
+      <p className="text-lg font-medium text-[#f0ece4]">
+        {isDragging ? "Відпустіть фото тут" : "Перетягніть фото одягу"}
       </p>
-      <p className="mt-1 text-sm text-neutral-500">
-        or click to browse — up to 50 photos at once
+      <p className="mt-1 text-sm text-[#f0ece4]/45">
+        або натисніть для вибору — до 50 фото за раз
       </p>
-      <p className="mt-3 text-xs text-neutral-400">
-        JPG, PNG, WebP supported
+      <p className="mt-3 text-xs text-[#f0ece4]/25">
+        JPG, PNG, WebP
       </p>
     </div>
   );

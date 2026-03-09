@@ -2,16 +2,27 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { wardrobeApi, type WardrobeItem } from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
+import {
+  Shirt,
+  FolderOpen,
+  Repeat,
+  Trophy,
+  Camera,
+  Sparkles,
+  ScanLine,
+  Calendar,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 /* ---------- Quick stat card ---------- */
 
 function StatCard({
-  icon,
+  icon: Icon,
   label,
   value,
   onClick,
 }: {
-  icon: string;
+  icon: LucideIcon;
   label: string;
   value: string | number;
   onClick?: () => void;
@@ -21,14 +32,16 @@ function StatCard({
     <Tag
       type={onClick ? "button" : undefined}
       onClick={onClick}
-      className={`flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm ${
-        onClick ? "cursor-pointer transition-shadow hover:shadow-md" : ""
+      className={`glass-card flex items-center gap-3 p-4 ${
+        onClick ? "glass-card-hover cursor-pointer" : ""
       }`}
     >
-      <span className="text-2xl">{icon}</span>
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#c9a55a]/10">
+        <Icon size={20} className="text-[#c9a55a]" />
+      </div>
       <div className="min-w-0 text-left">
-        <p className="text-xl font-bold text-neutral-900">{value}</p>
-        <p className="truncate text-xs text-neutral-500">{label}</p>
+        <p className="text-xl font-bold text-[#f0ece4]">{value}</p>
+        <p className="truncate text-xs text-[#f0ece4]/45">{label}</p>
       </div>
     </Tag>
   );
@@ -37,12 +50,12 @@ function StatCard({
 /* ---------- Quick action ---------- */
 
 function ActionCard({
-  icon,
+  icon: Icon,
   title,
   description,
   to,
 }: {
-  icon: string;
+  icon: LucideIcon;
   title: string;
   description: string;
   to: string;
@@ -52,12 +65,14 @@ function ActionCard({
     <button
       type="button"
       onClick={() => navigate(to)}
-      className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-white p-4 text-left shadow-sm transition-shadow hover:shadow-md"
+      className="glass-card glass-card-hover flex items-start gap-3 p-4 text-left"
     >
-      <span className="text-2xl">{icon}</span>
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#c9a55a]/10">
+        <Icon size={20} className="text-[#c9a55a]" />
+      </div>
       <div>
-        <p className="font-semibold text-neutral-800">{title}</p>
-        <p className="text-xs text-neutral-500">{description}</p>
+        <p className="font-semibold text-[#f0ece4]">{title}</p>
+        <p className="text-xs text-[#f0ece4]/45">{description}</p>
       </div>
     </button>
   );
@@ -72,13 +87,13 @@ function RecentItems({ items }: { items: WardrobeItem[] }) {
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-[#f0ece4]/45">
           Нещодавно додані
         </h2>
         <button
           type="button"
           onClick={() => navigate("/wardrobe")}
-          className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+          className="text-sm font-medium text-[#c9a55a] transition-colors hover:text-[#dbb978]"
         >
           Переглянути все →
         </button>
@@ -87,9 +102,9 @@ function RecentItems({ items }: { items: WardrobeItem[] }) {
         {items.slice(0, 8).map((item) => (
           <div
             key={item.id}
-            className="w-20 shrink-0 overflow-hidden rounded-lg border border-neutral-200 bg-white"
+            className="w-20 shrink-0 overflow-hidden rounded-lg border border-white/[0.06] bg-[#1a1a2e]"
           >
-            <div className="aspect-[3/4] bg-neutral-100">
+            <div className="aspect-[3/4] bg-white/[0.03]">
               <img
                 src={item.thumbnailUrl ?? item.imageUrl}
                 alt={item.category}
@@ -97,12 +112,24 @@ function RecentItems({ items }: { items: WardrobeItem[] }) {
                 loading="lazy"
               />
             </div>
-            <p className="truncate px-1 py-0.5 text-center text-[10px] text-neutral-500">
+            <p className="truncate px-1 py-0.5 text-center text-[10px] text-[#f0ece4]/45">
               {item.subcategory ?? item.category}
             </p>
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/* ---------- Skeleton loader ---------- */
+
+function StatsSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="skeleton h-[72px]" />
+      ))}
     </div>
   );
 }
@@ -137,37 +164,35 @@ export function HomePage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
       {/* Greeting */}
-      <div>
-        <h1 className="text-2xl font-bold text-neutral-900">
-          Привіт, {user?.name ?? "стилісте"}! 👋
+      <div className="animate-fade-in-up">
+        <h1 className="font-display text-2xl font-semibold tracking-wide text-[#c9a55a]">
+          Привіт, {user?.name ?? "стилісте"}!
         </h1>
-        <p className="mt-1 text-neutral-500">
+        <p className="mt-1 text-[#f0ece4]/45">
           Ваш AI-асистент по гардеробу готовий до роботи.
         </p>
       </div>
 
       {/* Stats */}
       {loading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="h-6 w-6 animate-spin rounded-full border-3 border-indigo-600 border-t-transparent" />
-        </div>
+        <StatsSkeleton />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="stagger-children grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatCard
-              icon="👗"
+              icon={Shirt}
               label="Речей у гардеробі"
               value={items.length}
               onClick={() => navigate("/wardrobe")}
             />
             <StatCard
-              icon="📂"
+              icon={FolderOpen}
               label="Категорій"
               value={Object.keys(categories).length}
             />
-            <StatCard icon="👔" label="Разів одягнено" value={totalWorn} />
+            <StatCard icon={Repeat} label="Разів одягнено" value={totalWorn} />
             <StatCard
-              icon="🏆"
+              icon={Trophy}
               label="Топ категорія"
               value={topCategories[0]?.[0] ?? "—"}
             />
@@ -178,19 +203,21 @@ export function HomePage() {
 
           {/* Empty state */}
           {items.length === 0 && (
-            <div className="flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed border-neutral-300 p-10 text-center">
-              <div className="text-4xl">📸</div>
-              <h3 className="text-lg font-semibold text-neutral-700">
+            <div className="flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed border-[#c9a55a]/20 p-10 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#c9a55a]/10">
+                <Camera size={32} className="text-[#c9a55a]" />
+              </div>
+              <h3 className="text-lg font-semibold text-[#f0ece4]">
                 Почніть з завантаження одягу
               </h3>
-              <p className="max-w-sm text-sm text-neutral-500">
+              <p className="max-w-sm text-sm text-[#f0ece4]/45">
                 Сфотографуйте свій одяг — AI проаналізує кожну річ та збереже у
                 ваш цифровий гардероб.
               </p>
               <button
                 type="button"
                 onClick={() => navigate("/import")}
-                className="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-indigo-700"
+                className="gold-btn px-6 py-2.5 text-sm"
               >
                 Завантажити фото
               </button>
@@ -201,30 +228,30 @@ export function HomePage() {
 
       {/* Quick actions */}
       <div>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-neutral-500">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#f0ece4]/45">
           Швидкі дії
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="stagger-children grid gap-3 sm:grid-cols-2">
           <ActionCard
-            icon="📸"
+            icon={Camera}
             title="Завантажити одяг"
             description="Додайте нові речі до гардеробу"
             to="/import"
           />
           <ActionCard
-            icon="✨"
+            icon={Sparkles}
             title="Підібрати образ"
             description="AI підбере look під ваш настрій"
             to="/style"
           />
           <ActionCard
-            icon="🔍"
+            icon={ScanLine}
             title="Сканер у магазині"
             description="Перевірте чи варто купувати річ"
             to="/scan"
           />
           <ActionCard
-            icon="📅"
+            icon={Calendar}
             title="Лукбук на тиждень"
             description="Образи на 7 днів з урахуванням погоди"
             to="/lookbook"
