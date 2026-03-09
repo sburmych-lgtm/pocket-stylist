@@ -304,6 +304,8 @@ export interface WardrobeItem {
   brand: string | null;
   confidence: number;
   timesWorn: number;
+  lastWornAt: string | null;
+  createdAt: string;
 }
 
 /* ---------- Family API ---------- */
@@ -353,5 +355,133 @@ export const familyApi = {
     memberId: string,
   ): Promise<{ items: WardrobeItem[] }> {
     return apiFetch(`/family/${familyId}/members/${memberId}/wardrobe`);
+  },
+};
+
+/* ---------- Wardrobe API ---------- */
+
+export const wardrobeApi = {
+  getAll(): Promise<WardrobeItem[]> {
+    return apiFetch<WardrobeItem[]>("/import/wardrobe");
+  },
+
+  deleteItem(itemId: string): Promise<{ ok: boolean }> {
+    return apiFetch<{ ok: boolean }>(`/import/wardrobe/${itemId}`, {
+      method: "DELETE",
+    });
+  },
+};
+
+/* ---------- Styling API ---------- */
+
+export interface StylingWeather {
+  temp: number;
+  feelsLike: number;
+  condition: string;
+  location: string;
+}
+
+export interface OutfitSuggestion {
+  name: string;
+  items: WardrobeItem[];
+  stylingTip: string;
+  confidence: number;
+}
+
+export interface StylingResponse {
+  outfits: OutfitSuggestion[];
+  weather: StylingWeather;
+  candidateCount?: number;
+  message?: string;
+  avgCostPerWear?: number;
+}
+
+export const stylingApi = {
+  suggest(params: {
+    mood: { energy: number; boldness: number };
+    lat?: number;
+    lon?: number;
+    formalityMin?: number;
+    formalityMax?: number;
+  }): Promise<StylingResponse> {
+    return apiFetch<StylingResponse>("/styling/suggest", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+  },
+};
+
+/* ---------- Scanner API ---------- */
+
+export interface ScanResult {
+  tags: {
+    category: string;
+    subcategory: string;
+    colorPrimary: string;
+    colorHex: string;
+    pattern: string;
+    fabric: string;
+    formalityLevel: number;
+    confidence: number;
+  };
+  verdict: "BUY" | "SKIP" | "CONSIDER";
+  reasons: string[];
+  stats: {
+    sameCategoryCount: number;
+    sameColorCount: number;
+    samePatternCount: number;
+    newOutfitPotential: number;
+    projectedCostPerWear: string;
+    avgWearsInWardrobe: number;
+  };
+}
+
+export const scannerApi = {
+  analyze(image: string, mimeType: string): Promise<ScanResult> {
+    return apiFetch<ScanResult>("/scanner/analyze", {
+      method: "POST",
+      body: JSON.stringify({ image, mimeType }),
+    });
+  },
+};
+
+/* ---------- Matching API ---------- */
+
+export interface MatchResult {
+  breakdown: Array<{
+    category: string;
+    color: string;
+    pattern: string;
+    description: string;
+  }>;
+  recreations: Array<{
+    name: string;
+    items: Array<{
+      id: string;
+      category: string;
+      colorPrimary: string;
+      imageUrl: string;
+      thumbnailUrl: string | null;
+      subcategory: string | null;
+      matchScore: number;
+    }>;
+    overallScore: number;
+  }>;
+}
+
+export const matchingApi = {
+  analyze(image: string, mimeType: string): Promise<MatchResult> {
+    return apiFetch<MatchResult>("/matching/analyze", {
+      method: "POST",
+      body: JSON.stringify({ image, mimeType }),
+    });
+  },
+};
+
+/* ---------- Analytics API ---------- */
+
+export const analyticsApi = {
+  getDashboard(): Promise<Record<string, unknown>> {
+    return apiFetch<Record<string, unknown>>("/analytics/dashboard");
   },
 };

@@ -10,6 +10,7 @@ import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { LookbookPage } from "./pages/LookbookPage";
 import FamilyPage from "./pages/FamilyPage";
+import { WardrobePage } from "./pages/WardrobePage";
 import { LoginPage } from "./pages/LoginPage";
 import { Layout } from "./components/Layout";
 
@@ -54,6 +55,7 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
                 <Route path="/" element={<HomePage />} />
+                <Route path="/wardrobe" element={<WardrobePage />} />
                 <Route path="/import" element={<ImportPage />} />
                 <Route path="/style" element={<StylingPage />} />
                 <Route path="/scan" element={<ScannerPage />} />

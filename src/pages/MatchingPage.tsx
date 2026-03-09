@@ -2,32 +2,8 @@ import { useState, useCallback } from "react";
 import { ShareCard } from "../components/matching/ShareCard.js";
 import { SharePreview } from "../components/matching/SharePreview.js";
 import { shareImage, downloadBlob } from "../utils/share.js";
-
-interface GarmentTarget {
-  category: string;
-  color: string;
-  pattern: string;
-  description: string;
-}
-
-interface RecreationOption {
-  name: string;
-  items: Array<{
-    id: string;
-    category: string;
-    colorPrimary: string;
-    imageUrl: string;
-    thumbnailUrl: string | null;
-    subcategory: string | null;
-    matchScore: number;
-  }>;
-  overallScore: number;
-}
-
-interface MatchResult {
-  breakdown: GarmentTarget[];
-  recreations: RecreationOption[];
-}
+import { matchingApi } from "../services/api";
+import type { MatchResult } from "../services/api";
 
 type ShareState = "idle" | "generating" | "shared" | "downloaded";
 
@@ -63,13 +39,7 @@ export function MatchingPage() {
       reader.onload = async () => {
         const base64 = (reader.result as string).split(",")[1];
         try {
-          const res = await fetch("/api/matching/analyze", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ image: base64, mimeType: file.type }),
-          });
-          if (!res.ok) throw new Error("Analysis failed");
-          const data = (await res.json()) as MatchResult;
+          const data = await matchingApi.analyze(base64, file.type);
           setResult(data);
         } catch (err) {
           setError((err as Error).message);

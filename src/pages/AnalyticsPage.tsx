@@ -5,11 +5,10 @@ import { DeadZoneList } from "../components/analytics/DeadZoneList";
 import { GapAnalysis } from "../components/analytics/GapAnalysis";
 import { EcoDashboard } from "../components/analytics/EcoDashboard";
 import { GamificationPanel } from "../components/analytics/GamificationPanel";
+import { analyticsApi } from "../services/api";
 
 async function fetchDashboard() {
-  const res = await fetch("/api/analytics/dashboard");
-  if (!res.ok) throw new Error("Failed to fetch analytics");
-  return res.json() as Promise<{
+  return analyticsApi.getDashboard() as Promise<{
     summary: {
       totalItems: number;
       totalOutfits: number;

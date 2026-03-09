@@ -129,3 +129,28 @@ importRouter.get("/wardrobe", async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to fetch wardrobe" });
   }
 });
+
+// DELETE /api/import/wardrobe/:itemId — Delete a wardrobe item
+importRouter.delete("/wardrobe/:itemId", async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId!;
+    const itemId = Array.isArray(req.params.itemId)
+      ? req.params.itemId[0]
+      : req.params.itemId ?? "";
+
+    const item = await prisma.wardrobeItem.findUnique({
+      where: { id: itemId },
+    });
+
+    if (!item || item.userId !== userId) {
+      res.status(404).json({ error: "Item not found" });
+      return;
+    }
+
+    await prisma.wardrobeItem.delete({ where: { id: itemId } });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Wardrobe delete error:", err);
+    res.status(500).json({ error: "Failed to delete item" });
+  }
+});

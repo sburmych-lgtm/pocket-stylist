@@ -2,14 +2,15 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 const NAV_ITEMS = [
-  { to: "/", label: "Home" },
-  { to: "/import", label: "Import" },
-  { to: "/style", label: "Style Me" },
-  { to: "/scan", label: "Scanner" },
-  { to: "/match", label: "Match" },
-  { to: "/analytics", label: "Analytics" },
-  { to: "/lookbook", label: "\uD83D\uDCC5 Lookbook" },
-  { to: "/family", label: "\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67 Сім'я" },
+  { to: "/", label: "🏠 Головна" },
+  { to: "/wardrobe", label: "👗 Гардероб" },
+  { to: "/import", label: "📸 Імпорт" },
+  { to: "/style", label: "✨ Стиль" },
+  { to: "/scan", label: "🔍 Сканер" },
+  { to: "/match", label: "⭐ Матч" },
+  { to: "/analytics", label: "📊 Аналітика" },
+  { to: "/lookbook", label: "📅 Лукбук" },
+  { to: "/family", label: "👨‍👩‍👧 Сім'я" },
 ] as const;
 
 export function Layout() {

@@ -1,29 +1,8 @@
 import { useState } from "react";
 import { CameraCapture } from "../components/scanner/CameraCapture";
 import { VerdictCard } from "../components/scanner/VerdictCard";
-
-interface ScanResult {
-  tags: {
-    category: string;
-    subcategory: string;
-    colorPrimary: string;
-    colorHex: string;
-    pattern: string;
-    fabric: string;
-    formalityLevel: number;
-    confidence: number;
-  };
-  verdict: "BUY" | "SKIP" | "CONSIDER";
-  reasons: string[];
-  stats: {
-    sameCategoryCount: number;
-    sameColorCount: number;
-    samePatternCount: number;
-    newOutfitPotential: number;
-    projectedCostPerWear: string;
-    avgWearsInWardrobe: number;
-  };
-}
+import { scannerApi } from "../services/api";
+import type { ScanResult } from "../services/api";
 
 export function ScannerPage() {
   const [loading, setLoading] = useState(false);
@@ -37,13 +16,7 @@ export function ScannerPage() {
     setCapturedImage(`data:${mimeType};base64,${base64}`);
 
     try {
-      const res = await fetch("/api/scanner/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: base64, mimeType }),
-      });
-      if (!res.ok) throw new Error("Analysis failed");
-      const data = (await res.json()) as ScanResult;
+      const data = await scannerApi.analyze(base64, mimeType);
       setResult(data);
     } catch (err) {
       setError((err as Error).message);

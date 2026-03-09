@@ -4,26 +4,8 @@ import { ContextSelector } from "../components/styling/ContextSelector";
 import { OutfitCard } from "../components/styling/OutfitCard";
 import { WeatherBadge } from "../components/styling/WeatherBadge";
 import { useAuth } from "../contexts/AuthContext";
-import type { WardrobeItem } from "../types/wardrobe";
-
-interface OutfitSuggestion {
-  name: string;
-  items: WardrobeItem[];
-  stylingTip: string;
-  confidence: number;
-}
-
-interface StylingResponse {
-  outfits: OutfitSuggestion[];
-  weather: {
-    temp: number;
-    condition: string;
-    location: string;
-  };
-  candidateCount?: number;
-  message?: string;
-  avgCostPerWear?: number;
-}
+import { stylingApi } from "../services/api";
+import type { StylingResponse } from "../services/api";
 
 export function StylingPage() {
   const { user } = useAuth();
@@ -46,18 +28,11 @@ export function StylingPage() {
       setError(null);
 
       try {
-        const res = await fetch("/api/styling/suggest", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            mood: { energy: params.energy, boldness: params.boldness },
-            formalityMin: params.formalityMin,
-            formalityMax: params.formalityMax,
-          }),
+        const data = await stylingApi.suggest({
+          mood: { energy: params.energy, boldness: params.boldness },
+          formalityMin: params.formalityMin,
+          formalityMax: params.formalityMax,
         });
-
-        if (!res.ok) throw new Error("Failed to get suggestions");
-        const data = (await res.json()) as StylingResponse;
         setResult(data);
       } catch (err) {
         setError((err as Error).message);
