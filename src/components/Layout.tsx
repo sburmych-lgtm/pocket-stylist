@@ -155,10 +155,11 @@ export function Layout() {
               <button
                 type="button"
                 onClick={logout}
-                className="icon-action h-11 w-11"
+                className="flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)] transition-colors hover:bg-[rgba(239,138,128,0.12)] hover:text-[var(--danger)]"
                 title={t("common.logout")}
               >
-                <LogOut size={16} />
+                <LogOut size={14} strokeWidth={2} />
+                {t("common.logout")}
               </button>
             </div>
           )}
