@@ -1,5 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
 import {
+  ArrowRight,
+  Crown,
+  Eye,
+  LoaderCircle,
+  PencilLine,
+  ShieldCheck,
+  Trash2,
+  UserPlus,
+  Users,
+} from "lucide-react";
+import {
   familyApi,
   type FamilyData,
   type FamilyMembership,
@@ -7,58 +18,52 @@ import {
 } from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
 
-/* ---------- Role badge ---------- */
-
 function RoleBadge({ role }: { role: string }) {
-  const map: Record<string, { label: string; cls: string }> = {
+  const map: Record<string, { label: string; cls: string; icon: string }> = {
     owner: {
       label: "Власник",
-      cls: "bg-[#c9a55a]/15 text-[#c9a55a]",
+      cls: "bg-[rgba(214,177,111,0.12)] text-[var(--accent)]",
+      icon: "♛",
     },
     admin: {
       label: "Адмін",
-      cls: "bg-[#c9a55a]/10 text-[#dbb978]",
+      cls: "bg-[rgba(136,198,189,0.12)] text-[var(--accent-cool)]",
+      icon: "✦",
     },
     member: {
       label: "Учасник",
-      cls: "bg-white/[0.06] text-[#f0ece4]/55",
+      cls: "bg-white/[0.05] text-[var(--text-secondary)]",
+      icon: "•",
     },
   };
   const badge = map[role] ?? map.member;
+
   return (
-    <span
-      className={`rounded-full px-2 py-0.5 text-xs font-medium ${badge.cls}`}
-    >
+    <span className={`status-chip ${badge.cls}`}>
+      <span>{badge.icon}</span>
       {badge.label}
     </span>
   );
 }
 
-/* ---------- Member avatar ---------- */
-
-function MemberAvatar({
-  member,
-}: {
-  member: FamilyMembership["user"];
-}) {
+function MemberAvatar({ member }: { member: FamilyMembership["user"] }) {
   if (member.avatarUrl) {
     return (
       <img
         src={member.avatarUrl}
         alt={member.name ?? member.email}
-        className="h-9 w-9 rounded-full object-cover ring-2 ring-[#c9a55a]/30"
+        className="h-12 w-12 rounded-full object-cover ring-1 ring-[rgba(214,177,111,0.28)]"
         referrerPolicy="no-referrer"
       />
     );
   }
+
   return (
-    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#c9a55a]/15 text-sm font-semibold text-[#c9a55a]">
+    <div className="spotlight-ring flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(214,177,111,0.12)] text-base font-semibold text-[var(--accent)]">
       {(member.name ?? member.email).charAt(0).toUpperCase()}
     </div>
   );
 }
-
-/* ---------- Member wardrobe preview ---------- */
 
 function WardrobePreview({
   items,
@@ -70,40 +75,32 @@ function WardrobePreview({
   memberName: string;
 }) {
   return (
-    <div className="mt-3 rounded-lg border border-white/[0.06] bg-white/[0.03] p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-[#f0ece4]/80">
-          Гардероб — {memberName} ({items.length} речей)
-        </h4>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-sm text-[#f0ece4]/35 hover:text-[#f0ece4]/55"
-        >
-          ✕
+    <div className="mt-5 rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <p className="section-subtitle">Shared Wardrobe</p>
+          <h4 className="section-title mt-2">
+            {memberName} · {items.length} речей
+          </h4>
+        </div>
+        <button type="button" onClick={onClose} className="ghost-action px-4 py-2 text-sm">
+          Сховати
         </button>
       </div>
       {items.length === 0 ? (
-        <p className="text-sm text-[#f0ece4]/45">Гардероб порожній</p>
+        <p className="text-sm text-[var(--text-secondary)]">Гардероб порожній</p>
       ) : (
-        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
           {items.slice(0, 18).map((item) => (
-            <div
-              key={item.id}
-              className="group relative aspect-square overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.05]"
-            >
-              <img
-                src={item.thumbnailUrl ?? item.imageUrl}
-                alt={item.category}
-                className="h-full w-full object-cover"
-              />
-              <div className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-0.5 text-center text-[10px] text-[#f0ece4]/80">
+            <div key={item.id} className="overflow-hidden rounded-[1rem] border border-white/8 bg-white/[0.03]">
+              <img src={item.thumbnailUrl ?? item.imageUrl} alt={item.category} className="aspect-square h-full w-full object-cover" />
+              <div className="px-2 py-2 text-center text-[0.65rem] uppercase tracking-[0.16em] text-[var(--text-muted)]">
                 {item.category}
               </div>
             </div>
           ))}
           {items.length > 18 && (
-            <div className="flex aspect-square items-center justify-center rounded-lg border border-dashed border-white/[0.1] text-xs text-[#f0ece4]/35">
+            <div className="flex items-center justify-center rounded-[1rem] border border-dashed border-white/10 text-sm text-[var(--text-secondary)]">
               +{items.length - 18}
             </div>
           )}
@@ -112,8 +109,6 @@ function WardrobePreview({
     </div>
   );
 }
-
-/* ---------- Family card ---------- */
 
 function FamilyCard({
   family,
@@ -139,7 +134,9 @@ function FamilyCard({
   const isOwner = family.myRole === "owner";
 
   const handleAddMember = async () => {
-    if (!addEmail.trim() || adding) return;
+    if (!addEmail.trim() || adding) {
+      return;
+    }
     setAdding(true);
     setError(null);
     try {
@@ -184,7 +181,9 @@ function FamilyCard({
   };
 
   const handleRename = async () => {
-    if (!editName.trim()) return;
+    if (!editName.trim()) {
+      return;
+    }
     setError(null);
     try {
       await familyApi.update(family.id, editName.trim());
@@ -211,114 +210,116 @@ function FamilyCard({
   };
 
   return (
-    <div className={`rounded-xl border bg-[#1a1a2e] p-4 ${isOwner ? "border-[#c9a55a]/30" : "border-white/[0.06]"}`}>
-      {/* Header */}
-      <div className="mb-3 flex items-center gap-3">
-        {editing ? (
-          <div className="flex flex-1 items-center gap-2">
-            <input
-              type="text"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              className="flex-1 rounded-lg border border-white/[0.12] bg-white/[0.05] px-3 py-1.5 text-sm text-[#f0ece4]
-                focus:border-[#c9a55a] focus:outline-none focus:ring-1 focus:ring-[#c9a55a]"
-              onKeyDown={(e) => e.key === "Enter" && handleRename()}
-            />
-            <button
-              type="button"
-              onClick={handleRename}
-              className="rounded-lg bg-[#c9a55a] px-3 py-1.5 text-sm font-medium text-[#0f0f1a] hover:bg-[#dbb978]"
-            >
-              ✓
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditing(false);
-                setEditName(family.name);
-              }}
-              className="rounded-lg px-3 py-1.5 text-sm text-[#f0ece4]/45 hover:bg-white/[0.05]"
-            >
-              ✕
-            </button>
-          </div>
-        ) : (
-          <>
-            <h3 className="flex-1 text-lg font-semibold text-[#f0ece4]">
-              {family.name}
-            </h3>
-            {isAdmin && (
+    <article className={`luxe-card p-5 sm:p-6 ${isOwner ? "border-[rgba(214,177,111,0.24)]" : ""}`}>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-3">
+          <span className="page-kicker">
+            {isOwner ? <Crown size={14} /> : <ShieldCheck size={14} />}
+            Family Atelier
+          </span>
+
+          {editing ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="input-surface px-4 py-3 text-sm"
+                onKeyDown={(e) => e.key === "Enter" && handleRename()}
+              />
+              <button type="button" onClick={handleRename} className="primary-action px-4 py-3 text-sm">
+                Зберегти
+              </button>
               <button
                 type="button"
-                onClick={() => setEditing(true)}
-                className="rounded-md px-2 py-1 text-xs text-[#f0ece4]/35 hover:bg-white/[0.05] hover:text-[#f0ece4]/55"
-                title="Перейменувати"
+                onClick={() => {
+                  setEditing(false);
+                  setEditName(family.name);
+                }}
+                className="ghost-action px-4 py-3 text-sm"
               >
-                ✏️
+                Скасувати
               </button>
-            )}
-          </>
+            </div>
+          ) : (
+            <div>
+              <h3 className="text-3xl font-semibold text-[var(--text-primary)]">{family.name}</h3>
+              <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                {family.members.length} учасників у спільному wardrobe-space.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {isAdmin && !editing && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm"
+          >
+            <PencilLine size={15} />
+            Перейменувати
+          </button>
         )}
       </div>
 
-      {error && (
-        <div className="mb-3 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-400">
-          {error}
-        </div>
-      )}
+      {error && <div className="mt-5 rounded-[1.2rem] border border-[rgba(239,138,128,0.22)] bg-[rgba(239,138,128,0.08)] px-4 py-3 text-sm text-[var(--danger)]">{error}</div>}
 
-      {/* Members */}
-      <div className="space-y-2">
-        {family.members.map((m) => (
+      <div className="mt-6 space-y-3">
+        {family.members.map((member) => (
           <div
-            key={m.id}
-            className="flex items-center gap-3 rounded-lg p-2 hover:bg-white/[0.03]"
+            key={member.id}
+            className="rounded-[1.2rem] border border-white/8 bg-white/[0.03] p-4"
           >
-            <MemberAvatar member={m.user} />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="truncate text-sm font-medium text-[#f0ece4]/80">
-                  {m.user.name ?? m.user.email}
-                </span>
-                <RoleBadge role={m.role} />
+            <div className="flex flex-wrap items-center gap-4">
+              <MemberAvatar member={member.user} />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="truncate text-base font-semibold text-[var(--text-primary)]">
+                    {member.user.name ?? member.user.email}
+                  </p>
+                  <RoleBadge role={member.role} />
+                </div>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">{member.user.email}</p>
               </div>
-              <span className="text-xs text-[#f0ece4]/35">{m.user.email}</span>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleViewWardrobe(member)}
+                  disabled={loadingWardrobe === member.userId}
+                  className="ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm disabled:opacity-50"
+                >
+                  {loadingWardrobe === member.userId ? <LoaderCircle size={15} className="animate-spin" /> : <Eye size={15} />}
+                  Гардероб
+                </button>
+
+                {member.userId === currentUserId && !isOwner && (
+                  <button
+                    type="button"
+                    onClick={handleLeave}
+                    className="ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm text-[var(--danger)]"
+                  >
+                    Вийти
+                  </button>
+                )}
+
+                {isAdmin && member.userId !== currentUserId && member.role !== "owner" && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveMember(member.userId)}
+                    className="ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm text-[var(--danger)]"
+                  >
+                    <Trash2 size={15} />
+                    Видалити
+                  </button>
+                )}
+              </div>
             </div>
-
-            {/* Wardrobe button */}
-            <button
-              type="button"
-              onClick={() => handleViewWardrobe(m)}
-              disabled={loadingWardrobe === m.userId}
-              className="rounded-lg bg-[#c9a55a]/10 px-3 py-1.5 text-xs font-medium text-[#c9a55a] hover:bg-[#c9a55a]/20 disabled:opacity-50"
-            >
-              {loadingWardrobe === m.userId ? "..." : "Гардероб"}
-            </button>
-
-            {/* Remove / leave */}
-            {m.userId === currentUserId && !isOwner && (
-              <button
-                type="button"
-                onClick={handleLeave}
-                className="rounded-lg bg-red-500/10 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/20"
-              >
-                Покинути
-              </button>
-            )}
-            {isAdmin && m.userId !== currentUserId && m.role !== "owner" && (
-              <button
-                type="button"
-                onClick={() => handleRemoveMember(m.userId)}
-                className="rounded-lg bg-red-500/10 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/20"
-              >
-                Видалити
-              </button>
-            )}
           </div>
         ))}
       </div>
 
-      {/* Wardrobe preview */}
       {wardrobePreview && (
         <WardrobePreview
           items={wardrobePreview.items}
@@ -327,48 +328,56 @@ function FamilyCard({
         />
       )}
 
-      {/* Add member (admin/owner only) */}
       {isAdmin && (
-        <div className="mt-4 border-t border-white/[0.06] pt-3">
-          <div className="flex items-center gap-2">
+        <div className="mt-6 rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="section-subtitle">Invite Member</p>
+              <h4 className="section-title mt-2">Додайте нового учасника</h4>
+            </div>
+            <span className="metric-pill">
+              <UserPlus size={14} className="text-[var(--accent)]" />
+              Shared access
+            </span>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             <input
               type="email"
               value={addEmail}
               onChange={(e) => setAddEmail(e.target.value)}
               placeholder="Email учасника"
-              className="flex-1 rounded-lg border border-white/[0.06] bg-white/[0.05] px-3 py-2 text-sm text-[#f0ece4]
-                placeholder:text-[#f0ece4]/25 focus:border-[#c9a55a] focus:outline-none focus:ring-1 focus:ring-[#c9a55a]"
+              className="input-surface flex-1 px-4 py-3 text-sm"
               onKeyDown={(e) => e.key === "Enter" && handleAddMember()}
             />
             <button
               type="button"
               onClick={handleAddMember}
               disabled={adding || !addEmail.trim()}
-              className="rounded-lg bg-[#c9a55a] px-4 py-2 text-sm font-medium text-[#0f0f1a] hover:bg-[#dbb978] disabled:opacity-50"
+              className="primary-action inline-flex items-center justify-center gap-2 px-5 py-3 text-sm disabled:opacity-50"
             >
-              {adding ? "..." : "Додати"}
+              {adding ? <LoaderCircle size={15} className="animate-spin" /> : <ArrowRight size={15} />}
+              Додати
             </button>
           </div>
         </div>
       )}
 
-      {/* Delete family (owner only) */}
       {isOwner && (
-        <div className="mt-3 flex justify-end">
+        <div className="mt-6 flex justify-end">
           <button
             type="button"
             onClick={handleDelete}
-            className="rounded-lg px-3 py-1.5 text-xs text-red-400/70 hover:bg-red-500/10 hover:text-red-400"
+            className="ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm text-[var(--danger)]"
           >
+            <Trash2 size={15} />
             Видалити родину
           </button>
         </div>
       )}
-    </div>
+    </article>
   );
 }
-
-/* ---------- Main page ---------- */
 
 export default function FamilyPage() {
   const { user } = useAuth();
@@ -394,7 +403,9 @@ export default function FamilyPage() {
   }, [loadFamilies]);
 
   const handleCreate = async () => {
-    if (!newName.trim() || creating) return;
+    if (!newName.trim() || creating) {
+      return;
+    }
     setCreating(true);
     setError(null);
     try {
@@ -411,68 +422,75 @@ export default function FamilyPage() {
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#c9a55a] border-t-transparent" />
+        <LoaderCircle size={28} className="animate-spin text-[var(--accent)]" />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 p-4">
-      <div>
-        <h1 className="font-display text-2xl font-semibold tracking-wide text-[#c9a55a]">
-          Сімейний гардероб
-        </h1>
-        <p className="mt-1 text-sm text-[#f0ece4]/45">
-          Створіть родину, додайте учасників і переглядайте гардероб одне одного.
-        </p>
-      </div>
+    <div className="page-shell-tight space-y-8">
+      <section className="page-header p-6 sm:p-8">
+        <div className="relative z-10 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="space-y-5">
+            <span className="page-kicker">
+              <Users size={14} />
+              Family Hub
+            </span>
+            <h1 className="page-title">
+              Спільний гардероб
+              <br />
+              для всієї родини.
+            </h1>
+            <p className="page-copy">
+              Обʼєднуйте близьких у shared wardrobe-space, дивіться гардероб одне одного і
+              керуйте доступом як до сімейного fashion-архіву.
+            </p>
+          </div>
 
-      {error && (
-        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-          {error}
+          <div className="luxe-card p-6">
+            <p className="section-subtitle">Create A Family</p>
+            <h2 className="section-title mt-2">Запустіть новий shared hub</h2>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Назва родини"
+                className="input-surface flex-1 px-4 py-3 text-sm"
+                onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+              />
+              <button
+                type="button"
+                onClick={handleCreate}
+                disabled={creating || !newName.trim()}
+                className="primary-action inline-flex items-center justify-center gap-2 px-5 py-3 text-sm disabled:opacity-50"
+              >
+                {creating ? <LoaderCircle size={15} className="animate-spin" /> : <ArrowRight size={15} />}
+                Створити
+              </button>
+            </div>
+          </div>
         </div>
-      )}
+      </section>
 
-      {/* Create family */}
-      <div className="rounded-xl border border-white/[0.06] bg-[#1a1a2e] p-4">
-        <h2 className="mb-3 text-lg font-semibold text-[#f0ece4]">
-          Створити родину
-        </h2>
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Назва родини"
-            className="flex-1 rounded-lg border border-white/[0.06] bg-white/[0.05] px-3 py-2 text-sm text-[#f0ece4]
-              placeholder:text-[#f0ece4]/25 focus:border-[#c9a55a] focus:outline-none focus:ring-1 focus:ring-[#c9a55a]"
-            onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-          />
-          <button
-            type="button"
-            onClick={handleCreate}
-            disabled={creating || !newName.trim()}
-            className="gold-btn px-4 py-2 text-sm disabled:opacity-50"
-          >
-            {creating ? "Створення..." : "Створити"}
-          </button>
-        </div>
-      </div>
+      {error && <div className="luxe-card border-[rgba(239,138,128,0.22)] p-4 text-sm text-[var(--danger)]">{error}</div>}
 
-      {/* Family list */}
       {families.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-[#c9a55a]/20 bg-[#1a1a2e] p-8 text-center">
-          <p className="text-lg text-[#f0ece4]/35">У вас поки немає родин</p>
-          <p className="mt-1 text-sm text-[#f0ece4]/25">
-            Створіть родину вище, щоб почати
+        <section className="luxe-card p-10 text-center">
+          <p className="section-subtitle">No Shared Spaces Yet</p>
+          <h2 className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">
+            У вас поки немає сімейних hub-ів.
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
+            Створіть першу родину вище, щоб почати спільну роботу з гардеробом.
           </p>
-        </div>
+        </section>
       ) : (
-        <div className="space-y-4">
-          {families.map((f) => (
+        <div className="space-y-5">
+          {families.map((family) => (
             <FamilyCard
-              key={f.id}
-              family={f}
+              key={family.id}
+              family={family}
               currentUserId={user?.id ?? ""}
               onRefresh={loadFamilies}
             />

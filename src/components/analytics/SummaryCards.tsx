@@ -1,3 +1,6 @@
+import { Layers, Repeat, Shirt, Sparkles } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
 interface SummaryCardsProps {
   totalItems: number;
   totalOutfits: number;
@@ -5,24 +8,61 @@ interface SummaryCardsProps {
   avgWearCount: number;
 }
 
-const CARDS = [
-  { key: "totalItems", label: "Речей", color: "text-[#c9a55a]" },
-  { key: "totalOutfits", label: "Образів", color: "text-emerald-400" },
-  { key: "totalWears", label: "Носінь", color: "text-amber-400" },
-  { key: "avgWearCount", label: "Серед. носінь", color: "text-rose-400" },
-] as const;
+const CARDS: Array<{
+  key: keyof SummaryCardsProps;
+  label: string;
+  note: string;
+  icon: LucideIcon;
+  tone: string;
+}> = [
+  {
+    key: "totalItems",
+    label: "Curated pieces",
+    note: "Поточний розмір гардеробу",
+    icon: Shirt,
+    tone: "bg-[rgba(214,177,111,0.12)] text-[var(--accent)]",
+  },
+  {
+    key: "totalOutfits",
+    label: "Look outputs",
+    note: "Згенеровані комбінації",
+    icon: Sparkles,
+    tone: "bg-[rgba(136,198,189,0.12)] text-[var(--accent-cool)]",
+  },
+  {
+    key: "totalWears",
+    label: "Wear logs",
+    note: "Скільки разів речі реально носили",
+    icon: Repeat,
+    tone: "bg-[rgba(111,212,171,0.12)] text-[var(--success)]",
+  },
+  {
+    key: "avgWearCount",
+    label: "Avg wear count",
+    note: "Середня активність речей",
+    icon: Layers,
+    tone: "bg-[rgba(241,195,121,0.12)] text-[var(--warning)]",
+  },
+];
 
 export function SummaryCards(props: SummaryCardsProps) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       {CARDS.map((card) => (
-        <div key={card.key}
-          className="rounded-xl border border-white/[0.06] bg-[#1a1a2e] p-4 text-center">
-          <p className={`text-2xl font-bold ${card.color}`}>
-            {props[card.key]}
-          </p>
-          <p className="mt-1 text-xs text-[#f0ece4]/45">{card.label}</p>
-        </div>
+        <article key={card.key} className="luxe-card p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="section-subtitle">{card.label}</p>
+              <p className="mt-3 text-4xl font-semibold leading-none text-[var(--text-primary)]">
+                {props[card.key]}
+              </p>
+            </div>
+            <div className={`spotlight-ring flex h-12 w-12 items-center justify-center rounded-2xl ${card.tone}`}>
+              <card.icon size={20} />
+            </div>
+          </div>
+          <p className="mt-4 text-sm leading-6 text-[var(--text-secondary)]">{card.note}</p>
+        </article>
       ))}
     </div>
   );

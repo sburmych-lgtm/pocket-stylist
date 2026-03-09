@@ -30,85 +30,128 @@ interface GamificationPanelProps {
 }
 
 const BADGE_ICONS: Record<string, string> = {
-  star: "\u2B50",
-  crown: "\uD83D\uDC51",
-  leaf: "\uD83C\uDF3F",
-  medal: "\uD83C\uDFC5",
-  trophy: "\uD83C\uDFC6",
+  star: "★",
+  crown: "♛",
+  leaf: "✿",
+  medal: "◉",
+  trophy: "✦",
 };
 
 export function GamificationPanel({ data }: GamificationPanelProps) {
   const currentLevelProgress = data.points % 100;
 
   return (
-    <div className="space-y-4">
-      {/* Level card */}
-      <div className="rounded-xl border border-white/[0.06] bg-[#1a1a2e] p-5">
-        <div className="flex items-center justify-between">
+    <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+      <div className="luxe-card p-6">
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm text-[#f0ece4]/45">Рівень {data.level}</p>
-            <h3 className="text-lg font-bold text-[#f0ece4]">{data.levelName}</h3>
+            <p className="section-subtitle">Wardrobe XP</p>
+            <h3 className="section-title mt-2">{data.levelName}</h3>
+            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+              Рівень {data.level} · {data.points} очок за щоденну роботу з гардеробом.
+            </p>
           </div>
-          <div className="text-right">
-            <p className="text-2xl font-bold text-[#c9a55a]">{data.points}</p>
-            <p className="text-xs text-[#f0ece4]/35">очок</p>
+          <div className="spotlight-ring flex h-16 w-16 items-center justify-center rounded-full bg-[rgba(214,177,111,0.12)] text-2xl font-semibold text-[var(--accent)]">
+            {data.level}
           </div>
         </div>
-        <div className="mt-3">
-          <div className="flex justify-between text-xs text-[#f0ece4]/35">
-            <span>{currentLevelProgress} / 100</span>
-            <span>Наступний рівень</span>
+
+        <div className="mt-6 h-2.5 overflow-hidden rounded-full bg-white/[0.06]">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-[rgba(214,177,111,0.62)] to-[var(--accent)]"
+            style={{ width: `${currentLevelProgress}%` }}
+          />
+        </div>
+        <p className="mt-3 text-sm text-[var(--text-secondary)]">
+          {currentLevelProgress}/100 до наступного рівня
+        </p>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-[1.3rem] border border-white/8 bg-white/[0.03] p-4">
+            <p className="section-subtitle">Current streak</p>
+            <p className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">
+              {data.streaks.currentDays} днів
+            </p>
           </div>
-          <div className="mt-1 h-2 rounded-full bg-white/[0.06]">
-            <div className="h-2 rounded-full bg-[#c9a55a] transition-all"
-              style={{ width: `${currentLevelProgress}%` }} />
+          <div className="rounded-[1.3rem] border border-white/8 bg-white/[0.03] p-4">
+            <p className="section-subtitle">Best streak</p>
+            <p className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">
+              {data.streaks.bestDays} днів
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Challenges */}
-      <div className="rounded-xl border border-white/[0.06] bg-[#1a1a2e]">
-        <div className="border-b border-white/[0.06] px-5 py-3">
-          <h3 className="font-semibold text-[#f0ece4]">Виклики</h3>
-        </div>
-        <div className="divide-y divide-white/[0.06]">
-          {data.challenges.map((ch) => (
-            <div key={ch.id} className="flex items-center gap-3 px-5 py-3">
-              <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm ${
-                ch.completed ? "bg-emerald-500/10 text-emerald-400" : "bg-white/[0.05] text-[#f0ece4]/35"
-              }`}>
-                {ch.completed ? "\u2713" : `${Math.round((ch.progress / Math.max(ch.target, 1)) * 100)}%`}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-[#f0ece4]/80">{ch.name}</p>
-                <p className="text-xs text-[#f0ece4]/35">{ch.description}</p>
-              </div>
-              <span className="text-xs text-[#f0ece4]/35">{ch.progress}/{ch.target}</span>
+      <div className="space-y-6">
+        <div className="luxe-card p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="section-subtitle">Challenges</p>
+              <h3 className="section-title mt-2">Поточні fashion-завдання</h3>
             </div>
-          ))}
+          </div>
+          <div className="mt-5 space-y-3">
+            {data.challenges.map((challenge) => (
+              <div key={challenge.id} className="rounded-[1.2rem] border border-white/8 bg-white/[0.03] p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-base font-semibold text-[var(--text-primary)]">{challenge.name}</p>
+                    <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+                      {challenge.description}
+                    </p>
+                  </div>
+                  <span
+                    className={[
+                      "status-chip",
+                      challenge.completed
+                        ? "bg-[rgba(111,212,171,0.12)] text-[var(--success)]"
+                        : "bg-white/[0.05] text-[var(--text-secondary)]",
+                    ].join(" ")}
+                  >
+                    {challenge.completed
+                      ? "Done"
+                      : `${Math.round((challenge.progress / Math.max(challenge.target, 1)) * 100)}%`}
+                  </span>
+                </div>
+                <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-white/[0.06]">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[rgba(136,198,189,0.62)] to-[var(--accent-cool)]"
+                    style={{ width: `${Math.min((challenge.progress / Math.max(challenge.target, 1)) * 100, 100)}%` }}
+                  />
+                </div>
+                <p className="mt-3 text-sm text-[var(--text-secondary)]">
+                  {challenge.progress}/{challenge.target}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Badges */}
-      <div className="rounded-xl border border-white/[0.06] bg-[#1a1a2e]">
-        <div className="border-b border-white/[0.06] px-5 py-3">
-          <h3 className="font-semibold text-[#f0ece4]">Бейджі</h3>
-        </div>
-        <div className="flex flex-wrap gap-3 px-5 py-4">
-          {data.badges.map((badge) => (
-            <div key={badge.id}
-              className={`flex flex-col items-center rounded-lg border px-3 py-2 text-center ${
-                badge.earned
-                  ? "border-[#c9a55a]/30 bg-[#c9a55a]/10"
-                  : "border-white/[0.06] bg-white/[0.03] opacity-50"
-              }`}
-              title={badge.description}>
-              <span className="text-xl">{BADGE_ICONS[badge.icon] ?? "\u2B50"}</span>
-              <span className="mt-1 text-xs font-medium text-[#f0ece4]/80">{badge.name}</span>
-            </div>
-          ))}
+        <div className="luxe-card p-6">
+          <p className="section-subtitle">Badges</p>
+          <h3 className="section-title mt-2">Колекція досягнень</h3>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {data.badges.map((badge) => (
+              <div
+                key={badge.id}
+                className={[
+                  "rounded-[1.2rem] border p-4 text-center",
+                  badge.earned
+                    ? "border-[rgba(214,177,111,0.24)] bg-[rgba(214,177,111,0.08)]"
+                    : "border-white/8 bg-white/[0.03] opacity-55",
+                ].join(" ")}
+                title={badge.description}
+              >
+                <div className="text-2xl">{BADGE_ICONS[badge.icon] ?? "★"}</div>
+                <p className="mt-3 text-sm font-semibold text-[var(--text-primary)]">{badge.name}</p>
+                <p className="mt-2 text-xs leading-5 text-[var(--text-secondary)]">
+                  {badge.description}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

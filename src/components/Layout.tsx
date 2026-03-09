@@ -8,9 +8,10 @@ import {
   ScanLine,
   Star,
   BarChart3,
-  Calendar,
+  CalendarDays,
   Users,
   LogOut,
+  ArrowUpRight,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -22,94 +23,113 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: "/", label: "Головна", icon: Home, mobileNav: true },
-  { to: "/wardrobe", label: "Гардероб", icon: Shirt, mobileNav: true },
-  { to: "/import", label: "Імпорт", icon: Camera, mobileNav: true },
-  { to: "/style", label: "Стиль", icon: Sparkles, mobileNav: true },
-  { to: "/scan", label: "Сканер", icon: ScanLine, mobileNav: true },
-  { to: "/match", label: "Матч", icon: Star },
-  { to: "/analytics", label: "Аналітика", icon: BarChart3 },
-  { to: "/lookbook", label: "Лукбук", icon: Calendar },
-  { to: "/family", label: "Сім'я", icon: Users },
+  { to: "/", label: "Home", icon: Home, mobileNav: true },
+  { to: "/wardrobe", label: "Wardrobe", icon: Shirt, mobileNav: true },
+  { to: "/import", label: "Import", icon: Camera, mobileNav: true },
+  { to: "/style", label: "Style", icon: Sparkles, mobileNav: true },
+  { to: "/scan", label: "Scanner", icon: ScanLine, mobileNav: true },
+  { to: "/match", label: "Match", icon: Star, mobileNav: true },
+  { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/lookbook", label: "Lookbook", icon: CalendarDays },
+  { to: "/family", label: "Family", icon: Users },
 ];
+
+function BrandBlock() {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="spotlight-ring flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(214,177,111,0.08)] text-[var(--accent)]">
+        <Sparkles size={18} strokeWidth={2.2} />
+      </div>
+      <div>
+        <p className="text-[0.62rem] font-bold uppercase tracking-[0.28em] text-[var(--text-muted)]">
+          Digital Atelier
+        </p>
+        <p className="font-display text-[1.7rem] leading-none text-[var(--text-primary)]">
+          Pocket Stylist
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[#0f0f1a] text-[#f0ece4]">
-      {/* ===== Desktop Top Nav ===== */}
-      <nav className="fixed top-0 z-50 hidden w-full border-b border-white/[0.06] bg-[#0f0f1a]/80 backdrop-blur-xl md:block">
-        <div className="mx-auto flex max-w-6xl items-center px-6 py-3">
-          {/* Logo */}
-          <button
-            type="button"
-            onClick={() => navigate("/")}
-            className="font-display mr-8 text-xl font-semibold tracking-wide text-[#c9a55a]"
-          >
-            Pocket Stylist
+    <div className="min-h-screen text-[var(--text-primary)]">
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute left-[6%] top-[12%] h-56 w-56 rounded-full bg-[rgba(214,177,111,0.12)] blur-[110px]" />
+        <div className="absolute right-[4%] top-[18%] h-72 w-72 rounded-full bg-[rgba(136,198,189,0.09)] blur-[130px]" />
+        <div className="absolute bottom-[6%] left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-[rgba(122,94,184,0.09)] blur-[140px]" />
+      </div>
+
+      <nav className="fixed inset-x-0 top-4 z-50 hidden px-4 md:block">
+        <div className="mx-auto flex max-w-7xl items-center gap-4 rounded-[2rem] border border-white/10 bg-[var(--bg-overlay)] px-5 py-4 shadow-[0_24px_60px_rgba(0,0,0,0.38)] backdrop-blur-2xl">
+          <button type="button" onClick={() => navigate("/")} className="shrink-0 text-left">
+            <BrandBlock />
           </button>
 
-          {/* Nav Links */}
-          <div className="flex items-center gap-1">
+          <div className="editorial-divider w-16 shrink-0" />
+
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-1 pt-1">
             {NAV_ITEMS.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.to === "/"}
                 className={({ isActive }) =>
-                  `group relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium tracking-wide transition-all duration-300 ${
+                  [
+                    "group flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.2em] transition-all duration-200",
                     isActive
-                      ? "text-[#c9a55a]"
-                      : "text-[#f0ece4]/50 hover:text-[#f0ece4]/80"
-                  }`
+                      ? "bg-[rgba(214,177,111,0.16)] text-[var(--accent)] shadow-[inset_0_0_0_1px_rgba(214,177,111,0.18)]"
+                      : "text-[var(--text-muted)] hover:bg-white/[0.05] hover:text-[var(--text-primary)]",
+                  ].join(" ")
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <item.icon size={16} strokeWidth={isActive ? 2.5 : 2} />
-                    <span className="uppercase text-[11px] tracking-[0.08em]">{item.label}</span>
-                    {isActive && (
-                      <span className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-[#c9a55a]" />
-                    )}
+                    <item.icon size={15} strokeWidth={isActive ? 2.4 : 1.8} />
+                    <span>{item.label}</span>
                   </>
                 )}
               </NavLink>
             ))}
           </div>
 
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* User */}
           {user && (
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
                 onClick={() => navigate("/profile")}
-                className="flex items-center gap-2.5 rounded-full py-1 pl-1 pr-3 transition-colors hover:bg-white/[0.05]"
+                className="floating-panel flex items-center gap-3 px-2.5 py-2 transition-colors hover:bg-white/[0.08]"
               >
                 {user.avatarUrl ? (
                   <img
                     src={user.avatarUrl}
                     alt={user.name ?? "avatar"}
-                    className="h-8 w-8 rounded-full border-2 border-[#c9a55a]/40 object-cover"
+                    className="h-10 w-10 rounded-full object-cover ring-1 ring-[rgba(214,177,111,0.28)]"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#c9a55a]/40 bg-[#c9a55a]/10 text-sm font-semibold text-[#c9a55a]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(214,177,111,0.12)] text-sm font-bold text-[var(--accent)] ring-1 ring-[rgba(214,177,111,0.28)]">
                     {(user.name ?? user.email).charAt(0).toUpperCase()}
                   </div>
                 )}
-                <span className="text-sm font-medium text-[#f0ece4]/70">
-                  {user.name ?? user.email}
-                </span>
+                <div className="min-w-0 text-left">
+                  <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
+                    {user.name ?? user.email}
+                  </p>
+                  <p className="flex items-center gap-1 text-[0.68rem] uppercase tracking-[0.18em] text-[var(--text-muted)]">
+                    Personal Atelier
+                    <ArrowUpRight size={11} />
+                  </p>
+                </div>
               </button>
               <button
                 type="button"
                 onClick={logout}
-                className="rounded-lg p-2 text-[#f0ece4]/30 transition-colors hover:bg-white/[0.05] hover:text-[#f0ece4]/60"
+                className="icon-action h-11 w-11"
                 title="Вийти"
               >
                 <LogOut size={16} />
@@ -119,60 +139,72 @@ export function Layout() {
         </div>
       </nav>
 
-      {/* ===== Mobile Top Bar ===== */}
-      <div className="fixed top-0 z-50 flex w-full items-center justify-between border-b border-white/[0.06] bg-[#0f0f1a]/80 px-4 py-3 backdrop-blur-xl md:hidden">
-        <button
-          type="button"
-          onClick={() => navigate("/")}
-          className="font-display text-lg font-semibold text-[#c9a55a]"
-        >
-          Pocket Stylist
-        </button>
-        {user && (
-          <button
-            type="button"
-            onClick={() => navigate("/profile")}
-            className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#c9a55a]/40 bg-[#c9a55a]/10 text-xs font-semibold text-[#c9a55a]"
-          >
-            {user.avatarUrl ? (
-              <img
-                src={user.avatarUrl}
-                alt=""
-                className="h-full w-full rounded-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              (user.name ?? user.email).charAt(0).toUpperCase()
-            )}
+      <div className="fixed inset-x-0 top-3 z-50 px-3 md:hidden">
+        <div className="mx-auto flex max-w-xl items-center justify-between rounded-[1.6rem] border border-white/10 bg-[var(--bg-overlay)] px-4 py-3 shadow-[0_18px_48px_rgba(0,0,0,0.34)] backdrop-blur-2xl">
+          <button type="button" onClick={() => navigate("/")} className="text-left">
+            <p className="text-[0.62rem] font-bold uppercase tracking-[0.24em] text-[var(--text-muted)]">
+              Digital Atelier
+            </p>
+            <p className="font-display text-[1.55rem] leading-none text-[var(--text-primary)]">
+              Pocket Stylist
+            </p>
           </button>
-        )}
+
+          {user && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate("/profile")}
+                className="spotlight-ring flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(214,177,111,0.12)] text-sm font-bold text-[var(--accent)]"
+              >
+                {user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt=""
+                    className="h-full w-full rounded-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  (user.name ?? user.email).charAt(0).toUpperCase()
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={logout}
+                className="icon-action h-10 w-10"
+                title="Вийти"
+              >
+                <LogOut size={15} />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* ===== Page Content ===== */}
-      <main className="pt-14 pb-20 md:pt-16 md:pb-8">
+      <main className="pb-28 pt-24 md:pb-12 md:pt-28">
         <Outlet />
       </main>
 
-      {/* ===== Mobile Bottom Tab Bar ===== */}
-      <nav className="fixed bottom-0 z-50 w-full border-t border-white/[0.06] bg-[#0f0f1a]/90 backdrop-blur-xl md:hidden">
-        <div className="flex items-center justify-around px-2 py-1">
-          {NAV_ITEMS.filter((i) => i.mobileNav).map((item) => (
+      <nav className="fixed inset-x-0 bottom-4 z-50 px-3 md:hidden">
+        <div className="mx-auto flex max-w-xl items-center justify-between rounded-[1.75rem] border border-white/10 bg-[var(--bg-overlay)] px-2 py-2 shadow-[0_24px_60px_rgba(0,0,0,0.38)] backdrop-blur-2xl">
+          {NAV_ITEMS.filter((item) => item.mobileNav).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.to === "/"}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-0.5 rounded-lg px-3 py-2 transition-all duration-300 ${
+                [
+                  "flex min-w-0 flex-1 flex-col items-center gap-1 rounded-[1.2rem] px-2 py-2.5 text-[0.58rem] font-semibold uppercase tracking-[0.16em] transition-all duration-200",
                   isActive
-                    ? "text-[#c9a55a]"
-                    : "text-[#f0ece4]/35 active:text-[#f0ece4]/60"
-                }`
+                    ? "bg-[rgba(214,177,111,0.16)] text-[var(--accent)]"
+                    : "text-[var(--text-muted)]",
+                ].join(" ")
               }
             >
               {({ isActive }) => (
                 <>
-                  <item.icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
-                  <span className="text-[10px] font-medium tracking-wide">{item.label}</span>
+                  <item.icon size={18} strokeWidth={isActive ? 2.4 : 1.8} />
+                  <span>{item.label}</span>
                 </>
               )}
             </NavLink>

@@ -10,131 +10,150 @@ import {
   Camera,
   Sparkles,
   ScanLine,
-  Calendar,
+  CalendarDays,
+  ArrowRight,
+  BarChart3,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-
-/* ---------- Quick stat card ---------- */
 
 function StatCard({
   icon: Icon,
   label,
   value,
+  caption,
   onClick,
 }: {
   icon: LucideIcon;
   label: string;
   value: string | number;
+  caption: string;
   onClick?: () => void;
 }) {
   const Tag = onClick ? "button" : "div";
+
   return (
     <Tag
       type={onClick ? "button" : undefined}
       onClick={onClick}
-      className={`glass-card flex items-center gap-3 p-4 ${
-        onClick ? "glass-card-hover cursor-pointer" : ""
-      }`}
+      className={[
+        "luxe-card flex w-full items-start gap-4 p-5 text-left",
+        onClick ? "luxe-card-hover cursor-pointer" : "",
+      ].join(" ")}
     >
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#c9a55a]/10">
-        <Icon size={20} className="text-[#c9a55a]" />
+      <div className="spotlight-ring flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[rgba(214,177,111,0.1)] text-[var(--accent)]">
+        <Icon size={20} strokeWidth={2.2} />
       </div>
-      <div className="min-w-0 text-left">
-        <p className="text-xl font-bold text-[#f0ece4]">{value}</p>
-        <p className="truncate text-xs text-[#f0ece4]/45">{label}</p>
+      <div className="min-w-0">
+        <p className="section-subtitle">{label}</p>
+        <p className="mt-2 text-3xl font-bold leading-none text-[var(--text-primary)]">
+          {value}
+        </p>
+        <p className="mt-2 text-sm text-[var(--text-secondary)]">{caption}</p>
       </div>
     </Tag>
   );
 }
 
-/* ---------- Quick action ---------- */
-
 function ActionCard({
   icon: Icon,
   title,
   description,
+  eyebrow,
   to,
 }: {
   icon: LucideIcon;
   title: string;
   description: string;
+  eyebrow: string;
   to: string;
 }) {
   const navigate = useNavigate();
+
   return (
     <button
       type="button"
       onClick={() => navigate(to)}
-      className="glass-card glass-card-hover flex items-start gap-3 p-4 text-left"
+      className="luxe-card luxe-card-hover group flex h-full flex-col items-start gap-5 p-5 text-left"
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#c9a55a]/10">
-        <Icon size={20} className="text-[#c9a55a]" />
+      <div className="flex w-full items-start justify-between">
+        <div className="spotlight-ring flex h-12 w-12 items-center justify-center rounded-2xl bg-[rgba(214,177,111,0.1)] text-[var(--accent)]">
+          <Icon size={20} strokeWidth={2.2} />
+        </div>
+        <span className="section-subtitle text-[0.65rem]">{eyebrow}</span>
       </div>
-      <div>
-        <p className="font-semibold text-[#f0ece4]">{title}</p>
-        <p className="text-xs text-[#f0ece4]/45">{description}</p>
+      <div className="space-y-2">
+        <h3 className="text-xl font-semibold text-[var(--text-primary)]">{title}</h3>
+        <p className="text-sm leading-6 text-[var(--text-secondary)]">{description}</p>
+      </div>
+      <div className="mt-auto inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
+        Відкрити
+        <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
       </div>
     </button>
   );
 }
 
-/* ---------- Recent items strip ---------- */
-
 function RecentItems({ items }: { items: WardrobeItem[] }) {
   const navigate = useNavigate();
-  if (items.length === 0) return null;
+
+  if (items.length === 0) {
+    return null;
+  }
 
   return (
-    <div>
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-[#f0ece4]/45">
-          Нещодавно додані
-        </h2>
+    <section className="luxe-card p-6">
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <div>
+          <p className="section-subtitle">Newest Additions</p>
+          <h2 className="section-title mt-2">Останні curated pieces</h2>
+        </div>
         <button
           type="button"
           onClick={() => navigate("/wardrobe")}
-          className="text-sm font-medium text-[#c9a55a] transition-colors hover:text-[#dbb978]"
+          className="ghost-action px-4 py-2 text-sm"
         >
-          Переглянути все →
+          Весь гардероб
         </button>
       </div>
-      <div className="flex gap-3 overflow-x-auto pb-2">
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {items.slice(0, 8).map((item) => (
-          <div
+          <article
             key={item.id}
-            className="w-20 shrink-0 overflow-hidden rounded-lg border border-white/[0.06] bg-[#1a1a2e]"
+            className="overflow-hidden rounded-[1.35rem] border border-white/8 bg-white/[0.03]"
           >
-            <div className="aspect-[3/4] bg-white/[0.03]">
+            <div className="aspect-[4/5] overflow-hidden">
               <img
                 src={item.thumbnailUrl ?? item.imageUrl}
                 alt={item.category}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                 loading="lazy"
               />
             </div>
-            <p className="truncate px-1 py-0.5 text-center text-[10px] text-[#f0ece4]/45">
-              {item.subcategory ?? item.category}
-            </p>
-          </div>
+            <div className="space-y-1 px-4 py-3">
+              <p className="text-sm font-semibold text-[var(--text-primary)]">
+                {item.subcategory ?? item.category}
+              </p>
+              <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-muted)]">
+                {item.colorPrimary}
+              </p>
+            </div>
+          </article>
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 
-/* ---------- Skeleton loader ---------- */
-
 function StatsSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="skeleton h-[72px]" />
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className="skeleton h-40" />
       ))}
     </div>
   );
 }
-
-/* ---------- Main ---------- */
 
 export function HomePage() {
   const { user } = useAuth();
@@ -150,114 +169,289 @@ export function HomePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  /* Category distribution */
-  const categories = items.reduce<Record<string, number>>((acc, i) => {
-    acc[i.category] = (acc[i.category] ?? 0) + 1;
+  const categories = items.reduce<Record<string, number>>((acc, item) => {
+    acc[item.category] = (acc[item.category] ?? 0) + 1;
     return acc;
   }, {});
+
   const topCategories = Object.entries(categories)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3);
 
-  const totalWorn = items.reduce((s, i) => s + i.timesWorn, 0);
+  const totalWorn = items.reduce((sum, item) => sum + item.timesWorn, 0);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
-      {/* Greeting */}
-      <div className="animate-fade-in-up">
-        <h1 className="font-display text-2xl font-semibold tracking-wide text-[#c9a55a]">
-          Привіт, {user?.name ?? "стилісте"}!
-        </h1>
-        <p className="mt-1 text-[#f0ece4]/45">
-          Ваш AI-асистент по гардеробу готовий до роботи.
-        </p>
-      </div>
+    <div className="page-shell space-y-8">
+      <section className="page-header animate-fade-in-up p-6 sm:p-8">
+        <div className="relative z-10 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="space-y-6">
+            <span className="page-kicker">Personal Styling Suite</span>
+            <div className="space-y-4">
+              <h1 className="page-title">
+                {user?.name ?? "Stylist"}, ваш гардероб
+                <br />
+                готовий до нового сезону.
+              </h1>
+              <p className="page-copy">
+                Обʼєднуємо wardrobe intelligence, атмосферу luxury editorial і AI-підбір
+                образів в одному цифровому atelier.
+              </p>
+            </div>
 
-      {/* Stats */}
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => navigate("/style")}
+                className="primary-action inline-flex items-center gap-2 px-5 py-3 text-sm"
+              >
+                Створити образ
+                <ArrowRight size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/import")}
+                className="ghost-action px-5 py-3 text-sm"
+              >
+                Додати нові речі
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <span className="metric-pill">
+                <Sparkles size={14} className="text-[var(--accent)]" />
+                AI look curation
+              </span>
+              <span className="metric-pill">
+                <BarChart3 size={14} className="text-[var(--accent-cool)]" />
+                Wear analytics
+              </span>
+              <span className="metric-pill">
+                <CalendarDays size={14} className="text-[var(--accent)]" />
+                Weekly lookbook
+              </span>
+            </div>
+          </div>
+
+          <div className="luxe-card flex flex-col justify-between gap-6 p-6">
+            <div className="space-y-3">
+              <p className="section-subtitle">Style Outlook</p>
+              <p className="text-2xl font-semibold text-[var(--text-primary)]">
+                {items.length > 0
+                  ? "Ваш гардероб уже формує сильний fashion language."
+                  : "Почнімо з першої curated добірки речей."}
+              </p>
+              <p className="text-sm leading-6 text-[var(--text-secondary)]">
+                {items.length > 0
+                  ? "Ми бачимо ваші найсильніші категорії, звички носіння й готові побудувати smarter rotation."
+                  : "Завантажте кілька фото, а ми перетворимо їх на структурований гардероб із підказками для стилю."}
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-[1.25rem] border border-white/8 bg-white/[0.03] p-4">
+                <p className="section-subtitle">Top Focus</p>
+                <p className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">
+                  {topCategories[0]?.[0] ?? "Curate"}
+                </p>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                  {topCategories[0]
+                    ? `${topCategories[0][1]} позицій у головній категорії`
+                    : "Перший імпорт відкриє персональний стиль-профіль."}
+                </p>
+              </div>
+              <div className="rounded-[1.25rem] border border-white/8 bg-white/[0.03] p-4">
+                <p className="section-subtitle">Wear Rhythm</p>
+                <p className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">
+                  {totalWorn}
+                </p>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                  зафіксованих носінь у вашій fashion memory.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {loading ? (
         <StatsSkeleton />
       ) : (
         <>
-          <div className="stagger-children grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <section className="stagger-children grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard
               icon={Shirt}
-              label="Речей у гардеробі"
+              label="Collection"
               value={items.length}
+              caption="Предметів у вашому digital wardrobe."
               onClick={() => navigate("/wardrobe")}
             />
             <StatCard
               icon={FolderOpen}
-              label="Категорій"
+              label="Categories"
               value={Object.keys(categories).length}
+              caption="Сильна капсула працює через баланс категорій."
             />
-            <StatCard icon={Repeat} label="Разів одягнено" value={totalWorn} />
+            <StatCard
+              icon={Repeat}
+              label="Wear Count"
+              value={totalWorn}
+              caption="Кожне носіння формує реальну цінність речей."
+            />
             <StatCard
               icon={Trophy}
-              label="Топ категорія"
+              label="Hero Category"
               value={topCategories[0]?.[0] ?? "—"}
+              caption="Категорія, що зараз визначає ваш стиль."
             />
-          </div>
+          </section>
 
-          {/* Recent items */}
-          <RecentItems items={items} />
-
-          {/* Empty state */}
-          {items.length === 0 && (
-            <div className="flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed border-[#c9a55a]/20 p-10 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#c9a55a]/10">
-                <Camera size={32} className="text-[#c9a55a]" />
+          {items.length === 0 ? (
+            <section className="page-header p-8 text-center">
+              <div className="relative z-10 mx-auto max-w-2xl space-y-5">
+                <div className="spotlight-ring mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[rgba(214,177,111,0.12)] text-[var(--accent)]">
+                  <Camera size={34} strokeWidth={2.1} />
+                </div>
+                <div>
+                  <p className="section-subtitle">First Curation</p>
+                  <h2 className="page-title text-[clamp(2rem,5vw,3.2rem)]">
+                    Створіть основу свого
+                    <br />
+                    premium wardrobe profile.
+                  </h2>
+                </div>
+                <p className="mx-auto page-copy">
+                  Завантажте кілька фото одягу, і ми миттєво підготуємо цифровий каталог,
+                  готовий до styling, scanner verdicts і weekly planning.
+                </p>
+                <div className="flex flex-wrap justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/import")}
+                    className="primary-action inline-flex items-center gap-2 px-5 py-3 text-sm"
+                  >
+                    Почати імпорт
+                    <ArrowRight size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/scan")}
+                    className="ghost-action px-5 py-3 text-sm"
+                  >
+                    Спробувати сканер
+                  </button>
+                </div>
               </div>
-              <h3 className="text-lg font-semibold text-[#f0ece4]">
-                Почніть з завантаження одягу
-              </h3>
-              <p className="max-w-sm text-sm text-[#f0ece4]/45">
-                Сфотографуйте свій одяг — AI проаналізує кожну річ та збереже у
-                ваш цифровий гардероб.
-              </p>
-              <button
-                type="button"
-                onClick={() => navigate("/import")}
-                className="gold-btn px-6 py-2.5 text-sm"
-              >
-                Завантажити фото
-              </button>
-            </div>
+            </section>
+          ) : (
+            <>
+              <RecentItems items={items} />
+
+              <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+                <div className="luxe-card p-6">
+                  <div className="mb-5 flex items-center justify-between">
+                    <div>
+                      <p className="section-subtitle">Wardrobe Signals</p>
+                      <h2 className="section-title mt-2">Що зараз домінує у вашому стилі</h2>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/analytics")}
+                      className="ghost-action px-4 py-2 text-sm"
+                    >
+                      Відкрити аналітику
+                    </button>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-3">
+                    {topCategories.map(([category, count]) => (
+                      <div
+                        key={category}
+                        className="rounded-[1.25rem] border border-white/8 bg-white/[0.03] p-4"
+                      >
+                        <p className="section-subtitle">Category</p>
+                        <p className="mt-3 text-2xl font-semibold capitalize text-[var(--text-primary)]">
+                          {category}
+                        </p>
+                        <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                          {count} curated pieces already define this direction.
+                        </p>
+                      </div>
+                    ))}
+                    {topCategories.length === 0 && (
+                      <div className="rounded-[1.25rem] border border-dashed border-white/10 bg-white/[0.02] p-4 text-sm text-[var(--text-secondary)]">
+                        Додайте речі, щоб побачити стилістичний профіль.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="luxe-card p-6">
+                  <p className="section-subtitle">Next Move</p>
+                  <h2 className="section-title mt-2">Підсильте систему рекомендацій</h2>
+                  <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
+                    Що більше контексту ми знаємо про речі, тим точніше працюють matching,
+                    analytics і AI-composed outfits.
+                  </p>
+
+                  <div className="mt-5 space-y-3">
+                    {[
+                      "Завантажте нову капсулу для richer AI profile.",
+                      "Відмічайте wear logs для accurate cost-per-wear.",
+                      "Зберіть weekly lookbook, щоб побачити прогалини.",
+                    ].map((item) => (
+                      <div
+                        key={item}
+                        className="flex items-start gap-3 rounded-[1.1rem] border border-white/8 bg-white/[0.03] px-4 py-3"
+                      >
+                        <span className="mt-1 h-2.5 w-2.5 rounded-full bg-[var(--accent)]" />
+                        <p className="text-sm leading-6 text-[var(--text-secondary)]">{item}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            </>
           )}
         </>
       )}
 
-      {/* Quick actions */}
-      <div>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[#f0ece4]/45">
-          Швидкі дії
-        </h2>
-        <div className="stagger-children grid gap-3 sm:grid-cols-2">
+      <section className="space-y-4">
+        <div>
+          <p className="section-subtitle">Atelier Shortcuts</p>
+          <h2 className="section-title mt-2">Швидкі fashion-сценарії</h2>
+        </div>
+
+        <div className="stagger-children grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <ActionCard
             icon={Camera}
-            title="Завантажити одяг"
-            description="Додайте нові речі до гардеробу"
+            eyebrow="Import"
+            title="Curate new arrivals"
+            description="Додайте нові речі й миттєво отримайте AI-теги, матеріали та сезонність."
             to="/import"
           />
           <ActionCard
             icon={Sparkles}
-            title="Підібрати образ"
-            description="AI підбере look під ваш настрій"
+            eyebrow="Style Me"
+            title="Generate three looks"
+            description="Підберіть образи за настроєм, формальністю й погодним контекстом."
             to="/style"
           />
           <ActionCard
             icon={ScanLine}
-            title="Сканер у магазині"
-            description="Перевірте чи варто купувати річ"
+            eyebrow="Scanner"
+            title="Decode store finds"
+            description="Оцініть нову покупку через BUY/SKIP verdict і fit до вашого гардеробу."
             to="/scan"
           />
           <ActionCard
-            icon={Calendar}
-            title="Лукбук на тиждень"
-            description="Образи на 7 днів з урахуванням погоди"
+            icon={CalendarDays}
+            eyebrow="Lookbook"
+            title="Build a weekly edit"
+            description="Створіть тижневу fashion-rotation, щоб носити гардероб розумніше."
             to="/lookbook"
           />
         </div>
-      </div>
+      </section>
     </div>
   );
 }

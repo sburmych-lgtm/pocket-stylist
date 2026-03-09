@@ -10,7 +10,6 @@ export interface ShareCardProps {
 const CANVAS_W = 1080;
 const CANVAS_H = 1920;
 
-/** Loads an image with crossOrigin for Cloudinary URLs. */
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -21,7 +20,6 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** Draws an image covering the target rect (like CSS object-fit: cover). */
 function drawCover(
   ctx: CanvasRenderingContext2D,
   img: HTMLImageElement,
@@ -34,7 +32,11 @@ function drawCover(
   const imgRatio = img.naturalWidth / img.naturalHeight;
   const rectRatio = w / h;
 
-  let sx: number, sy: number, sw: number, sh: number;
+  let sx: number;
+  let sy: number;
+  let sw: number;
+  let sh: number;
+
   if (imgRatio > rectRatio) {
     sh = img.naturalHeight;
     sw = sh * rectRatio;
@@ -57,7 +59,6 @@ function drawCover(
   ctx.restore();
 }
 
-/** Draws a rounded rectangle with fill. */
 function fillRoundRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -73,236 +74,188 @@ function fillRoundRect(
   ctx.fill();
 }
 
-async function renderCanvas(
-  canvas: HTMLCanvasElement,
-  props: ShareCardProps,
-): Promise<Blob> {
+function strokeRoundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  radius: number,
+  color: string,
+  width: number,
+): void {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, radius);
+  ctx.stroke();
+}
+
+function scoreColor(score: number): string {
+  if (score >= 70) {
+    return "#6fd4ab";
+  }
+  if (score >= 40) {
+    return "#d6b16f";
+  }
+  return "#ef8a80";
+}
+
+function tagline(score: number): string {
+  if (score >= 80) {
+    return "Runway-close recreation";
+  }
+  if (score >= 60) {
+    return "Strong fashion alignment";
+  }
+  if (score >= 40) {
+    return "Promising interpretation";
+  }
+  return "Experimental wardrobe remix";
+}
+
+async function renderCanvas(canvas: HTMLCanvasElement, props: ShareCardProps): Promise<Blob> {
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Could not get 2d context");
+  if (!ctx) {
+    throw new Error("Could not get 2d context");
+  }
 
   canvas.width = CANVAS_W;
   canvas.height = CANVAS_H;
 
-  // --- Background gradient ---
-  const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
-  grad.addColorStop(0, "#0f0f1a");
-  grad.addColorStop(0.5, "#1a1a2e");
-  grad.addColorStop(1, "#0f0f1a");
-  ctx.fillStyle = grad;
+  const background = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+  background.addColorStop(0, "#05060a");
+  background.addColorStop(0.52, "#10131b");
+  background.addColorStop(1, "#05060a");
+  ctx.fillStyle = background;
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-  // --- Decorative subtle circles ---
-  ctx.globalAlpha = 0.04;
-  ctx.fillStyle = "#c9a55a";
+  ctx.globalAlpha = 0.12;
+  ctx.fillStyle = "#d6b16f";
   ctx.beginPath();
-  ctx.arc(900, 200, 300, 0, Math.PI * 2);
+  ctx.arc(860, 230, 250, 0, Math.PI * 2);
   ctx.fill();
+  ctx.fillStyle = "#88c6bd";
   ctx.beginPath();
-  ctx.arc(180, 1600, 250, 0, Math.PI * 2);
+  ctx.arc(170, 1660, 210, 0, Math.PI * 2);
   ctx.fill();
   ctx.globalAlpha = 1;
 
-  // --- Title "STYLE MATCH" ---
-  ctx.fillStyle = "#f0ece4";
-  ctx.font = "bold 36px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  ctx.fillStyle = "#d6b16f";
+  ctx.font = "700 30px Manrope, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("STYLE MATCH", CANVAS_W / 2, 100);
+  ctx.fillText("POCKET STYLIST", CANVAS_W / 2, 110);
 
-  // --- Decorative line under title ---
-  const lineGrad = ctx.createLinearGradient(340, 0, 740, 0);
-  lineGrad.addColorStop(0, "transparent");
-  lineGrad.addColorStop(0.3, "#c9a55a");
-  lineGrad.addColorStop(0.7, "#dbb978");
-  lineGrad.addColorStop(1, "transparent");
-  ctx.strokeStyle = lineGrad;
+  ctx.fillStyle = "#f7f2eb";
+  ctx.font = "600 66px 'Cormorant Garamond', Georgia, serif";
+  ctx.fillText("Celebrity Match", CANVAS_W / 2, 190);
+
+  const headerLine = ctx.createLinearGradient(280, 0, 800, 0);
+  headerLine.addColorStop(0, "transparent");
+  headerLine.addColorStop(0.5, "rgba(214,177,111,0.7)");
+  headerLine.addColorStop(1, "transparent");
+  ctx.strokeStyle = headerLine;
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(340, 120);
-  ctx.lineTo(740, 120);
+  ctx.moveTo(280, 222);
+  ctx.lineTo(800, 222);
   ctx.stroke();
 
-  // --- Load all images ---
-  const imagePromises = [
+  fillRoundRect(ctx, 64, 286, 952, 1230, 52, "rgba(11,14,21,0.7)");
+  strokeRoundRect(ctx, 64, 286, 952, 1230, 52, "rgba(247,242,235,0.08)", 2);
+
+  const [referenceImg, ...itemImages] = await Promise.all([
     loadImage(props.referenceImageUrl),
     ...props.recreationItems.map((item) => loadImage(item.imageUrl)),
-  ];
-  const [referenceImg, ...itemImages] = await Promise.all(imagePromises);
+  ]);
 
-  // --- Reference image (left) ---
-  const refX = 60;
-  const refY = 170;
-  const refW = 440;
-  const refH = 620;
+  ctx.fillStyle = "rgba(247,242,235,0.52)";
+  ctx.font = "700 22px Manrope, sans-serif";
+  ctx.fillText("REFERENCE", 290, 346);
+  ctx.fillText("YOUR LOOK", 790, 346);
 
-  // Label above reference
-  ctx.fillStyle = "#f0ece4";
-  ctx.globalAlpha = 0.45;
-  ctx.font = "600 22px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("REFERENCE", refX + refW / 2, refY - 15);
-  ctx.globalAlpha = 1;
+  drawCover(ctx, referenceImg, 110, 382, 360, 520, 36);
+  strokeRoundRect(ctx, 110, 382, 360, 520, 36, "rgba(214,177,111,0.32)", 4);
 
-  // Reference image with rounded corners
-  fillRoundRect(ctx, refX - 4, refY - 4, refW + 8, refH + 8, 20, "rgba(201,165,90,0.3)");
-  drawCover(ctx, referenceImg, refX, refY, refW, refH, 16);
+  fillRoundRect(ctx, 487, 584, 106, 64, 32, "rgba(214,177,111,0.18)");
+  strokeRoundRect(ctx, 487, 584, 106, 64, 32, "rgba(214,177,111,0.52)", 2);
+  ctx.fillStyle = "#d6b16f";
+  ctx.font = "700 28px Manrope, sans-serif";
+  ctx.fillText("VS", 540, 627);
 
-  // --- VS badge ---
-  const vsX = CANVAS_W / 2;
-  const vsY = refY + refH / 2;
-  ctx.save();
-  ctx.shadowColor = "rgba(201,165,90,0.5)";
-  ctx.shadowBlur = 20;
-  fillRoundRect(ctx, vsX - 40, vsY - 30, 80, 60, 30, "#c9a55a");
-  ctx.restore();
-  ctx.fillStyle = "#0f0f1a";
-  ctx.font = "bold 28px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("VS", vsX, vsY);
-  ctx.textBaseline = "alphabetic";
+  const tileX = 642;
+  const tileY = 382;
+  const tileSize = 150;
+  const tileGap = 18;
 
-  // --- Recreation items (right side grid) ---
-  const gridX = 580;
-  const gridY = 170;
-  const gridItemSize = 200;
-  const gridGap = 16;
-  const cols = 2;
+  itemImages.slice(0, 6).forEach((img, index) => {
+    const col = index % 2;
+    const row = Math.floor(index / 2);
+    const x = tileX + col * (tileSize + tileGap);
+    const y = tileY + row * (tileSize + 84);
 
-  // Label above grid
-  ctx.fillStyle = "#f0ece4";
-  ctx.globalAlpha = 0.45;
-  ctx.font = "600 22px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("YOUR LOOK", gridX + (cols * gridItemSize + (cols - 1) * gridGap) / 2, gridY - 15);
-  ctx.globalAlpha = 1;
+    fillRoundRect(ctx, x, y, tileSize, tileSize, 28, "rgba(255,255,255,0.04)");
+    drawCover(ctx, img, x, y, tileSize, tileSize, 24);
+    strokeRoundRect(ctx, x, y, tileSize, tileSize, 24, "rgba(247,242,235,0.08)", 2);
 
-  itemImages.forEach((img, i) => {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const x = gridX + col * (gridItemSize + gridGap);
-    const y = gridY + row * (gridItemSize + gridGap + 40);
-
-    // Card background
-    fillRoundRect(ctx, x - 4, y - 4, gridItemSize + 8, gridItemSize + 8, 16, "rgba(255,255,255,0.06)");
-    drawCover(ctx, img, x, y, gridItemSize, gridItemSize, 12);
-
-    // Category label below
-    const item = props.recreationItems[i];
-    if (item) {
-      ctx.fillStyle = "#f0ece4";
-      ctx.globalAlpha = 0.55;
-      ctx.font = "500 18px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(
-        item.category.charAt(0).toUpperCase() + item.category.slice(1),
-        x + gridItemSize / 2,
-        y + gridItemSize + 26,
-      );
-      ctx.globalAlpha = 1;
-    }
+    ctx.fillStyle = "#f7f2eb";
+    ctx.globalAlpha = 0.72;
+    ctx.font = "600 18px Manrope, sans-serif";
+    ctx.fillText(
+      props.recreationItems[index]?.category.toUpperCase() ?? "ITEM",
+      x + tileSize / 2,
+      y + tileSize + 34,
+    );
+    ctx.globalAlpha = 1;
   });
 
-  // --- Match score circle ---
-  const scoreY = 950;
-  const scoreRadius = 100;
+  fillRoundRect(ctx, 166, 1000, 748, 220, 40, "rgba(255,255,255,0.03)");
+  strokeRoundRect(ctx, 166, 1000, 748, 220, 40, "rgba(247,242,235,0.08)", 2);
 
-  // Glow
+  ctx.fillStyle = "rgba(247,242,235,0.5)";
+  ctx.font = "700 20px Manrope, sans-serif";
+  ctx.fillText("MATCH SCORE", CANVAS_W / 2, 1048);
+
+  const ringColor = scoreColor(props.matchScore);
   ctx.save();
-  ctx.shadowColor = scoreColor(props.matchScore);
-  ctx.shadowBlur = 40;
-
-  // Outer ring
-  ctx.beginPath();
-  ctx.arc(CANVAS_W / 2, scoreY, scoreRadius + 6, 0, Math.PI * 2);
-  ctx.strokeStyle = scoreColor(props.matchScore);
-  ctx.lineWidth = 4;
-  ctx.stroke();
-
-  // Background circle
-  ctx.beginPath();
-  ctx.arc(CANVAS_W / 2, scoreY, scoreRadius, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(0,0,0,0.5)";
-  ctx.fill();
+  ctx.shadowColor = ringColor;
+  ctx.shadowBlur = 38;
+  strokeRoundRect(ctx, 424, 1084, 232, 92, 46, ringColor, 3);
   ctx.restore();
+  fillRoundRect(ctx, 438, 1098, 204, 64, 32, "rgba(0,0,0,0.24)");
+  ctx.fillStyle = "#f7f2eb";
+  ctx.font = "700 58px Manrope, sans-serif";
+  ctx.fillText(`${props.matchScore}%`, CANVAS_W / 2, 1148);
 
-  // Progress arc
-  const startAngle = -Math.PI / 2;
-  const endAngle = startAngle + (Math.PI * 2 * props.matchScore) / 100;
-  ctx.beginPath();
-  ctx.arc(CANVAS_W / 2, scoreY, scoreRadius + 6, startAngle, endAngle);
-  ctx.strokeStyle = scoreColor(props.matchScore);
-  ctx.lineWidth = 8;
-  ctx.lineCap = "round";
-  ctx.stroke();
-
-  // Score text
-  ctx.fillStyle = "#f0ece4";
-  ctx.font = "bold 64px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(`${props.matchScore}%`, CANVAS_W / 2, scoreY - 6);
-
-  ctx.font = "500 20px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.fillStyle = "#f0ece4";
-  ctx.globalAlpha = 0.45;
-  ctx.fillText("MATCH", CANVAS_W / 2, scoreY + 36);
-  ctx.globalAlpha = 1;
-  ctx.textBaseline = "alphabetic";
-
-  // --- Fun text based on score ---
-  const tagline = getScoreTagline(props.matchScore);
-  ctx.fillStyle = "#f0ece4";
-  ctx.font = "italic 28px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(tagline, CANVAS_W / 2, scoreY + scoreRadius + 60);
-
-  // --- Bottom watermark ---
-  const wmY = CANVAS_H - 120;
-
-  // Separator line
-  const wmLineGrad = ctx.createLinearGradient(200, 0, 880, 0);
-  wmLineGrad.addColorStop(0, "transparent");
-  wmLineGrad.addColorStop(0.3, "rgba(201,165,90,0.3)");
-  wmLineGrad.addColorStop(0.7, "rgba(201,165,90,0.3)");
-  wmLineGrad.addColorStop(1, "transparent");
-  ctx.strokeStyle = wmLineGrad;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(200, wmY - 40);
-  ctx.lineTo(880, wmY - 40);
-  ctx.stroke();
-
-  ctx.fillStyle = "#c9a55a";
-  ctx.font = "bold 32px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("Pocket Stylist", CANVAS_W / 2, wmY);
-
-  ctx.fillStyle = "#f0ece4";
-  ctx.globalAlpha = 0.35;
-  ctx.font = "400 22px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.fillText("pocket-stylist.app", CANVAS_W / 2, wmY + 38);
+  ctx.font = "500 28px Manrope, sans-serif";
+  ctx.fillStyle = "#f7f2eb";
+  ctx.globalAlpha = 0.76;
+  ctx.fillText(tagline(props.matchScore), CANVAS_W / 2, 1260);
   ctx.globalAlpha = 1;
 
-  // --- Generate blob ---
+  fillRoundRect(ctx, 140, 1336, 800, 112, 32, "rgba(255,255,255,0.03)");
+  strokeRoundRect(ctx, 140, 1336, 800, 112, 32, "rgba(247,242,235,0.08)", 2);
+  ctx.fillStyle = "#f7f2eb";
+  ctx.font = "500 24px Manrope, sans-serif";
+  ctx.fillText(
+    "Recreated from your own wardrobe, not from shopping pressure.",
+    CANVAS_W / 2,
+    1405,
+  );
+
+  ctx.fillStyle = "#d6b16f";
+  ctx.font = "600 48px 'Cormorant Garamond', Georgia, serif";
+  ctx.fillText("Digital Atelier", CANVAS_W / 2, 1720);
+  ctx.fillStyle = "rgba(247,242,235,0.42)";
+  ctx.font = "700 18px Manrope, sans-serif";
+  ctx.fillText("pocket-stylist.app", CANVAS_W / 2, 1764);
+
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error("Canvas toBlob failed"))),
       "image/png",
     );
   });
-}
-
-function scoreColor(score: number): string {
-  if (score >= 70) return "#22c55e";
-  if (score >= 40) return "#c9a55a";
-  return "#ef4444";
-}
-
-function getScoreTagline(score: number): string {
-  if (score >= 80) return '"Almost identical!"';
-  if (score >= 60) return '"Great recreation!"';
-  if (score >= 40) return '"Nice effort!"';
-  return '"Creative interpretation!"';
 }
 
 export function ShareCard({ referenceImageUrl, recreationItems, matchScore, onShare }: ShareCardProps) {
@@ -312,7 +265,9 @@ export function ShareCard({ referenceImageUrl, recreationItems, matchScore, onSh
 
   const generate = useCallback(async () => {
     const canvas = canvasRef.current;
-    if (!canvas || rendering) return;
+    if (!canvas || rendering) {
+      return;
+    }
 
     setRendering(true);
     setError(null);
@@ -332,31 +287,21 @@ export function ShareCard({ referenceImageUrl, recreationItems, matchScore, onSh
     }
   }, [referenceImageUrl, recreationItems, matchScore, onShare, rendering]);
 
-  // Auto-generate on mount
   useEffect(() => {
     void generate();
-    // Only run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <>
-      <canvas
-        ref={canvasRef}
-        className="hidden"
-        aria-hidden="true"
-      />
+      <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
       {rendering && (
-        <div className="flex items-center gap-2 text-sm text-[#f0ece4]/45">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#c9a55a] border-t-transparent" />
-          <span>Генерую зображення...</span>
+        <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
+          <span>Генерую editorial poster...</span>
         </div>
       )}
-      {error && (
-        <p className="text-sm text-red-400">
-          Помилка генерації: {error}
-        </p>
-      )}
+      {error && <p className="text-sm text-[var(--danger)]">Помилка генерації: {error}</p>}
     </>
   );
 }

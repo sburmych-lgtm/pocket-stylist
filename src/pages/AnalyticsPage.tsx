@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { BarChart3, LoaderCircle, Sparkles } from "lucide-react";
 import { SummaryCards } from "../components/analytics/SummaryCards";
 import { CostPerWearTable } from "../components/analytics/CostPerWearTable";
 import { DeadZoneList } from "../components/analytics/DeadZoneList";
@@ -27,9 +28,9 @@ export function AnalyticsPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="flex items-center gap-3">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#c9a55a] border-t-transparent" />
-          <span className="text-[#f0ece4]/45">Аналізую ваш гардероб...</span>
+        <div className="flex items-center gap-3 text-[var(--text-secondary)]">
+          <LoaderCircle size={20} className="animate-spin text-[var(--accent)]" />
+          Аналізуємо ваш гардероб...
         </div>
       </div>
     );
@@ -37,8 +38,8 @@ export function AnalyticsPage() {
 
   if (error || !data) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-red-400">
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <p className="text-[var(--danger)]">
           Помилка завантаження аналітики. {error instanceof Error ? error.message : ""}
         </p>
       </div>
@@ -46,24 +47,59 @@ export function AnalyticsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
-      <div>
-        <h1 className="font-display text-2xl font-semibold tracking-wide text-[#c9a55a]">
-          Аналітика
-        </h1>
-        <p className="text-sm text-[#f0ece4]/45">
-          Дашборд інтелекту вашого гардеробу
-        </p>
-      </div>
+    <div className="page-shell space-y-8">
+      <section className="page-header p-6 sm:p-8">
+        <div className="relative z-10 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-5">
+            <span className="page-kicker">
+              <BarChart3 size={14} />
+              Wardrobe Intelligence
+            </span>
+            <h1 className="page-title">
+              Аналітика, яка показує
+              <br />
+              реальну цінність гардеробу.
+            </h1>
+            <p className="page-copy">
+              Від cost-per-wear до sustainability score: бачимо не просто речі, а те,
+              як ваш wardrobe працює, зношується і де потребує нового фокусу.
+            </p>
+          </div>
+
+          <div className="luxe-card p-6">
+            <p className="section-subtitle">Key Signal</p>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-[1.3rem] border border-white/8 bg-white/[0.03] p-4">
+                <p className="section-subtitle">Avg wear count</p>
+                <p className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">
+                  {data.summary.avgWearCount}
+                </p>
+              </div>
+              <div className="rounded-[1.3rem] border border-white/8 bg-white/[0.03] p-4">
+                <p className="section-subtitle">Eco score</p>
+                <p className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">
+                  {data.eco.sustainabilityScore}
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 flex items-start gap-3 rounded-[1.2rem] border border-white/8 bg-white/[0.03] px-4 py-3">
+              <Sparkles size={16} className="mt-1 text-[var(--accent)]" />
+              <p className="text-sm leading-6 text-[var(--text-secondary)]">
+                Найсильніший гардероб не завжди найбільший. Він просто краще працює у щоденному rotation.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <SummaryCards {...data.summary} />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-2">
         <CostPerWearTable items={data.costPerWear} />
         <DeadZoneList items={data.deadZone} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-2">
         <GapAnalysis gaps={data.gapAnalysis.gaps} distribution={data.gapAnalysis.distribution} />
         <EcoDashboard eco={data.eco} />
       </div>

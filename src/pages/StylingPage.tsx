@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { Sparkles, ArrowRight, BadgeCheck, LoaderCircle } from "lucide-react";
 import { MoodSliders } from "../components/styling/MoodSliders";
 import { ContextSelector } from "../components/styling/ContextSelector";
 import { OutfitCard } from "../components/styling/OutfitCard";
@@ -66,105 +67,177 @@ export function StylingPage() {
   }, [fetchSuggestions, mood]);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <div className="mb-8">
-        <h1 className="font-display text-2xl font-semibold tracking-wide text-[#c9a55a]">
-          {isMaleMode ? "Outfit Optimizer" : "Підібрати стиль"}
-        </h1>
-        <p className="mt-1 text-[#f0ece4]/45">
-          {isMaleMode
-            ? "Оберіть ситуацію — отримайте оптимальний аутфіт."
-            : "Налаштуйте настрій і отримайте AI-поради щодо образу."}
-        </p>
-      </div>
-
-      {/* Male mode: wardrobe efficiency stat */}
-      {isMaleMode && result?.avgCostPerWear !== undefined && (
-        <div className="mb-6 flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
-          <span className="text-lg">{"\uD83D\uDCB0"}</span>
-          <span className="text-sm font-medium text-emerald-400">
-            Ефективність гардеробу:{" "}
-            <span className="text-base font-bold">
-              {Math.round(result.avgCostPerWear)}%
+    <div className="page-shell space-y-8">
+      <section className="page-header p-6 sm:p-8">
+        <div className="relative z-10 grid gap-8 xl:grid-cols-[1.05fr_0.95fr]">
+          <div className="space-y-5">
+            <span className="page-kicker">
+              <Sparkles size={14} />
+              AI Styling Studio
             </span>
-          </span>
-        </div>
-      )}
-
-      <div className="space-y-6">
-        {isMaleMode ? (
-          <ContextSelector
-            selected={selectedContext}
-            loading={loading}
-            onSelect={handleContextSelect}
-          />
-        ) : (
-          <>
-            <MoodSliders energy={mood.energy} boldness={mood.boldness} onChange={setMood} />
-            <button
-              onClick={handleGenerate}
-              disabled={loading}
-              className="gold-btn w-full px-6 py-3.5 text-base font-semibold disabled:opacity-50"
-            >
-              {loading ? "Генерую образи..." : "Підібрати образ"}
-            </button>
-          </>
-        )}
-
-        {error && (
-          <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
-            {error}
-          </div>
-        )}
-
-        {loading && isMaleMode && (
-          <div className="flex items-center justify-center py-8">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#c9a55a] border-t-transparent" />
-          </div>
-        )}
-
-        {result && !loading && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <WeatherBadge
-                temp={result.weather.temp}
-                condition={result.weather.condition}
-                location={result.weather.location}
-              />
-              {result.candidateCount !== undefined && (
-                <p className="text-sm text-[#f0ece4]/45">
-                  {result.candidateCount} речей відповідають критеріям
-                </p>
-              )}
+            <div className="space-y-4">
+              <h1 className="page-title">
+                {isMaleMode ? "Outfit optimizer" : "Style Me"}
+                <br />
+                для реального життя.
+              </h1>
+              <p className="page-copy">
+                {isMaleMode
+                  ? "Обирайте ситуацію, а ми дамо зібраний, практичний і дорогий на вигляд look."
+                  : "Працюємо як персональний fashion-консультант: зчитуємо настрій, погоду і складаємо три образи."}
+              </p>
             </div>
+            <div className="flex flex-wrap gap-3">
+              <span className="metric-pill">
+                3 curated outfits
+              </span>
+              <span className="metric-pill">
+                Weather-aware
+              </span>
+              <span className="metric-pill">
+                Wardrobe-based
+              </span>
+            </div>
+          </div>
 
-            {result.message && (
-              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-400">
-                {result.message}
-              </div>
-            )}
-
-            {result.outfits.length > 0 ? (
-              <div className="space-y-4">
-                {result.outfits.map((outfit, i) => (
-                  <OutfitCard
-                    key={i}
-                    name={outfit.name}
-                    items={outfit.items}
-                    stylingTip={outfit.stylingTip}
-                    confidence={outfit.confidence}
-                  />
-                ))}
-              </div>
-            ) : (
-              !result.message && (
-                <p className="text-center text-[#f0ece4]/45">
-                  Не вдалося згенерувати образи. Спробуйте змінити настрій або додати більше речей.
+          <div className="luxe-card flex flex-col gap-4 p-6">
+            <p className="section-subtitle">Studio Notes</p>
+            <div className="space-y-3 text-sm leading-6 text-[var(--text-secondary)]">
+              <p>
+                Ми не просто комбінуємо речі. Ми шукаємо look з правильним балансом
+                пропорцій, формальності та настрою.
+              </p>
+              <p>
+                Чим якісніше протегований гардероб, тим точніше AI розпізнає стильові
+                можливості речей.
+              </p>
+            </div>
+            {isMaleMode && result?.avgCostPerWear !== undefined && (
+              <div className="mt-auto rounded-[1.3rem] border border-[rgba(111,212,171,0.22)] bg-[rgba(111,212,171,0.08)] p-4">
+                <p className="section-subtitle text-[var(--success)]">Wardrobe Efficiency</p>
+                <p className="mt-2 text-3xl font-semibold text-[var(--text-primary)]">
+                  {Math.round(result.avgCostPerWear)}%
                 </p>
-              )
+                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+                  Ваш гардероб уже видає сильні practical combinations.
+                </p>
+              </div>
             )}
           </div>
-        )}
+        </div>
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+        <div className="space-y-6 xl:sticky xl:top-32 xl:self-start">
+          {isMaleMode ? (
+            <ContextSelector
+              selected={selectedContext}
+              loading={loading}
+              onSelect={handleContextSelect}
+            />
+          ) : (
+            <>
+              <MoodSliders energy={mood.energy} boldness={mood.boldness} onChange={setMood} />
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={loading}
+                className="primary-action inline-flex w-full items-center justify-center gap-2 px-5 py-3.5 text-sm disabled:opacity-50"
+              >
+                {loading ? "Генеруємо образи..." : "Побачити три образи"}
+                <ArrowRight size={15} />
+              </button>
+            </>
+          )}
+
+          {error && (
+            <div className="luxe-card border-[rgba(239,138,128,0.22)] p-4 text-sm text-[var(--danger)]">
+              {error}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-5">
+          {loading && (
+            <div className="luxe-card flex min-h-[22rem] flex-col items-center justify-center gap-4 p-10 text-center">
+              <LoaderCircle size={28} className="animate-spin text-[var(--accent)]" />
+              <div>
+                <p className="text-lg font-semibold text-[var(--text-primary)]">Стилізуємо ваш look</p>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                  Аналізуємо настрій, wardrobe-coverage та погодний контекст.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {result && !loading && (
+            <>
+              <section className="luxe-card space-y-5 p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="section-subtitle">Session Result</p>
+                    <h2 className="section-title mt-2">Ваш сьогоднішній fashion brief</h2>
+                  </div>
+                  {result.candidateCount !== undefined && (
+                    <span className="status-chip bg-[rgba(214,177,111,0.12)] text-[var(--accent)]">
+                      <BadgeCheck size={12} />
+                      {result.candidateCount} речей у грі
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <WeatherBadge
+                    temp={result.weather.temp}
+                    condition={result.weather.condition}
+                    location={result.weather.location}
+                  />
+                  {result.message && (
+                    <div className="rounded-full border border-[rgba(241,195,121,0.22)] bg-[rgba(241,195,121,0.08)] px-4 py-3 text-sm text-[var(--warning)]">
+                      {result.message}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {result.outfits.length > 0 ? (
+                <div className="space-y-5">
+                  {result.outfits.map((outfit, index) => (
+                    <OutfitCard
+                      key={index}
+                      name={outfit.name}
+                      items={outfit.items}
+                      stylingTip={outfit.stylingTip}
+                      confidence={outfit.confidence}
+                    />
+                  ))}
+                </div>
+              ) : (
+                !result.message && (
+                  <div className="luxe-card p-8 text-center">
+                    <p className="text-lg font-semibold text-[var(--text-primary)]">
+                      Поки не вдалося скласти сильний образ.
+                    </p>
+                    <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
+                      Спробуйте інший настрій, змініть контекст або поповніть гардероб новими речами.
+                    </p>
+                  </div>
+                )
+              )}
+            </>
+          )}
+
+          {!result && !loading && (
+            <div className="luxe-card p-8">
+              <p className="section-subtitle">Studio Prompt</p>
+              <h2 className="section-title mt-2">Сформуйте запит і ми покажемо три образи</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
+                Почніть із настрою або пресету контексту. Далі система збере ready-to-wear
+                комбінації, які виглядають цілісно й працюють у реальному гардеробі.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

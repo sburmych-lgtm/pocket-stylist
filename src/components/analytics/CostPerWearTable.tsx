@@ -18,22 +18,25 @@ interface CostPerWearTableProps {
 export function CostPerWearTable({ items }: CostPerWearTableProps) {
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-white/[0.06] bg-[#1a1a2e] p-6 text-center text-sm text-[#f0ece4]/45">
-        Додайте ціни до речей, щоб побачити аналіз вартості носіння
-      </div>
+      <section className="luxe-card p-6 text-center text-sm text-[var(--text-secondary)]">
+        Додайте ціни до речей, щоб побачити cost-per-wear аналітику.
+      </section>
     );
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-[#1a1a2e]">
-      <div className="border-b border-white/[0.06] px-5 py-3">
-        <h3 className="font-semibold text-[#f0ece4]">Вартість носіння</h3>
-        <p className="text-xs text-[#f0ece4]/35">Найдорожчі за носіння першими</p>
+    <section className="luxe-card p-6">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="section-subtitle">Cost Intelligence</p>
+          <h3 className="section-title mt-2">Вартість носіння</h3>
+        </div>
       </div>
-      <div className="divide-y divide-white/[0.06]">
+
+      <div className="mt-5 space-y-3">
         {items.slice(0, 10).map((item) => (
-          <div key={item.id} className="flex items-center gap-3 px-5 py-3">
-            <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg bg-white/[0.05]">
+          <div key={item.id} className="grid gap-4 rounded-[1.2rem] border border-white/8 bg-white/[0.03] p-4 sm:grid-cols-[4rem_1fr_auto] sm:items-center">
+            <div className="h-16 w-16 overflow-hidden rounded-[1rem] bg-white/[0.05]">
               {(item.thumbnailUrl ?? item.imageUrl).startsWith("data:") ? (
                 <img
                   src={item.thumbnailUrl ?? item.imageUrl}
@@ -41,34 +44,45 @@ export function CostPerWearTable({ items }: CostPerWearTableProps) {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-[#f0ece4]/35">
+                <div className="flex h-full w-full items-center justify-center text-xs text-[var(--text-muted)]">
                   {item.category.slice(0, 3)}
                 </div>
               )}
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-[#f0ece4]/80">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
                 {item.subcategory ?? item.category}
               </p>
-              <p className="text-xs text-[#f0ece4]/35">
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">
                 {item.colorPrimary} · {item.timesWorn} носінь
               </p>
             </div>
-            <div className="text-right">
+            <div className="text-left sm:text-right">
               {item.costPerWear != null ? (
                 <>
-                  <p className={`text-sm font-semibold ${item.costPerWear > 20 ? "text-red-400" : item.costPerWear > 5 ? "text-amber-400" : "text-emerald-400"}`}>
+                  <p
+                    className={[
+                      "text-lg font-semibold",
+                      item.costPerWear > 20
+                        ? "text-[var(--danger)]"
+                        : item.costPerWear > 5
+                          ? "text-[var(--warning)]"
+                          : "text-[var(--success)]",
+                    ].join(" ")}
+                  >
                     ${item.costPerWear.toFixed(2)}
                   </p>
-                  <p className="text-xs text-[#f0ece4]/35">/носіння</p>
+                  <p className="text-xs uppercase tracking-[0.16em] text-[var(--text-muted)]">
+                    / носіння
+                  </p>
                 </>
               ) : (
-                <p className="text-xs text-[#f0ece4]/35">Без ціни</p>
+                <p className="text-sm text-[var(--text-secondary)]">Без ціни</p>
               )}
             </div>
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

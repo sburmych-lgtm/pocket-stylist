@@ -1,3 +1,4 @@
+import { BadgeCheck, Heart, RefreshCcw, Sparkles } from "lucide-react";
 import type { WardrobeItem } from "../../types/wardrobe";
 
 interface OutfitCardProps {
@@ -19,56 +20,97 @@ export function OutfitCard({
   onDislike,
   onWear,
 }: OutfitCardProps) {
+  const confidenceTone =
+    confidence >= 0.7
+      ? "bg-[rgba(111,212,171,0.12)] text-[var(--success)]"
+      : "bg-[rgba(241,195,121,0.12)] text-[var(--warning)]";
+
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-[#1a1a2e] p-5">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="font-semibold text-[#f0ece4]">{name}</h3>
-        <span
-          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-            confidence >= 0.7
-              ? "bg-emerald-500/10 text-emerald-400"
-              : "bg-amber-500/10 text-amber-400"
-          }`}
-        >
-          {Math.round(confidence * 100)}% match
-        </span>
+    <article className="luxe-card p-5 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <span className="page-kicker">
+            <Sparkles size={14} />
+            Editorial Look
+          </span>
+          <h3 className="mt-4 text-2xl font-semibold text-[var(--text-primary)]">{name}</h3>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className={`status-chip ${confidenceTone}`}>
+            <BadgeCheck size={13} />
+            {Math.round(confidence * 100)}% match
+          </span>
+        </div>
       </div>
 
-      <div className="mb-3 flex gap-2 overflow-x-auto pb-2">
-        {items.map((item) => (
-          <div key={item.id} className="flex-shrink-0">
-            <div className="h-24 w-20 overflow-hidden rounded-lg bg-white/[0.03]">
-              {item.imageUrl.startsWith("data:") ? (
-                <img src={item.imageUrl} alt={item.category} className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-[#f0ece4]/25">
-                  {item.category}
-                </div>
-              )}
-            </div>
-            <p className="mt-1 text-center text-xs text-[#f0ece4]/45">
-              {item.subcategory ?? item.category}
+      <div className="mt-6 grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {items.map((item) => (
+            <article
+              key={item.id}
+              className="overflow-hidden rounded-[1.35rem] border border-white/8 bg-white/[0.03]"
+            >
+              <div className="aspect-[4/5] overflow-hidden">
+                {item.imageUrl.startsWith("data:") || item.imageUrl.startsWith("http") ? (
+                  <img src={item.imageUrl} alt={item.category} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-sm text-[var(--text-muted)]">
+                    {item.category}
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1 px-4 py-3">
+                <p className="text-sm font-semibold text-[var(--text-primary)]">
+                  {item.subcategory ?? item.category}
+                </p>
+                <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-muted)]">
+                  {item.colorPrimary}
+                </p>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-5">
+            <p className="section-subtitle">Styling Note</p>
+            <p className="mt-4 text-base leading-7 text-[var(--text-secondary)]">
+              {stylingTip}
             </p>
           </div>
-        ))}
-      </div>
 
-      <p className="mb-4 text-sm text-[#f0ece4]/55">{stylingTip}</p>
+          <div className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-5">
+            <p className="section-subtitle">Why it works</p>
+            <div className="mt-4 space-y-3">
+              {[
+                "Силует речей уже збалансований по контрасту та формальності.",
+                "Кольори читаються як єдина капсула, а не випадковий набір предметів.",
+                "Образ легко адаптувати аксесуарами без втрати настрою.",
+              ].map((point) => (
+                <div key={point} className="flex items-start gap-3">
+                  <span className="mt-2 h-2 w-2 rounded-full bg-[var(--accent)]" />
+                  <p className="text-sm leading-6 text-[var(--text-secondary)]">{point}</p>
+                </div>
+              ))}
+            </div>
+          </div>
 
-      <div className="flex gap-2">
-        <button onClick={onLike}
-          className="flex-1 rounded-lg border border-emerald-500/30 px-3 py-2 text-sm font-medium text-emerald-400 transition-colors hover:bg-emerald-500/10">
-          Подобається
-        </button>
-        <button onClick={onDislike}
-          className="flex-1 rounded-lg border border-red-500/30 px-3 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10">
-          Пропустити
-        </button>
-        <button onClick={onWear}
-          className="gold-btn flex-1 px-3 py-2 text-sm">
-          Вдягну
-        </button>
+          <div className="mt-auto flex flex-wrap gap-2">
+            <button type="button" onClick={onLike} className="ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm">
+              <Heart size={15} />
+              Подобається
+            </button>
+            <button type="button" onClick={onDislike} className="ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm">
+              <RefreshCcw size={15} />
+              Інший варіант
+            </button>
+            <button type="button" onClick={onWear} className="primary-action inline-flex flex-1 items-center justify-center gap-2 px-4 py-3 text-sm sm:flex-none">
+              Вдягну цей look
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
+    </article>
   );
 }

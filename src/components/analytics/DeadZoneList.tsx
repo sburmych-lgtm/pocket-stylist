@@ -16,24 +16,23 @@ interface DeadZoneListProps {
 export function DeadZoneList({ items }: DeadZoneListProps) {
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-6 text-center text-sm text-emerald-400">
-        Немає забутих речей — ви носите все!
-      </div>
+      <section className="luxe-card border-[rgba(111,212,171,0.22)] p-6 text-center text-sm text-[var(--success)]">
+        Немає забутих речей. Гардероб працює рівномірно.
+      </section>
     );
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-[#1a1a2e]">
-      <div className="border-b border-white/[0.06] px-5 py-3">
-        <h3 className="font-semibold text-[#f0ece4]">Мертва зона</h3>
-        <p className="text-xs text-[#f0ece4]/35">
-          Речі без носіння 90+ днів — подумайте про продаж або донат
-        </p>
+    <section className="luxe-card p-6">
+      <div>
+        <p className="section-subtitle">Dead Zone Radar</p>
+        <h3 className="section-title mt-2">Речі поза rotation</h3>
       </div>
-      <div className="divide-y divide-white/[0.06]">
+
+      <div className="mt-5 space-y-3">
         {items.map((item) => (
-          <div key={item.id} className="flex items-center gap-3 px-5 py-3">
-            <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg bg-white/[0.05]">
+          <div key={item.id} className="grid gap-4 rounded-[1.2rem] border border-white/8 bg-white/[0.03] p-4 sm:grid-cols-[4rem_1fr_auto] sm:items-center">
+            <div className="h-16 w-16 overflow-hidden rounded-[1rem] bg-white/[0.05]">
               {(item.thumbnailUrl ?? item.imageUrl).startsWith("data:") ? (
                 <img
                   src={item.thumbnailUrl ?? item.imageUrl}
@@ -41,28 +40,26 @@ export function DeadZoneList({ items }: DeadZoneListProps) {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-[#f0ece4]/35">
+                <div className="flex h-full w-full items-center justify-center text-xs text-[var(--text-muted)]">
                   {item.category.slice(0, 3)}
                 </div>
               )}
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-[#f0ece4]/80">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
                 {item.subcategory ?? item.category}
               </p>
-              <p className="text-xs text-[#f0ece4]/35">{item.colorPrimary}</p>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">{item.colorPrimary}</p>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-semibold text-red-400">
-                {item.daysSinceWorn}д
-              </p>
-              <p className="text-xs text-[#f0ece4]/35">
+            <div className="text-left sm:text-right">
+              <p className="text-lg font-semibold text-[var(--danger)]">{item.daysSinceWorn}д</p>
+              <p className="text-xs uppercase tracking-[0.16em] text-[var(--text-muted)]">
                 {item.timesWorn === 0 ? "не вдягано" : `${item.timesWorn} носінь`}
               </p>
             </div>
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 }
