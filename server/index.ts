@@ -23,6 +23,15 @@ app.get("/health", (_req, res) => {
 
 if (isProd) {
   const clientDir = path.resolve(__dirname, "../../client");
+
+  // Prevent browser from caching sw.js and registerSW.js — always fetch fresh
+  app.get(["/sw.js", "/registerSW.js"], (_req, res, next) => {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    next();
+  });
+
   app.use(express.static(clientDir));
   app.get("/{*splat}", (_req, res) => {
     res.sendFile(path.join(clientDir, "index.html"));
