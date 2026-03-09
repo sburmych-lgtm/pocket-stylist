@@ -95,7 +95,7 @@ export function Layout() {
             <BrandBlock />
           </button>
 
-          <div className="editorial-divider w-16 shrink-0" />
+          <div className="editorial-divider shrink-0" style={{ width: "4rem" }} />
 
           <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-1 pt-1">
             {NAV_ITEMS.map((item) => (
