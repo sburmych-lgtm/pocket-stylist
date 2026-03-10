@@ -11,6 +11,8 @@ export function LoginPage() {
   const googleBtnRef = useRef<HTMLDivElement>(null);
   const [googleClientId, setGoogleClientId] = useState<string | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authInProgress, setAuthInProgress] = useState(false);
 
   useEffect(() => {
     getAppStatus()
@@ -27,10 +29,20 @@ export function LoginPage() {
 
   const handleGoogleResponse = useCallback(
     async (response: { credential: string }) => {
-      await loginWithGoogle(response.credential);
-      navigate("/", { replace: true });
+      setAuthError(null);
+      setAuthInProgress(true);
+      try {
+        await loginWithGoogle(response.credential);
+        navigate("/", { replace: true });
+      } catch (err) {
+        setAuthError(
+          err instanceof Error ? err.message : t("login.authError"),
+        );
+      } finally {
+        setAuthInProgress(false);
+      }
     },
-    [loginWithGoogle, navigate],
+    [loginWithGoogle, navigate, t],
   );
 
   useEffect(() => {
@@ -67,9 +79,19 @@ export function LoginPage() {
   }, [googleClientId, handleGoogleResponse]);
 
   const handleDemo = useCallback(async () => {
-    await loginDemo();
-    navigate("/", { replace: true });
-  }, [loginDemo, navigate]);
+    setAuthError(null);
+    setAuthInProgress(true);
+    try {
+      await loginDemo();
+      navigate("/", { replace: true });
+    } catch (err) {
+      setAuthError(
+        err instanceof Error ? err.message : t("login.authError"),
+      );
+    } finally {
+      setAuthInProgress(false);
+    }
+  }, [loginDemo, navigate, t]);
 
   if (isLoading || statusLoading) {
     return (
@@ -94,7 +116,20 @@ export function LoginPage() {
         </div>
 
         <div className="space-y-4">
-          {googleClientId && (
+          {authError && (
+            <div className="rounded-xl border border-[var(--danger)]/20 bg-[var(--danger)]/5 px-4 py-3 text-center text-sm text-[var(--danger)]">
+              {authError}
+            </div>
+          )}
+
+          {authInProgress && (
+            <div className="flex items-center justify-center gap-2 py-2 text-sm text-[var(--text-secondary)]">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
+              {t("login.signingIn")}
+            </div>
+          )}
+
+          {googleClientId && !authInProgress && (
             <div className="flex justify-center">
               <div ref={googleBtnRef} />
             </div>
@@ -103,7 +138,8 @@ export function LoginPage() {
           <button
             type="button"
             onClick={handleDemo}
-            className={`w-full rounded-full px-4 py-3.5 text-sm font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40 focus:ring-offset-2 focus:ring-offset-[var(--bg-surface)] ${
+            disabled={authInProgress}
+            className={`w-full rounded-full px-4 py-3.5 text-sm font-semibold transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40 focus:ring-offset-2 focus:ring-offset-[var(--bg-surface)] disabled:opacity-50 ${
               googleClientId
                 ? "gold-ghost-btn"
                 : "gold-btn"

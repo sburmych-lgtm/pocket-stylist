@@ -45,6 +45,8 @@ export const uk: Translations = {
     demoLogin: "Увійти як Demo",
     demoLoginFull: "Увійти як Demo User",
     googleNotConfigured: "Google Sign-In не налаштовано",
+    signingIn: "Входимо…",
+    authError: "Помилка авторизації. Спробуйте ще раз.",
   },
 
   /* ---- Home ---- */

@@ -45,6 +45,8 @@ export const en: Translations = {
     demoLogin: "Sign in as Demo",
     demoLoginFull: "Sign in as Demo User",
     googleNotConfigured: "Google Sign-In is not configured",
+    signingIn: "Signing in…",
+    authError: "Authentication failed. Please try again.",
   },
 
   /* ---- Home ---- */
