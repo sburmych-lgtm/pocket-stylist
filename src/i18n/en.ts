@@ -47,6 +47,8 @@ export const en: Translations = {
     googleNotConfigured: "Google Sign-In is not configured",
     signingIn: "Signing in…",
     authError: "Authentication failed. Please try again.",
+    googleRedirect: "Sign in with Google",
+    googleRedirectHint: "Use this if automatic sign-in doesn't work",
   },
 
   /* ---- Home ---- */
@@ -193,6 +195,7 @@ export const en: Translations = {
       desc: "You can upload flat lays, mirror selfies or individual clothing items.",
       descDisabled: "Current batch is still processing. Wait a few seconds.",
       clickToSelect: "Click to select",
+      googleDrive: "Google Drive",
     },
   },
 

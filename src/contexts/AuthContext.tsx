@@ -91,6 +91,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function init() {
+      // Check for token from redirect-based OAuth callback
+      const urlParams = new URLSearchParams(window.location.search);
+      const callbackToken = urlParams.get("token");
+      if (callbackToken) {
+        window.history.replaceState({}, "", window.location.pathname);
+        setToken(callbackToken);
+        setTokenState(callbackToken);
+        try {
+          const me = await authApi.getMe();
+          if (!cancelled) {
+            setUser(me);
+            setIsLoading(false);
+          }
+        } catch {
+          clearToken();
+          setTokenState(null);
+        }
+        if (!cancelled) setIsLoading(false);
+        return;
+      }
+
       const existing = getToken();
 
       if (existing) {

@@ -10,9 +10,11 @@ datasource db {
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
-  googleId      String?   @unique
-  name          String?
-  avatarUrl     String?
+  googleId           String?   @unique
+  name               String?
+  avatarUrl          String?
+  googleAccessToken  String?   @db.Text
+  googleRefreshToken String?   @db.Text
   colorSeason   String?
   colorPalette  Json?
   avoidColors   Json?

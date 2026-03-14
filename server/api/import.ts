@@ -130,6 +130,61 @@ importRouter.get("/wardrobe", async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/import/drive-download — Download image from Google Drive
+importRouter.post("/drive-download", async (req: Request, res: Response) => {
+  try {
+    const { fileId } = req.body as { fileId: string };
+    if (!fileId) {
+      res.status(400).json({ error: "fileId is required" });
+      return;
+    }
+
+    const userId = req.userId!;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { googleAccessToken: true },
+    });
+
+    if (!user?.googleAccessToken) {
+      res.status(401).json({ error: "No Google access token" });
+      return;
+    }
+
+    // Get file metadata
+    const metaRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,mimeType`,
+      { headers: { Authorization: `Bearer ${user.googleAccessToken}` } },
+    );
+    if (!metaRes.ok) {
+      res.status(502).json({ error: "Failed to get file metadata from Drive" });
+      return;
+    }
+    const meta = (await metaRes.json()) as { name: string; mimeType: string };
+
+    // Download file content
+    const contentRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+      { headers: { Authorization: `Bearer ${user.googleAccessToken}` } },
+    );
+    if (!contentRes.ok) {
+      res.status(502).json({ error: "Failed to download file from Drive" });
+      return;
+    }
+
+    const buffer = Buffer.from(await contentRes.arrayBuffer());
+    const base64 = buffer.toString("base64");
+
+    res.json({
+      base64,
+      mimeType: meta.mimeType ?? "image/jpeg",
+      fileName: meta.name ?? `drive_${fileId}`,
+    });
+  } catch (err) {
+    console.error("Drive download error:", err);
+    res.status(500).json({ error: "Failed to download from Google Drive" });
+  }
+});
+
 // DELETE /api/import/wardrobe/:itemId — Delete a wardrobe item
 importRouter.delete("/wardrobe/:itemId", async (req: Request, res: Response) => {
   try {

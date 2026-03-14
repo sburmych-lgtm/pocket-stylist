@@ -47,6 +47,8 @@ export const uk: Translations = {
     googleNotConfigured: "Google Sign-In не налаштовано",
     signingIn: "Входимо…",
     authError: "Помилка авторизації. Спробуйте ще раз.",
+    googleRedirect: "Увійти через Google",
+    googleRedirectHint: "Використовуйте, якщо автоматичний вхід не працює",
   },
 
   /* ---- Home ---- */
@@ -193,6 +195,7 @@ export const uk: Translations = {
       desc: "Можна завантажити flat lays, дзеркальні селфі або окремі предмети одягу.",
       descDisabled: "Поточна партія ще обробляється. Зачекайте кілька секунд.",
       clickToSelect: "Натисніть для вибору",
+      googleDrive: "Google Drive",
     },
   },
 
