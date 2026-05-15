@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import { randomBytes } from "node:crypto";
 import jwt from "jsonwebtoken";
 import { prisma } from "../services/prisma.js";
 import { isConfiguredSecret } from "../services/app-status.js";
@@ -16,7 +17,10 @@ function resolveJwtSecret(): string {
   const secret = process.env.JWT_SECRET ?? process.env.SESSION_SECRET;
   if (isConfiguredSecret(secret)) return secret;
   if (process.env.NODE_ENV === "production") {
-    throw new Error("JWT_SECRET is required in production");
+    console.error(
+      "JWT_SECRET is missing in production; using an ephemeral per-process secret. Set JWT_SECRET in Railway to keep sessions stable.",
+    );
+    return randomBytes(32).toString("hex");
   }
   return "pocket-stylist-dev-secret";
 }
