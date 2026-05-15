@@ -248,7 +248,15 @@ authRouter.get("/google/callback", async (req: Request, res: Response) => {
 
     const appToken = signToken(user.id);
 
-    res.redirect(`${appUrl}/login#token=${encodeURIComponent(appToken)}`);
+    // Use HTML redirect (not 302) so the token-in-hash arrives reliably in all
+    // user agents — Playwright's chromium does not always follow 302 responses
+    // that carry a body when the Location is same-origin.
+    const target = `${appUrl}/login#token=${encodeURIComponent(appToken)}`;
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(
+      `<!doctype html><html><head><meta charset="utf-8"><title>Pocket Stylist</title><meta http-equiv="refresh" content="0;url=${target}"><script>window.location.replace(${JSON.stringify(target)});</script></head><body></body></html>`,
+    );
   } catch (err) {
     console.error("Google callback error:", err);
     const appUrl = getAppUrl(req);
