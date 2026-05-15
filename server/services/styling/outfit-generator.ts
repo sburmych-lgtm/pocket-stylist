@@ -1,8 +1,12 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { z } from "zod";
 import type { WardrobeItem } from "../../../src/generated/prisma/client.js";
+import { isConfiguredSecret } from "../app-status.js";
+import { parseGeminiJson, withTimeout } from "../gemini-utils.js";
 import { scoreItem, groupByCategory, colorsHarmonize } from "./rules-engine.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
+const GEMINI_TIMEOUT_MS = 10_000;
 
 interface OutfitSuggestion {
   name: string;
@@ -30,7 +34,8 @@ export async function generateOutfits(
   }));
   scored.sort((a, b) => b.score - a.score);
 
-  const groups = groupByCategory(candidates);
+  const sortedCandidates = scored.map(({ item }) => item);
+  const groups = groupByCategory(sortedCandidates);
   const tops = groups.get("tops") ?? [];
   const bottoms = groups.get("bottoms") ?? [];
   const dresses = groups.get("dresses") ?? [];
@@ -149,6 +154,10 @@ async function geminiGenerateOutfits(
   ctx: StylingContext,
   count: number,
 ): Promise<OutfitSuggestion[]> {
+  if (!isConfiguredSecret(process.env.GEMINI_API_KEY)) {
+    throw new Error("Gemini API key is not configured");
+  }
+
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const itemSummaries = candidates.slice(0, 30).map((item, i) => ({
@@ -180,15 +189,18 @@ Return ONLY valid JSON array (no markdown fences):
   "confidence": 0.8
 }]`;
 
-  const result = await model.generateContent(prompt);
+  const result = await withTimeout(
+    model.generateContent(prompt),
+    GEMINI_TIMEOUT_MS,
+    "Gemini outfit generation timed out",
+  );
   const text = result.response.text().trim();
-  const json = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
-  const parsed = JSON.parse(json) as Array<{
-    name: string;
-    itemIndexes: number[];
-    stylingTip: string;
-    confidence: number;
-  }>;
+  const parsed = z.array(z.object({
+    name: z.string().min(1).catch("Outfit"),
+    itemIndexes: z.array(z.coerce.number().int()).catch([]),
+    stylingTip: z.string().catch("A balanced outfit from your wardrobe."),
+    confidence: z.coerce.number().min(0).max(1).catch(0.5),
+  })).parse(parseGeminiJson(text));
 
   return parsed.map((outfit) => ({
     name: outfit.name,

@@ -37,6 +37,7 @@ declare global {
 interface PickerBuilder {
   addView(view: string): PickerBuilder;
   enableFeature(feature: string): PickerBuilder;
+  setAppId(appId: string): PickerBuilder;
   setOAuthToken(token: string): PickerBuilder;
   setDeveloperKey(key: string): PickerBuilder;
   setCallback(cb: (data: { action: string; docs?: PickerDoc[] }) => void): PickerBuilder;
@@ -47,18 +48,29 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
   const { t } = useI18n();
   const [isDragging, setIsDragging] = useState(false);
   const [driveLoading, setDriveLoading] = useState(false);
+  const [driveError, setDriveError] = useState<string | null>(null);
   const [googleClientId, setGoogleClientId] = useState<string | null>(null);
+  const [googlePickerApiKey, setGooglePickerApiKey] = useState<string | null>(null);
+  const [googleDriveConfigured, setGoogleDriveConfigured] = useState(false);
   const pickerScriptLoaded = useRef(false);
 
   useEffect(() => {
     getAppStatus()
-      .then((s) => setGoogleClientId(s.googleClientId ?? null))
-      .catch(() => {});
+      .then((s) => {
+        setGoogleClientId(s.googleClientId ?? null);
+        setGooglePickerApiKey(s.googlePickerApiKey ?? null);
+        setGoogleDriveConfigured(s.googleDriveConfigured);
+      })
+      .catch(() => {
+        setGoogleClientId(null);
+        setGooglePickerApiKey(null);
+        setGoogleDriveConfigured(false);
+      });
   }, []);
 
   // Load Google Picker API script
   useEffect(() => {
-    if (!googleClientId || pickerScriptLoaded.current) return;
+    if (!googleDriveConfigured || pickerScriptLoaded.current) return;
     const script = document.createElement("script");
     script.src = "https://apis.google.com/js/api.js";
     script.async = true;
@@ -68,13 +80,20 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
       });
     };
     document.head.appendChild(script);
-  }, [googleClientId]);
+  }, [googleDriveConfigured]);
 
   const handleGoogleDriveClick = useCallback(
     async (e: React.MouseEvent) => {
       e.stopPropagation(); // prevent DropZone click handler
-      if (disabled || driveLoading || !googleClientId) return;
+      if (
+        disabled ||
+        driveLoading ||
+        !googleClientId ||
+        !googlePickerApiKey ||
+        !googleDriveConfigured
+      ) return;
 
+      setDriveError(null);
       setDriveLoading(true);
       try {
         // Get access token from server
@@ -92,10 +111,13 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
         }
 
         // Open Google Drive Picker
+        const appId = googleClientId.split("-")[0];
         const picker = new window.google.picker.PickerBuilder()
           .addView(window.google.picker.ViewId.DOCS_IMAGES)
           .enableFeature(window.google.picker.Feature.MULTISELECT_ENABLED)
+          .setAppId(appId)
           .setOAuthToken(accessToken)
+          .setDeveloperKey(googlePickerApiKey)
           .setCallback(async (data) => {
             if (data.action !== window.google!.picker.Action.PICKED || !data.docs) return;
 
@@ -123,6 +145,7 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
                 files.push(new File([bytes], fileName, { type: mimeType }));
               }
               if (files.length) onFiles(files);
+              else setDriveError("No Google Drive images could be imported.");
             } finally {
               setDriveLoading(false);
             }
@@ -133,10 +156,11 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
         setDriveLoading(false);
       } catch (err) {
         console.error("Google Drive picker error:", err);
+        setDriveError((err as Error).message);
         setDriveLoading(false);
       }
     },
-    [disabled, driveLoading, googleClientId, onFiles],
+    [disabled, driveLoading, googleClientId, googlePickerApiKey, googleDriveConfigured, onFiles],
   );
 
   const handleDragOver = useCallback(
@@ -170,6 +194,7 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
       );
 
       if (files.length) {
+        setDriveError(null);
         onFiles(files);
       }
     },
@@ -188,6 +213,7 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
     input.onchange = () => {
       const files = Array.from(input.files ?? []);
       if (files.length) {
+        setDriveError(null);
         onFiles(files);
       }
     };
@@ -235,7 +261,7 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
               <ImagePlus size={14} className="text-[var(--accent-cool)]" />
               {t("import.dropzone.formats")}
             </span>
-            {googleClientId && (
+            {googleDriveConfigured && (
               <button
                 type="button"
                 onClick={handleGoogleDriveClick}
@@ -251,6 +277,12 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
               </button>
             )}
           </div>
+
+          {driveError && (
+            <p className="rounded-2xl border border-[rgba(239,138,128,0.22)] bg-[rgba(239,138,128,0.08)] px-4 py-3 text-sm text-[var(--danger)]">
+              {driveError}
+            </p>
+          )}
         </div>
 
         <div className="rounded-[1.75rem] border border-white/8 bg-white/[0.03] p-5 sm:p-6">

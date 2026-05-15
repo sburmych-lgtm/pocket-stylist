@@ -13,7 +13,6 @@ import {
   CalendarDays,
   Users,
   LogOut,
-  Globe,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 

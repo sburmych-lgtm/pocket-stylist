@@ -1,3 +1,5 @@
+import { isConfiguredSecret } from "../app-status.js";
+
 interface WeatherData {
   temp: number;
   feelsLike: number;
@@ -12,8 +14,7 @@ const cache = new Map<string, { data: WeatherData; expiry: number }>();
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 const isConfigured =
-  !!process.env.OPENWEATHER_API_KEY &&
-  process.env.OPENWEATHER_API_KEY !== "MOCK_KEY";
+  isConfiguredSecret(process.env.OPENWEATHER_API_KEY);
 
 function mockWeather(lat: number, _lon: number): WeatherData {
   // Generate plausible mock weather based on latitude

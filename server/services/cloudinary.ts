@@ -1,8 +1,10 @@
 import { v2 as cloudinary } from "cloudinary";
+import { isConfiguredSecret } from "./app-status.js";
 
 const isConfigured =
-  !!process.env.CLOUDINARY_API_KEY &&
-  process.env.CLOUDINARY_API_KEY !== "MOCK_KEY";
+  isConfiguredSecret(process.env.CLOUDINARY_CLOUD_NAME) &&
+  isConfiguredSecret(process.env.CLOUDINARY_API_KEY) &&
+  isConfiguredSecret(process.env.CLOUDINARY_API_SECRET);
 
 if (isConfigured) {
   cloudinary.config({

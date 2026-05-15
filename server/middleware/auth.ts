@@ -1,20 +1,27 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { prisma } from "../services/prisma.js";
+import { isConfiguredSecret } from "../services/app-status.js";
 
 // Augment Express Request with userId
-declare global {
-  namespace Express {
-    interface Request {
-      userId?: string;
-    }
+declare module "express-serve-static-core" {
+  interface Request {
+    userId?: string;
   }
 }
 
 const DEMO_USER_EMAIL = "demo@pocket-stylist.app";
 
-const JWT_SECRET =
-  process.env.JWT_SECRET ?? "pocket-stylist-dev-secret";
+function resolveJwtSecret(): string {
+  const secret = process.env.JWT_SECRET ?? process.env.SESSION_SECRET;
+  if (isConfiguredSecret(secret)) return secret;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET is required in production");
+  }
+  return "pocket-stylist-dev-secret";
+}
+
+const JWT_SECRET = resolveJwtSecret();
 
 function isDemoMode(): boolean {
   return !process.env.GOOGLE_CLIENT_ID;

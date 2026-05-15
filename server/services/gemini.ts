@@ -1,6 +1,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { z } from "zod";
+import { isConfiguredSecret } from "./app-status.js";
+import { parseGeminiJson, withTimeout } from "./gemini-utils.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
+const GEMINI_TIMEOUT_MS = 10_000;
 
 const CLOTHING_CATEGORIES = [
   "tops", "bottoms", "dresses", "outerwear", "shoes",
@@ -38,6 +42,32 @@ export interface ClothingAnalysis {
   confidence: number;
 }
 
+export const FALLBACK_CLOTHING_ANALYSIS = {
+  category: "tops",
+  subcategory: "unknown",
+  colorPrimary: "black",
+  colorHex: "#000000",
+  pattern: "solid",
+  fabric: "cotton",
+  formalityLevel: 3,
+  season: "all",
+  brand: null,
+  confidence: 0,
+} as const satisfies ClothingAnalysis;
+
+const ClothingAnalysisSchema = z.object({
+  category: z.enum(CLOTHING_CATEGORIES).catch(FALLBACK_CLOTHING_ANALYSIS.category),
+  subcategory: z.string().min(1).catch(FALLBACK_CLOTHING_ANALYSIS.subcategory),
+  colorPrimary: z.enum(COLORS).catch(FALLBACK_CLOTHING_ANALYSIS.colorPrimary),
+  colorHex: z.string().regex(/^#[0-9A-Fa-f]{6}$/).catch(FALLBACK_CLOTHING_ANALYSIS.colorHex),
+  pattern: z.enum(PATTERNS).catch(FALLBACK_CLOTHING_ANALYSIS.pattern),
+  fabric: z.enum(FABRICS).catch(FALLBACK_CLOTHING_ANALYSIS.fabric),
+  formalityLevel: z.coerce.number().min(1).max(5).catch(FALLBACK_CLOTHING_ANALYSIS.formalityLevel),
+  season: z.enum(SEASONS).catch(FALLBACK_CLOTHING_ANALYSIS.season),
+  brand: z.string().nullable().catch(FALLBACK_CLOTHING_ANALYSIS.brand),
+  confidence: z.coerce.number().min(0).max(1).catch(FALLBACK_CLOTHING_ANALYSIS.confidence),
+});
+
 const ANALYSIS_PROMPT = `Analyze this clothing item photo. Return ONLY valid JSON with these exact fields:
 {
   "category": one of [${CLOTHING_CATEGORIES.join(", ")}],
@@ -61,28 +91,28 @@ export async function analyzeClothingImage(
   imageBase64: string,
   mimeType: string,
 ): Promise<ClothingAnalysis> {
+  if (!isConfiguredSecret(process.env.GEMINI_API_KEY)) {
+    throw new Error("Gemini API key is not configured");
+  }
+
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-  const result = await model.generateContent([
-    ANALYSIS_PROMPT,
-    {
-      inlineData: {
-        mimeType,
-        data: imageBase64,
+  const result = await withTimeout(
+    model.generateContent([
+      ANALYSIS_PROMPT,
+      {
+        inlineData: {
+          mimeType,
+          data: imageBase64,
+        },
       },
-    },
-  ]);
+    ]),
+    GEMINI_TIMEOUT_MS,
+    "Gemini clothing analysis timed out",
+  );
 
   const text = result.response.text().trim();
-  // Strip markdown fences if present
-  const json = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
-  const parsed = JSON.parse(json) as ClothingAnalysis;
-
-  // Clamp/validate
-  parsed.formalityLevel = Math.max(1, Math.min(5, parsed.formalityLevel));
-  parsed.confidence = Math.max(0, Math.min(1, parsed.confidence));
-
-  return parsed;
+  return ClothingAnalysisSchema.parse(parseGeminiJson(text));
 }
 
 export { CLOTHING_CATEGORIES, COLORS, PATTERNS, FABRICS, SEASONS };

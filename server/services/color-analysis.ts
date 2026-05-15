@@ -1,6 +1,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { z } from "zod";
+import { isConfiguredSecret } from "./app-status.js";
+import { parseGeminiJson, withTimeout } from "./gemini-utils.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
+const GEMINI_TIMEOUT_MS = 10_000;
 
 export interface ColorAnalysisResult {
   season: string;
@@ -10,6 +14,46 @@ export interface ColorAnalysisResult {
   avoid: Array<{ name: string; hex: string }>;
   description: string;
 }
+
+const COLOR_SEASONS = [
+  "Bright Spring",
+  "True Spring",
+  "Light Spring",
+  "Light Summer",
+  "True Summer",
+  "Soft Summer",
+  "Soft Autumn",
+  "True Autumn",
+  "Deep Autumn",
+  "Deep Winter",
+  "True Winter",
+  "Bright Winter",
+] as const;
+
+const DEFAULT_PALETTE = [
+  { name: "Soft Navy", hex: "#3C4A5C" },
+  { name: "Dusty Rose", hex: "#D4A0A0" },
+  { name: "Sage", hex: "#9CAF88" },
+];
+
+const DEFAULT_AVOID = [
+  { name: "Neon Orange", hex: "#FF6600" },
+  { name: "Acid Yellow", hex: "#DFFF00" },
+];
+
+const ColorEntrySchema = z.object({
+  name: z.string().min(1).catch("Neutral"),
+  hex: z.string().regex(/^#[0-9A-Fa-f]{6}$/).catch("#808080"),
+});
+
+const ColorAnalysisSchema = z.object({
+  season: z.enum(COLOR_SEASONS).catch("Soft Summer"),
+  undertone: z.enum(["warm", "cool", "neutral"]).catch("neutral"),
+  contrast: z.enum(["high", "medium", "low"]).catch("medium"),
+  palette: z.array(ColorEntrySchema).min(1).catch(DEFAULT_PALETTE),
+  avoid: z.array(ColorEntrySchema).min(1).catch(DEFAULT_AVOID),
+  description: z.string().catch("Color analysis completed with a conservative fallback."),
+});
 
 const COLOR_ANALYSIS_PROMPT = `You are an expert color analyst. Analyze this selfie photo and determine the person's seasonal color type.
 
@@ -55,47 +99,25 @@ Rules:
 export async function analyzeColorType(
   imageBase64: string,
 ): Promise<ColorAnalysisResult> {
+  if (!isConfiguredSecret(process.env.GEMINI_API_KEY)) {
+    throw new Error("Gemini API key is not configured");
+  }
+
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-  const resultPromise = model.generateContent([
-    COLOR_ANALYSIS_PROMPT,
-    {
-      inlineData: {
-        mimeType: "image/jpeg",
-        data: imageBase64,
+  const result = await withTimeout(
+    model.generateContent([
+      COLOR_ANALYSIS_PROMPT,
+      {
+        inlineData: {
+          mimeType: "image/jpeg",
+          data: imageBase64,
+        },
       },
-    },
-  ]);
-
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("Color analysis timed out")), 10_000),
+    ]),
+    GEMINI_TIMEOUT_MS,
+    "Color analysis timed out",
   );
-
-  const result = await Promise.race([resultPromise, timeoutPromise]);
   const text = result.response.text().trim();
-  const json = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
-  const parsed = JSON.parse(json) as ColorAnalysisResult;
-
-  // Validate structure
-  if (!parsed.season || !parsed.undertone || !parsed.contrast) {
-    throw new Error("Invalid color analysis response: missing required fields");
-  }
-
-  if (!Array.isArray(parsed.palette) || parsed.palette.length === 0) {
-    throw new Error("Invalid color analysis response: missing palette");
-  }
-
-  if (!Array.isArray(parsed.avoid) || parsed.avoid.length === 0) {
-    throw new Error("Invalid color analysis response: missing avoid colors");
-  }
-
-  // Validate hex codes
-  const hexRegex = /^#[0-9A-Fa-f]{6}$/;
-  for (const color of [...parsed.palette, ...parsed.avoid]) {
-    if (!hexRegex.test(color.hex)) {
-      color.hex = "#808080"; // fallback for invalid hex
-    }
-  }
-
-  return parsed;
+  return ColorAnalysisSchema.parse(parseGeminiJson(text));
 }

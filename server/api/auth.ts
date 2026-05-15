@@ -3,13 +3,14 @@ import type { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 import { prisma } from "../services/prisma.js";
-import { requireAuth, JWT_SECRET, isDemoMode } from "../middleware/auth.js";
+import { requireAuth, JWT_SECRET } from "../middleware/auth.js";
+import { isConfiguredSecret } from "../services/app-status.js";
 
 export const authRouter = Router();
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const oauthClient = GOOGLE_CLIENT_ID
+const oauthClient = isConfiguredSecret(GOOGLE_CLIENT_ID)
   ? new OAuth2Client(GOOGLE_CLIENT_ID)
   : null;
 
@@ -24,10 +25,58 @@ function signToken(userId: string): string {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "7d" });
 }
 
+interface GoogleUserProfile {
+  googleId: string;
+  email: string;
+  name?: string;
+  picture?: string;
+  googleAccessToken?: string;
+  googleRefreshToken?: string | null;
+}
+
+async function upsertGoogleUser(profile: GoogleUserProfile) {
+  const existing = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { googleId: profile.googleId },
+        { email: profile.email },
+      ],
+    },
+  });
+
+  const tokenData = {
+    ...(profile.googleAccessToken ? { googleAccessToken: profile.googleAccessToken } : {}),
+    ...(profile.googleRefreshToken ? { googleRefreshToken: profile.googleRefreshToken } : {}),
+  };
+
+  if (existing) {
+    return prisma.user.update({
+      where: { id: existing.id },
+      data: {
+        googleId: profile.googleId,
+        email: profile.email,
+        name: profile.name ?? undefined,
+        avatarUrl: profile.picture ?? undefined,
+        ...tokenData,
+      },
+    });
+  }
+
+  return prisma.user.create({
+    data: {
+      googleId: profile.googleId,
+      email: profile.email,
+      name: profile.name ?? null,
+      avatarUrl: profile.picture ?? null,
+      ...tokenData,
+    },
+  });
+}
+
 // POST /api/auth/google — Exchange Google ID token for app JWT
 authRouter.post("/google", async (req: Request, res: Response) => {
   try {
-    if (!oauthClient || !GOOGLE_CLIENT_ID) {
+    if (!oauthClient || !isConfiguredSecret(GOOGLE_CLIENT_ID)) {
       res
         .status(503)
         .json({ error: "Google auth not configured on this server" });
@@ -47,24 +96,14 @@ authRouter.post("/google", async (req: Request, res: Response) => {
     });
 
     const payload = ticket.getPayload();
-    if (!payload?.sub || !payload.email) {
+    if (!payload?.sub || !payload.email || payload.email_verified !== true) {
       res.status(401).json({ error: "Invalid Google token payload" });
       return;
     }
 
     const { sub: googleId, email, name, picture } = payload;
 
-    // Upsert user: find by googleId first, fall back to email
-    const user = await prisma.user.upsert({
-      where: { googleId },
-      update: { email, name: name ?? undefined, avatarUrl: picture ?? undefined },
-      create: {
-        googleId,
-        email,
-        name: name ?? null,
-        avatarUrl: picture ?? null,
-      },
-    });
+    const user = await upsertGoogleUser({ googleId, email, name, picture });
 
     const token = signToken(user.id);
 
@@ -85,7 +124,7 @@ authRouter.post("/google", async (req: Request, res: Response) => {
 
 // GET /api/auth/google/redirect — Start redirect-based OAuth flow (works on all mobile browsers)
 authRouter.get("/google/redirect", (req: Request, res: Response) => {
-  if (!GOOGLE_CLIENT_ID) {
+  if (!isConfiguredSecret(GOOGLE_CLIENT_ID)) {
     res.status(503).json({ error: "Google auth not configured" });
     return;
   }
@@ -122,7 +161,7 @@ authRouter.get("/google/callback", async (req: Request, res: Response) => {
       return;
     }
 
-    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    if (!isConfiguredSecret(GOOGLE_CLIENT_ID) || !isConfiguredSecret(GOOGLE_CLIENT_SECRET)) {
       res.redirect(`${appUrl}/login?authError=server_not_configured`);
       return;
     }
@@ -162,37 +201,25 @@ authRouter.get("/google/callback", async (req: Request, res: Response) => {
     });
 
     const payload = ticket.getPayload();
-    if (!payload?.sub || !payload.email) {
+    if (!payload?.sub || !payload.email || payload.email_verified !== true) {
       res.redirect(`${appUrl}/login?authError=invalid_token`);
       return;
     }
 
     const { sub: googleId, email, name, picture } = payload;
 
-    // Upsert user with Google tokens for Drive access
-    const user = await prisma.user.upsert({
-      where: { googleId },
-      update: {
-        email,
-        name: name ?? undefined,
-        avatarUrl: picture ?? undefined,
-        googleAccessToken: tokens.access_token,
-        ...(tokens.refresh_token ? { googleRefreshToken: tokens.refresh_token } : {}),
-      },
-      create: {
-        googleId,
-        email,
-        name: name ?? null,
-        avatarUrl: picture ?? null,
-        googleAccessToken: tokens.access_token,
-        googleRefreshToken: tokens.refresh_token ?? null,
-      },
+    const user = await upsertGoogleUser({
+      googleId,
+      email,
+      name,
+      picture,
+      googleAccessToken: tokens.access_token,
+      googleRefreshToken: tokens.refresh_token ?? null,
     });
 
     const appToken = signToken(user.id);
 
-    // Redirect to frontend with token in URL fragment (safer than query param)
-    res.redirect(`${appUrl}/login?token=${appToken}`);
+    res.redirect(`${appUrl}/login#token=${encodeURIComponent(appToken)}`);
   } catch (err) {
     console.error("Google callback error:", err);
     const appUrl = getAppUrl(req);
@@ -268,7 +295,11 @@ authRouter.get("/google-access-token", requireAuth, async (req: Request, res: Re
     }
 
     // If we have a refresh token, try to refresh the access token
-    if (user.googleRefreshToken && GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
+    if (
+      user.googleRefreshToken &&
+      isConfiguredSecret(GOOGLE_CLIENT_ID) &&
+      isConfiguredSecret(GOOGLE_CLIENT_SECRET)
+    ) {
       try {
         const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
           method: "POST",

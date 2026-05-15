@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 import { prisma } from "../services/prisma.js";
-import { analyzeClothingImage } from "../services/gemini.js";
+import { analyzeClothingImage, FALLBACK_CLOTHING_ANALYSIS } from "../services/gemini.js";
 
 export const scannerRouter = Router();
 
@@ -18,8 +18,11 @@ scannerRouter.post("/analyze", async (req: Request, res: Response) => {
       return;
     }
 
-    // Analyze the scanned item
-    const tags = await analyzeClothingImage(image, mimeType);
+    // Analyze the scanned item; keep scanner usable if AI is temporarily unavailable.
+    const tags = await analyzeClothingImage(image, mimeType).catch((err) => {
+      console.error("Scanner Gemini analysis failed:", err);
+      return FALLBACK_CLOTHING_ANALYSIS;
+    });
 
     // Get user's wardrobe for comparison
     const userId = req.userId!;

@@ -93,7 +93,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function init() {
       // Check for token from redirect-based OAuth callback
       const urlParams = new URLSearchParams(window.location.search);
-      const callbackToken = urlParams.get("token");
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const callbackToken = urlParams.get("token") ?? hashParams.get("token");
       if (callbackToken) {
         window.history.replaceState({}, "", window.location.pathname);
         setToken(callbackToken);

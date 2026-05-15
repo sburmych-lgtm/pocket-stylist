@@ -10,6 +10,7 @@ export function LoginPage() {
   const { t } = useI18n();
   const googleBtnRef = useRef<HTMLDivElement>(null);
   const [googleClientId, setGoogleClientId] = useState<string | null>(null);
+  const [googleRedirectConfigured, setGoogleRedirectConfigured] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authInProgress, setAuthInProgress] = useState(false);
@@ -26,8 +27,14 @@ export function LoginPage() {
 
   useEffect(() => {
     getAppStatus()
-      .then((status) => setGoogleClientId(status.googleClientId ?? null))
-      .catch(() => setGoogleClientId(null))
+      .then((status) => {
+        setGoogleClientId(status.googleClientId ?? null);
+        setGoogleRedirectConfigured(status.googleRedirectConfigured);
+      })
+      .catch(() => {
+        setGoogleClientId(null);
+        setGoogleRedirectConfigured(false);
+      })
       .finally(() => setStatusLoading(false));
   }, []);
 
@@ -145,7 +152,7 @@ export function LoginPage() {
             </div>
           )}
 
-          {googleClientId && !authInProgress && (
+          {googleRedirectConfigured && !authInProgress && (
             <a
               href="/api/auth/google/redirect"
               className="flex w-full items-center justify-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-3.5 text-sm font-semibold text-[var(--text-primary)] transition-all duration-300 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40"

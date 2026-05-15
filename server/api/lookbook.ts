@@ -26,11 +26,6 @@ interface LookbookDay {
   } | null;
 }
 
-interface LookbookResponse {
-  days: LookbookDay[];
-  weekStart: string;
-}
-
 // POST /api/lookbook/generate — Generate 7-day lookbook
 lookbookRouter.post("/generate", async (req: Request, res: Response) => {
   try {

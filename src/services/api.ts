@@ -134,7 +134,11 @@ export interface AppStatus {
   cloudinaryConfigured: boolean;
   weatherConfigured: boolean;
   googleAuthConfigured: boolean;
+  googleSignInConfigured: boolean;
+  googleRedirectConfigured: boolean;
+  googleDriveConfigured: boolean;
   googleClientId: string | null;
+  googlePickerApiKey: string | null;
 }
 
 let _statusCache: AppStatus | null = null;

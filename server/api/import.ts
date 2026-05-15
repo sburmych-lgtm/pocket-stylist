@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 import { prisma } from "../services/prisma.js";
-import { analyzeClothingImage } from "../services/gemini.js";
+import { analyzeClothingImage, FALLBACK_CLOTHING_ANALYSIS } from "../services/gemini.js";
 import { uploadImage } from "../services/cloudinary.js";
 import { resolveTargetUser } from "../services/family.js";
 
@@ -30,18 +30,7 @@ importRouter.post("/analyze", async (req: Request, res: Response) => {
       tags = await analyzeClothingImage(image, mimeType);
     } catch (err) {
       console.error("Gemini analysis failed:", err);
-      tags = {
-        category: "tops",
-        subcategory: "unknown",
-        colorPrimary: "black",
-        colorHex: "#000000",
-        pattern: "solid",
-        fabric: "cotton",
-        formalityLevel: 3,
-        season: "all",
-        brand: null,
-        confidence: 0,
-      };
+      tags = FALLBACK_CLOTHING_ANALYSIS;
     }
 
     res.json({

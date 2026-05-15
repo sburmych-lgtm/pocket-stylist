@@ -1,12 +1,16 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { z } from "zod";
 import { prisma } from "../services/prisma.js";
+import { isConfiguredSecret } from "../services/app-status.js";
+import { parseGeminiJson, withTimeout } from "../services/gemini-utils.js";
 import { colorsHarmonize } from "../services/styling/rules-engine.js";
 
 export const matchingRouter = Router();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
+const GEMINI_TIMEOUT_MS = 10_000;
 
 interface GarmentBreakdown {
   garments: Array<{
@@ -17,6 +21,25 @@ interface GarmentBreakdown {
     description: string;
   }>;
 }
+
+const GARMENT_CATEGORIES = [
+  "tops",
+  "bottoms",
+  "dresses",
+  "outerwear",
+  "shoes",
+  "accessories",
+] as const;
+
+const GarmentBreakdownSchema = z.object({
+  garments: z.array(z.object({
+    category: z.enum(GARMENT_CATEGORIES).catch("tops"),
+    color: z.string().min(1).catch("black"),
+    pattern: z.string().min(1).catch("solid"),
+    fabric: z.string().min(1).catch("unknown"),
+    description: z.string().catch("Clothing item"),
+  })).catch([]),
+});
 
 // POST /api/matching/analyze — Upload reference photo, decompose into garments
 matchingRouter.post("/analyze", async (req: Request, res: Response) => {
@@ -31,10 +54,20 @@ matchingRouter.post("/analyze", async (req: Request, res: Response) => {
       return;
     }
 
+    if (!isConfiguredSecret(process.env.GEMINI_API_KEY)) {
+      res.json({
+        breakdown: [],
+        recreations: [],
+        message: "Reference matching needs Gemini configuration.",
+      });
+      return;
+    }
+
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const result = await model.generateContent([
-      `Analyze this outfit photo and break it down into individual garments.
+    const result = await withTimeout(
+      model.generateContent([
+        `Analyze this outfit photo and break it down into individual garments.
 Return ONLY valid JSON (no markdown fences):
 {
   "garments": [
@@ -47,12 +80,14 @@ Return ONLY valid JSON (no markdown fences):
     }
   ]
 }`,
-      { inlineData: { mimeType, data: image } },
-    ]);
+        { inlineData: { mimeType, data: image } },
+      ]),
+      GEMINI_TIMEOUT_MS,
+      "Gemini reference matching timed out",
+    );
 
     const text = result.response.text().trim();
-    const json = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
-    const breakdown = JSON.parse(json) as GarmentBreakdown;
+    const breakdown = GarmentBreakdownSchema.parse(parseGeminiJson(text)) as GarmentBreakdown;
 
     // Find matches from user's wardrobe
     const userId = req.userId!;

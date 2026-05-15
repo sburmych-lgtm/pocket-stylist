@@ -1,5 +1,4 @@
 import { Cloud, CloudRain, CloudSun, MapPin, Snowflake, SunMedium } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 
 interface WeatherBadgeProps {
   temp: number;
@@ -7,29 +6,27 @@ interface WeatherBadgeProps {
   location: string;
 }
 
-function weatherIcon(condition: string): LucideIcon {
+function WeatherIcon({ condition }: { condition: string }) {
   if (condition === "Clear") {
-    return SunMedium;
+    return <SunMedium size={19} />;
   }
   if (condition === "Clouds") {
-    return CloudSun;
+    return <CloudSun size={19} />;
   }
   if (condition === "Rain" || condition === "Drizzle") {
-    return CloudRain;
+    return <CloudRain size={19} />;
   }
   if (condition === "Snow") {
-    return Snowflake;
+    return <Snowflake size={19} />;
   }
-  return Cloud;
+  return <Cloud size={19} />;
 }
 
 export function WeatherBadge({ temp, condition, location }: WeatherBadgeProps) {
-  const Icon = weatherIcon(condition);
-
   return (
     <div className="floating-panel flex items-center gap-4 px-4 py-3">
       <div className="spotlight-ring flex h-11 w-11 items-center justify-center rounded-2xl bg-[rgba(136,198,189,0.12)] text-[var(--accent-cool)]">
-        <Icon size={19} />
+        <WeatherIcon condition={condition} />
       </div>
       <div>
         <p className="text-lg font-semibold text-[var(--text-primary)]">
