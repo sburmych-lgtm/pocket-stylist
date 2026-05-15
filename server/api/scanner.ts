@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 import { prisma } from "../services/prisma.js";
 import { analyzeClothingImage, FALLBACK_CLOTHING_ANALYSIS } from "../services/gemini.js";
+import { getDemoWardrobe, isDemoUser } from "../services/demo-store.js";
 
 export const scannerRouter = Router();
 
@@ -26,9 +27,11 @@ scannerRouter.post("/analyze", async (req: Request, res: Response) => {
 
     // Get user's wardrobe for comparison
     const userId = req.userId!;
-    const wardrobe = await prisma.wardrobeItem.findMany({
-      where: { userId },
-    });
+    const wardrobe = isDemoUser(userId)
+      ? getDemoWardrobe(userId)
+      : await prisma.wardrobeItem.findMany({
+          where: { userId },
+        });
 
     // Gap analysis: does user already have similar items?
     const sameCategory = wardrobe.filter((w) => w.category === tags.category);

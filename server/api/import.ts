@@ -4,6 +4,12 @@ import { prisma } from "../services/prisma.js";
 import { analyzeClothingImage, FALLBACK_CLOTHING_ANALYSIS } from "../services/gemini.js";
 import { uploadImage } from "../services/cloudinary.js";
 import { resolveTargetUser } from "../services/family.js";
+import {
+  addDemoWardrobeItems,
+  deleteDemoWardrobeItem,
+  getDemoWardrobe,
+  isDemoUser,
+} from "../services/demo-store.js";
 
 export const importRouter = Router();
 
@@ -71,6 +77,12 @@ importRouter.post("/save", async (req: Request, res: Response) => {
     }
 
     const userId = req.userId!;
+    if (isDemoUser(userId)) {
+      const saved = addDemoWardrobeItems(userId, items);
+      res.json({ saved });
+      return;
+    }
+
 
     const created = await prisma.wardrobeItem.createMany({
       data: items.map((item) => ({
@@ -101,6 +113,11 @@ importRouter.post("/save", async (req: Request, res: Response) => {
 importRouter.get("/wardrobe", async (req: Request, res: Response) => {
   try {
     const userId = req.userId!;
+    if (isDemoUser(userId)) {
+      res.json(getDemoWardrobe(userId));
+      return;
+    }
+
     const memberId = req.query.memberId as string | undefined;
     const { targetUserId, error } = await resolveTargetUser(userId, memberId);
     if (error) {
@@ -129,6 +146,11 @@ importRouter.post("/drive-download", async (req: Request, res: Response) => {
     }
 
     const userId = req.userId!;
+    if (isDemoUser(userId)) {
+      res.status(401).json({ error: "Google Drive import requires Google login." });
+      return;
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { googleAccessToken: true },
@@ -181,6 +203,15 @@ importRouter.delete("/wardrobe/:itemId", async (req: Request, res: Response) => 
     const itemId = Array.isArray(req.params.itemId)
       ? req.params.itemId[0]
       : req.params.itemId ?? "";
+
+    if (isDemoUser(userId)) {
+      if (!deleteDemoWardrobeItem(userId, itemId)) {
+        res.status(404).json({ error: "Item not found" });
+        return;
+      }
+      res.json({ ok: true });
+      return;
+    }
 
     const item = await prisma.wardrobeItem.findUnique({
       where: { id: itemId },

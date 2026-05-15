@@ -3,6 +3,8 @@ import { randomBytes } from "node:crypto";
 import jwt from "jsonwebtoken";
 import { prisma } from "../services/prisma.js";
 import { isConfiguredSecret } from "../services/app-status.js";
+import { DEMO_USER_ID } from "../services/demo-store.js";
+import { withTimeout } from "../services/gemini-utils.js";
 
 // Augment Express Request with userId
 declare module "express-serve-static-core" {
@@ -32,12 +34,20 @@ function isDemoMode(): boolean {
 }
 
 async function ensureDemoUser(): Promise<string> {
-  const user = await prisma.user.upsert({
-    where: { email: DEMO_USER_EMAIL },
-    update: {},
-    create: { email: DEMO_USER_EMAIL, name: "Demo User" },
-  });
-  return user.id;
+  try {
+    const user = await withTimeout(
+      prisma.user.upsert({
+        where: { email: DEMO_USER_EMAIL },
+        update: {},
+        create: { email: DEMO_USER_EMAIL, name: "Demo User" },
+      }),
+      5_000,
+      "Demo database login timed out",
+    );
+    return user.id;
+  } catch {
+    return DEMO_USER_ID;
+  }
 }
 
 /**

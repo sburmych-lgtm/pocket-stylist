@@ -5,6 +5,8 @@ import { OAuth2Client } from "google-auth-library";
 import { prisma } from "../services/prisma.js";
 import { requireAuth, JWT_SECRET } from "../middleware/auth.js";
 import { isConfiguredSecret } from "../services/app-status.js";
+import { DEMO_USER, DEMO_USER_EMAIL, isDemoUser } from "../services/demo-store.js";
+import { withTimeout } from "../services/gemini-utils.js";
 
 export const authRouter = Router();
 
@@ -230,10 +232,17 @@ authRouter.get("/google/callback", async (req: Request, res: Response) => {
 // POST /api/auth/demo — Demo user login (always available as fallback)
 authRouter.post("/demo", async (_req: Request, res: Response) => {
   try {
-    const user = await prisma.user.upsert({
-      where: { email: "demo@pocket-stylist.app" },
-      update: {},
-      create: { email: "demo@pocket-stylist.app", name: "Demo User" },
+    const user = await withTimeout(
+      prisma.user.upsert({
+        where: { email: DEMO_USER_EMAIL },
+        update: {},
+        create: { email: DEMO_USER_EMAIL, name: DEMO_USER.name },
+      }),
+      5_000,
+      "Demo database login timed out",
+    ).catch((err) => {
+      console.error("Demo auth falling back to in-memory user:", err);
+      return DEMO_USER;
     });
 
     const token = signToken(user.id);
@@ -256,6 +265,11 @@ authRouter.post("/demo", async (_req: Request, res: Response) => {
 // GET /api/auth/me — Current user info (requires auth)
 authRouter.get("/me", requireAuth, async (req: Request, res: Response) => {
   try {
+    if (isDemoUser(req.userId)) {
+      res.json({ user: DEMO_USER });
+      return;
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: req.userId! },
       select: {

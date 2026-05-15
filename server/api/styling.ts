@@ -5,6 +5,7 @@ import { getWeather, weatherToSeason } from "../services/styling/weather.js";
 import { filterWardrobe } from "../services/styling/rules-engine.js";
 import { generateOutfits } from "../services/styling/outfit-generator.js";
 import { resolveTargetUser } from "../services/family.js";
+import { getDemoWardrobe, isDemoUser } from "../services/demo-store.js";
 
 export const stylingRouter = Router();
 
@@ -34,7 +35,9 @@ stylingRouter.post("/suggest", async (req: Request, res: Response) => {
 
     // Resolve target user (self or family member)
     const userId = req.userId!;
-    const { targetUserId, error: memberError } = await resolveTargetUser(userId, memberId);
+    const { targetUserId, error: memberError } = isDemoUser(userId)
+      ? { targetUserId: userId, error: undefined }
+      : await resolveTargetUser(userId, memberId);
     if (memberError) {
       res.status(403).json({ error: memberError });
       return;
@@ -50,10 +53,12 @@ stylingRouter.post("/suggest", async (req: Request, res: Response) => {
     };
 
     // Get target user with color data
-    const userProfile = await prisma.user.findUnique({
-      where: { id: targetUserId },
-      select: { colorPalette: true, avoidColors: true },
-    });
+    const userProfile = isDemoUser(targetUserId)
+      ? null
+      : await prisma.user.findUnique({
+          where: { id: targetUserId },
+          select: { colorPalette: true, avoidColors: true },
+        });
 
     const colorPalette = (userProfile?.colorPalette ?? undefined) as
       | Array<{ name: string; hex: string }>
@@ -63,9 +68,11 @@ stylingRouter.post("/suggest", async (req: Request, res: Response) => {
       | undefined;
 
     // Get wardrobe
-    const allItems = await prisma.wardrobeItem.findMany({
-      where: { userId: targetUserId },
-    });
+    const allItems = isDemoUser(targetUserId)
+      ? getDemoWardrobe(targetUserId)
+      : await prisma.wardrobeItem.findMany({
+          where: { userId: targetUserId },
+        });
 
     if (allItems.length === 0) {
       res.json({

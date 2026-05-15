@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { prisma } from "../services/prisma.js";
 import { analyzeColorType } from "../services/color-analysis.js";
 import type { ColorAnalysisResult } from "../services/color-analysis.js";
+import { DEMO_USER, isDemoUser } from "../services/demo-store.js";
 
 export const profileRouter = Router();
 
@@ -10,6 +11,11 @@ export const profileRouter = Router();
 profileRouter.get("/", async (req: Request, res: Response) => {
   try {
     const userId = req.userId!;
+    if (isDemoUser(userId)) {
+      res.json(DEMO_USER);
+      return;
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -40,6 +46,11 @@ profileRouter.get("/", async (req: Request, res: Response) => {
 profileRouter.patch("/", async (req: Request, res: Response) => {
   try {
     const userId = req.userId!;
+    if (isDemoUser(userId)) {
+      res.json({ ...DEMO_USER, ...(req.body as { genderMode?: string; name?: string }) });
+      return;
+    }
+
     const { genderMode, name } = req.body as {
       genderMode?: string;
       name?: string;
@@ -90,6 +101,11 @@ profileRouter.post(
       }
 
       const result: ColorAnalysisResult = await analyzeColorType(image);
+
+      if (isDemoUser(userId)) {
+        res.json(result);
+        return;
+      }
 
       // Save to user profile — serialize through JSON to satisfy Prisma's InputJsonValue
       await prisma.user.update({

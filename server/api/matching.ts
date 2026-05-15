@@ -4,6 +4,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
 import { prisma } from "../services/prisma.js";
 import { isConfiguredSecret } from "../services/app-status.js";
+import { getDemoWardrobe, isDemoUser } from "../services/demo-store.js";
 import { parseGeminiJson, withTimeout } from "../services/gemini-utils.js";
 import { colorsHarmonize } from "../services/styling/rules-engine.js";
 
@@ -91,9 +92,11 @@ Return ONLY valid JSON (no markdown fences):
 
     // Find matches from user's wardrobe
     const userId = req.userId!;
-    const wardrobe = await prisma.wardrobeItem.findMany({
-      where: { userId },
-    });
+    const wardrobe = isDemoUser(userId)
+      ? getDemoWardrobe(userId)
+      : await prisma.wardrobeItem.findMany({
+          where: { userId },
+        });
 
     const recreations = breakdown.garments.map((garment) => {
       // Find best matches per category
