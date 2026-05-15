@@ -56,8 +56,32 @@ test("getAppStatus only reports fully configured services", () => {
   assert.equal(configuredStatus.googleSignInConfigured, true);
   assert.equal(configuredStatus.googleRedirectConfigured, true);
   assert.equal(configuredStatus.googleDriveConfigured, true);
+  assert.equal(configuredStatus.googleDrivePickerConfigured, true);
+  assert.equal(configuredStatus.emailAuthEnabled, true);
   assert.equal(configuredStatus.googleClientId, "google-client");
   assert.equal(configuredStatus.googlePickerApiKey, "picker-key");
   assert.equal(configuredStatus.cloudinaryConfigured, true);
   assert.equal(configuredStatus.weatherConfigured, true);
+});
+
+test("Drive access works with redirect OAuth even without Picker API key", () => {
+  const status = getAppStatus({
+    GOOGLE_CLIENT_ID: "google-client",
+    GOOGLE_CLIENT_SECRET: "google-secret",
+  });
+
+  assert.equal(status.googleRedirectConfigured, true);
+  assert.equal(status.googleDriveConfigured, true, "Drive should be available via custom modal");
+  assert.equal(status.googleDrivePickerConfigured, false, "Native picker still requires Picker API key");
+  assert.equal(status.googlePickerApiKey, null);
+});
+
+test("emailAuthEnabled is always true (self-contained password auth)", () => {
+  const empty = getAppStatus({});
+  assert.equal(empty.emailAuthEnabled, true);
+
+  const placeholders = getAppStatus({
+    GEMINI_API_KEY: "YOUR_KEY_HERE",
+  });
+  assert.equal(placeholders.emailAuthEnabled, true);
 });

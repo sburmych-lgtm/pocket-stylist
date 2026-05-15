@@ -1,5 +1,7 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
+import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 import { prisma } from "../services/prisma.js";
@@ -9,6 +11,31 @@ import { DEMO_USER, DEMO_USER_EMAIL, isDemoUser } from "../services/demo-store.j
 import { withTimeout } from "../services/gemini-utils.js";
 
 export const authRouter = Router();
+
+const scryptAsync = promisify(scrypt) as (
+  password: string,
+  salt: Buffer,
+  keylen: number,
+) => Promise<Buffer>;
+
+const PASSWORD_MIN_LENGTH = 8;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16);
+  const hash = await scryptAsync(password, salt, 64);
+  return `scrypt$${salt.toString("hex")}$${hash.toString("hex")}`;
+}
+
+async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  const parts = stored.split("$");
+  if (parts.length !== 3 || parts[0] !== "scrypt") return false;
+  const salt = Buffer.from(parts[1], "hex");
+  const expected = Buffer.from(parts[2], "hex");
+  const actual = await scryptAsync(password, salt, expected.length);
+  if (actual.length !== expected.length) return false;
+  return timingSafeEqual(actual, expected);
+}
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -344,6 +371,105 @@ authRouter.get("/google-access-token", requireAuth, async (req: Request, res: Re
   } catch (err) {
     console.error("Get access token error:", err);
     res.status(500).json({ error: "Failed to get access token" });
+  }
+});
+
+// POST /api/auth/email/register — Register with email and password
+authRouter.post("/email/register", async (req: Request, res: Response) => {
+  try {
+    const { email, password, name } = req.body as {
+      email?: string;
+      password?: string;
+      name?: string;
+    };
+
+    const normalizedEmail = (email ?? "").trim().toLowerCase();
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      res.status(400).json({ error: "invalid_email" });
+      return;
+    }
+    if (!password || password.length < PASSWORD_MIN_LENGTH) {
+      res.status(400).json({ error: "password_too_short" });
+      return;
+    }
+    if (normalizedEmail === DEMO_USER_EMAIL) {
+      res.status(400).json({ error: "email_reserved" });
+      return;
+    }
+
+    const existing = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true, passwordHash: true },
+    });
+    if (existing) {
+      res.status(409).json({ error: "email_in_use" });
+      return;
+    }
+
+    const passwordHash = await hashPassword(password);
+    const user = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        name: name?.trim() || null,
+        passwordHash,
+      },
+    });
+
+    const token = signToken(user.id);
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+      },
+    });
+  } catch (err) {
+    console.error("Email register error:", err);
+    res.status(500).json({ error: "registration_failed" });
+  }
+});
+
+// POST /api/auth/email/login — Login with email and password
+authRouter.post("/email/login", async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body as { email?: string; password?: string };
+    const normalizedEmail = (email ?? "").trim().toLowerCase();
+
+    if (!EMAIL_REGEX.test(normalizedEmail) || !password) {
+      res.status(400).json({ error: "invalid_credentials" });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!user?.passwordHash) {
+      res.status(401).json({ error: "invalid_credentials" });
+      return;
+    }
+
+    const ok = await verifyPassword(password, user.passwordHash);
+    if (!ok) {
+      res.status(401).json({ error: "invalid_credentials" });
+      return;
+    }
+
+    const token = signToken(user.id);
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+      },
+    });
+  } catch (err) {
+    console.error("Email login error:", err);
+    res.status(500).json({ error: "login_failed" });
   }
 });
 

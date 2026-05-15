@@ -136,6 +136,79 @@ importRouter.get("/wardrobe", async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/import/drive/list — List image files from user's Google Drive (no Picker API key needed)
+importRouter.get("/drive/list", async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId!;
+    if (isDemoUser(userId)) {
+      res.status(401).json({ error: "Google Drive listing requires Google login." });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { googleAccessToken: true },
+    });
+    if (!user?.googleAccessToken) {
+      res.status(401).json({ error: "No Google access token. Re-login via Google to grant Drive access." });
+      return;
+    }
+
+    const folderId = typeof req.query.folderId === "string" ? req.query.folderId : "";
+    const pageToken = typeof req.query.pageToken === "string" ? req.query.pageToken : "";
+    const search = typeof req.query.q === "string" ? req.query.q.trim() : "";
+
+    const conditions: string[] = ["trashed = false"];
+    if (folderId) conditions.push(`'${folderId.replace(/'/g, "\\'")}' in parents`);
+    conditions.push("(mimeType contains 'image/' or mimeType = 'application/vnd.google-apps.folder')");
+    if (search) conditions.push(`name contains '${search.replace(/'/g, "\\'")}'`);
+
+    const params = new URLSearchParams({
+      q: conditions.join(" and "),
+      fields: "nextPageToken, files(id, name, mimeType, iconLink, thumbnailLink, modifiedTime, parents)",
+      pageSize: "100",
+      orderBy: "folder,modifiedTime desc",
+    });
+    if (pageToken) params.set("pageToken", pageToken);
+
+    const driveRes = await fetch(`https://www.googleapis.com/drive/v3/files?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${user.googleAccessToken}` },
+    });
+
+    if (driveRes.status === 401) {
+      res.status(401).json({ error: "Google access token expired. Re-login via Google." });
+      return;
+    }
+    if (!driveRes.ok) {
+      const body = await driveRes.text();
+      console.error("Drive list error:", body);
+      res.status(502).json({ error: "Failed to list Drive files" });
+      return;
+    }
+
+    const data = (await driveRes.json()) as {
+      nextPageToken?: string;
+      files?: Array<{
+        id: string;
+        name: string;
+        mimeType: string;
+        iconLink?: string;
+        thumbnailLink?: string;
+        modifiedTime?: string;
+        parents?: string[];
+      }>;
+    };
+
+    res.json({
+      files: data.files ?? [],
+      nextPageToken: data.nextPageToken ?? null,
+    });
+  } catch (err) {
+    console.error("Drive list error:", err);
+    res.status(500).json({ error: "Failed to list Drive files" });
+  }
+});
+
 // POST /api/import/drive-download — Download image from Google Drive
 importRouter.post("/drive-download", async (req: Request, res: Response) => {
   try {

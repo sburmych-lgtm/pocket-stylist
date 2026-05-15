@@ -12,7 +12,6 @@ import {
   setToken,
   clearToken,
   getToken,
-  getAppStatus,
 } from "../services/api";
 import type { AuthUser } from "../services/api";
 
@@ -25,6 +24,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isDemoMode: boolean;
   loginWithGoogle: (credential: string) => Promise<void>;
+  loginWithEmail: (email: string, password: string) => Promise<void>;
+  registerWithEmail: (email: string, password: string, name?: string) => Promise<void>;
   loginDemo: () => Promise<void>;
   logout: () => void;
 }
@@ -67,6 +68,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithGoogle = useCallback(
     async (credential: string) => {
       const data = await authApi.loginGoogle(credential);
+      handleAuthResponse(data);
+    },
+    [handleAuthResponse],
+  );
+
+  const loginWithEmail = useCallback(
+    async (email: string, password: string) => {
+      const data = await authApi.loginEmail(email, password);
+      handleAuthResponse(data);
+    },
+    [handleAuthResponse],
+  );
+
+  const registerWithEmail = useCallback(
+    async (email: string, password: string, name?: string) => {
+      const data = await authApi.registerEmail(email, password, name);
       handleAuthResponse(data);
     },
     [handleAuthResponse],
@@ -128,22 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // If still no user → check server config; auto-demo when no Google
-      if (!cancelled && !getToken()) {
-        try {
-          const status = await getAppStatus();
-          if (!cancelled && !status.googleClientId) {
-            const data = await authApi.loginDemo();
-            if (!cancelled) {
-              setIsDemoMode(true);
-              handleAuthResponse(data);
-            }
-          }
-        } catch {
-          // status fetch or demo endpoint unavailable — stay logged out
-        }
-      }
-
+      // No auto-demo — user must explicitly choose how to log in (Google, email, or demo)
       if (!cancelled) {
         setIsLoading(false);
       }
@@ -165,10 +167,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: user !== null,
       isDemoMode,
       loginWithGoogle,
+      loginWithEmail,
+      registerWithEmail,
       loginDemo,
       logout,
     }),
-    [user, token, isLoading, isDemoMode, loginWithGoogle, loginDemo, logout],
+    [
+      user,
+      token,
+      isLoading,
+      isDemoMode,
+      loginWithGoogle,
+      loginWithEmail,
+      registerWithEmail,
+      loginDemo,
+      logout,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

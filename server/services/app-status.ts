@@ -7,6 +7,8 @@ export interface AppStatus {
   googleSignInConfigured: boolean;
   googleRedirectConfigured: boolean;
   googleDriveConfigured: boolean;
+  googleDrivePickerConfigured: boolean;
+  emailAuthEnabled: boolean;
   googleClientId: string | null;
   googlePickerApiKey: string | null;
 }
@@ -39,7 +41,11 @@ export function getAppStatus(env: EnvMap = process.env): AppStatus {
     googleAuthConfigured: googleRedirectConfigured,
     googleSignInConfigured,
     googleRedirectConfigured,
-    googleDriveConfigured: googleRedirectConfigured && googlePickerConfigured,
+    // Drive access works whenever the user has a Google refresh token (i.e. redirect OAuth configured).
+    // Picker API key is only needed to render Google's native picker UI; otherwise we use a custom list modal.
+    googleDriveConfigured: googleRedirectConfigured,
+    googleDrivePickerConfigured: googleRedirectConfigured && googlePickerConfigured,
+    emailAuthEnabled: true,
     googleClientId: googleSignInConfigured ? googleClientId : null,
     googlePickerApiKey: googlePickerConfigured ? googlePickerApiKey : null,
   };

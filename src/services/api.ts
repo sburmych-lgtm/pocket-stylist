@@ -69,9 +69,66 @@ export const authApi = {
     });
   },
 
+  loginEmail(email: string, password: string): Promise<AuthResponse> {
+    return apiFetch<AuthResponse>("/auth/email/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+  },
+
+  registerEmail(
+    email: string,
+    password: string,
+    name?: string,
+  ): Promise<AuthResponse> {
+    return apiFetch<AuthResponse>("/auth/email/register", {
+      method: "POST",
+      body: JSON.stringify({ email, password, name }),
+    });
+  },
+
   async getMe(): Promise<AuthUser> {
     const res = await apiFetch<{ user: AuthUser }>("/auth/me");
     return res.user;
+  },
+};
+
+/* ---------- Drive types & API ---------- */
+
+export interface DriveFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  iconLink?: string;
+  thumbnailLink?: string;
+  modifiedTime?: string;
+  parents?: string[];
+}
+
+export interface DriveListResponse {
+  files: DriveFile[];
+  nextPageToken: string | null;
+}
+
+export const driveApi = {
+  list(params: {
+    folderId?: string;
+    pageToken?: string;
+    q?: string;
+  } = {}): Promise<DriveListResponse> {
+    const search = new URLSearchParams();
+    if (params.folderId) search.set("folderId", params.folderId);
+    if (params.pageToken) search.set("pageToken", params.pageToken);
+    if (params.q) search.set("q", params.q);
+    const qs = search.toString();
+    return apiFetch<DriveListResponse>(`/import/drive/list${qs ? `?${qs}` : ""}`);
+  },
+
+  async download(fileId: string): Promise<{ base64: string; mimeType: string; fileName: string }> {
+    return apiFetch("/import/drive-download", {
+      method: "POST",
+      body: JSON.stringify({ fileId }),
+    });
   },
 };
 
@@ -137,6 +194,8 @@ export interface AppStatus {
   googleSignInConfigured: boolean;
   googleRedirectConfigured: boolean;
   googleDriveConfigured: boolean;
+  googleDrivePickerConfigured: boolean;
+  emailAuthEnabled: boolean;
   googleClientId: string | null;
   googlePickerApiKey: string | null;
 }
