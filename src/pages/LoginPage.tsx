@@ -63,6 +63,8 @@ export function LoginPage() {
           return t("login.emailTooLong");
         case "password_too_long":
           return t("login.passwordTooLong");
+        case "name_too_long":
+          return t("login.nameTooLong");
         case "invalid_payload":
         case "invalid_json":
           return t("login.invalidPayload");

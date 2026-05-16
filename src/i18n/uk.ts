@@ -72,6 +72,7 @@ export const uk: Translations = {
     invalidCredentials: "Невірний email або пароль.",
     emailTooLong: "Email задовгий (максимум 254 символи).",
     passwordTooLong: "Пароль задовгий (максимум 200 символів).",
+    nameTooLong: "Ім'я задовге (максимум 100 символів).",
     invalidPayload: "Некоректний формат запиту.",
   },
 

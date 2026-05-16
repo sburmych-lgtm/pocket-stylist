@@ -161,7 +161,44 @@ authRouter.post("/google", async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/auth/google/redirect — Start redirect-based OAuth flow (works on all mobile browsers)
+// Scope sets — kept minimal at sign-up so the OAuth consent screen does NOT
+// require Google verification (basic scopes only). Drive access is requested
+// later via incremental authorization when the user actually uses an import
+// feature. We use `drive.file` (non-restricted, per-file) instead of
+// `drive.readonly` (restricted, requires CASA audit) — same UX for selective
+// imports, zero verification overhead.
+const BASIC_SCOPES = ["openid", "email", "profile"];
+const DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive.file"];
+
+function buildGoogleAuthUrl(params: {
+  clientId: string;
+  redirectUri: string;
+  scopes: string[];
+  prompt: string;
+  state?: string;
+  includeGrantedScopes?: boolean;
+  loginHint?: string;
+}): URL {
+  const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  authUrl.searchParams.set("client_id", params.clientId);
+  authUrl.searchParams.set("redirect_uri", params.redirectUri);
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("scope", params.scopes.join(" "));
+  authUrl.searchParams.set("access_type", "offline");
+  authUrl.searchParams.set("prompt", params.prompt);
+  if (params.includeGrantedScopes) {
+    authUrl.searchParams.set("include_granted_scopes", "true");
+  }
+  if (params.state) {
+    authUrl.searchParams.set("state", params.state);
+  }
+  if (params.loginHint) {
+    authUrl.searchParams.set("login_hint", params.loginHint);
+  }
+  return authUrl;
+}
+
+// GET /api/auth/google/redirect — sign-up / sign-in (BASIC SCOPES ONLY)
 authRouter.get("/google/redirect", (req: Request, res: Response) => {
   if (!isConfiguredSecret(GOOGLE_CLIENT_ID)) {
     res.status(503).json({ error: "Google auth not configured" });
@@ -169,39 +206,92 @@ authRouter.get("/google/redirect", (req: Request, res: Response) => {
   }
 
   const appUrl = getAppUrl(req);
-  const redirectUri = `${appUrl}/api/auth/google/callback`;
+  const authUrl = buildGoogleAuthUrl({
+    clientId: GOOGLE_CLIENT_ID,
+    redirectUri: `${appUrl}/api/auth/google/callback`,
+    scopes: BASIC_SCOPES,
+    prompt: "select_account",
+  });
 
-  const scopes = [
-    "openid",
-    "email",
-    "profile",
-    "https://www.googleapis.com/auth/drive.readonly",
-  ];
+  res.redirect(authUrl.toString());
+});
 
-  const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-  authUrl.searchParams.set("client_id", GOOGLE_CLIENT_ID);
-  authUrl.searchParams.set("redirect_uri", redirectUri);
-  authUrl.searchParams.set("response_type", "code");
-  authUrl.searchParams.set("scope", scopes.join(" "));
-  authUrl.searchParams.set("access_type", "offline");
-  authUrl.searchParams.set("prompt", "select_account consent");
+// GET /api/auth/google/drive-consent — incremental auth: add Drive scope to
+// an already signed-in user so they can use the Drive picker. The frontend
+// triggers this when the user clicks the Drive button for the first time.
+authRouter.get("/google/drive-consent", async (req: Request, res: Response) => {
+  if (!isConfiguredSecret(GOOGLE_CLIENT_ID)) {
+    res.status(503).json({ error: "Google auth not configured" });
+    return;
+  }
+
+  const appUrl = getAppUrl(req);
+
+  // Where to bounce the user once Drive is granted (default = import page).
+  const returnTo = typeof req.query.returnTo === "string" ? req.query.returnTo : "/import";
+  const safeReturnTo = returnTo.startsWith("/") ? returnTo : "/import";
+
+  // login_hint lets Google preselect the user that's currently signed in.
+  let loginHint: string | undefined;
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith("Bearer ")) {
+    try {
+      const payload = jwt.verify(authHeader.slice(7), JWT_SECRET) as { userId: string };
+      const user = await prisma.user.findUnique({
+        where: { id: payload.userId },
+        select: { email: true },
+      });
+      loginHint = user?.email;
+    } catch {
+      // unauthenticated request → just ask Google to show account chooser
+    }
+  }
+
+  const authUrl = buildGoogleAuthUrl({
+    clientId: GOOGLE_CLIENT_ID,
+    redirectUri: `${appUrl}/api/auth/google/callback`,
+    scopes: [...BASIC_SCOPES, ...DRIVE_SCOPES],
+    prompt: "consent",
+    includeGrantedScopes: true,
+    state: `drive:${encodeURIComponent(safeReturnTo)}`,
+    loginHint,
+  });
 
   res.redirect(authUrl.toString());
 });
 
 // GET /api/auth/google/callback — Handle redirect from Google
+// Handles BOTH the sign-up flow (basic scopes only, state empty) and the
+// incremental Drive-consent flow (state starts with "drive:<returnTo>").
 authRouter.get("/google/callback", async (req: Request, res: Response) => {
   try {
-    const { code, error } = req.query as { code?: string; error?: string };
+    const { code, error, state } = req.query as {
+      code?: string;
+      error?: string;
+      state?: string;
+    };
     const appUrl = getAppUrl(req);
 
+    // Decode flow type from state. Drive-consent flow sends `drive:<returnTo>`.
+    const isDriveFlow = typeof state === "string" && state.startsWith("drive:");
+    const driveReturnTo = isDriveFlow
+      ? decodeURIComponent(state.slice("drive:".length)) || "/import"
+      : "/import";
+    const errorRedirect = isDriveFlow
+      ? `${appUrl}${driveReturnTo}`
+      : `${appUrl}/login`;
+
     if (error || !code) {
-      res.redirect(`${appUrl}/login?authError=${encodeURIComponent(error ?? "no_code")}`);
+      const sep = errorRedirect.includes("?") ? "&" : "?";
+      res.redirect(
+        `${errorRedirect}${sep}authError=${encodeURIComponent(error ?? "no_code")}`,
+      );
       return;
     }
 
     if (!isConfiguredSecret(GOOGLE_CLIENT_ID) || !isConfiguredSecret(GOOGLE_CLIENT_SECRET)) {
-      res.redirect(`${appUrl}/login?authError=server_not_configured`);
+      const sep = errorRedirect.includes("?") ? "&" : "?";
+      res.redirect(`${errorRedirect}${sep}authError=server_not_configured`);
       return;
     }
 
@@ -261,7 +351,14 @@ authRouter.get("/google/callback", async (req: Request, res: Response) => {
     // Use HTML redirect (not 302) so the token-in-hash arrives reliably in all
     // user agents — Playwright's chromium does not always follow 302 responses
     // that carry a body when the Location is same-origin.
-    const target = `${appUrl}/login#token=${encodeURIComponent(appToken)}`;
+    //
+    // For Drive-consent flow the user is already logged in; just bounce them
+    // back to where they were (returnTo) without re-issuing a token in the URL.
+    // The newly persisted access token (with drive.file scope) is on the User
+    // record server-side, so the next /api/auth/google-access-token call works.
+    const target = isDriveFlow
+      ? `${appUrl}${driveReturnTo}?driveGranted=1`
+      : `${appUrl}/login#token=${encodeURIComponent(appToken)}`;
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(
@@ -425,8 +522,12 @@ authRouter.post("/email/register", async (req: Request, res: Response) => {
       res.status(400).json({ error: "email_reserved" });
       return;
     }
+    if (nameRaw !== undefined && nameRaw.length > NAME_MAX_LENGTH) {
+      res.status(400).json({ error: "name_too_long" });
+      return;
+    }
 
-    const name = nameRaw?.trim().slice(0, NAME_MAX_LENGTH) || null;
+    const name = nameRaw?.trim() || null;
 
     const existing = await withTimeout(
       prisma.user.findUnique({

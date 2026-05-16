@@ -72,6 +72,7 @@ export const en: Translations = {
     invalidCredentials: "Invalid email or password.",
     emailTooLong: "Email is too long (max 254 characters).",
     passwordTooLong: "Password is too long (max 200 characters).",
+    nameTooLong: "Name is too long (max 100 characters).",
     invalidPayload: "Invalid request format.",
   },
 
