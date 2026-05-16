@@ -70,6 +70,9 @@ export const uk: Translations = {
     emailInUse: "Email вже зареєстровано. Увійдіть або скористайтесь іншим.",
     emailReserved: "Цей email зарезервовано. Оберіть інший.",
     invalidCredentials: "Невірний email або пароль.",
+    emailTooLong: "Email задовгий (максимум 254 символи).",
+    passwordTooLong: "Пароль задовгий (максимум 200 символів).",
+    invalidPayload: "Некоректний формат запиту.",
   },
 
   /* ---- Home ---- */

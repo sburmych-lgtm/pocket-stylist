@@ -70,6 +70,9 @@ export const en: Translations = {
     emailInUse: "This email is already registered. Sign in or use another one.",
     emailReserved: "This email is reserved. Choose a different one.",
     invalidCredentials: "Invalid email or password.",
+    emailTooLong: "Email is too long (max 254 characters).",
+    passwordTooLong: "Password is too long (max 200 characters).",
+    invalidPayload: "Invalid request format.",
   },
 
   /* ---- Home ---- */

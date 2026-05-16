@@ -59,6 +59,13 @@ export function LoginPage() {
           return t("login.invalidEmail");
         case "password_too_short":
           return t("login.passwordTooShort", { min: String(PASSWORD_MIN_LENGTH) });
+        case "email_too_long":
+          return t("login.emailTooLong");
+        case "password_too_long":
+          return t("login.passwordTooLong");
+        case "invalid_payload":
+        case "invalid_json":
+          return t("login.invalidPayload");
         case "email_in_use":
           return t("login.emailInUse");
         case "email_reserved":

@@ -17,6 +17,7 @@ export const apiRouter = Router();
 apiRouter.use("/auth", authRouter);
 
 apiRouter.get("/status", (_req, res) => {
+  res.set("Cache-Control", "no-store");
   res.json(getAppStatus());
 });
 

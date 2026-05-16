@@ -19,7 +19,17 @@ const scryptAsync = promisify(scrypt) as (
 ) => Promise<Buffer>;
 
 const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MAX_LENGTH = 200;
+const EMAIL_MAX_LENGTH = 254; // RFC 5321
+const NAME_MAX_LENGTH = 100;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Type-safe extraction of an optional string field from request body.
+function getStringField(body: unknown, key: string): string | undefined {
+  if (!body || typeof body !== "object") return undefined;
+  const v = (body as Record<string, unknown>)[key];
+  return typeof v === "string" ? v : undefined;
+}
 
 async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
@@ -385,25 +395,38 @@ authRouter.get("/google-access-token", requireAuth, async (req: Request, res: Re
 // POST /api/auth/email/register — Register with email and password
 authRouter.post("/email/register", async (req: Request, res: Response) => {
   try {
-    const { email, password, name } = req.body as {
-      email?: string;
-      password?: string;
-      name?: string;
-    };
+    const emailRaw = getStringField(req.body, "email");
+    const password = getStringField(req.body, "password");
+    const nameRaw = getStringField(req.body, "name");
 
-    const normalizedEmail = (email ?? "").trim().toLowerCase();
+    if (emailRaw === undefined || password === undefined) {
+      res.status(400).json({ error: "invalid_payload" });
+      return;
+    }
+
+    const normalizedEmail = emailRaw.trim().toLowerCase();
+    if (normalizedEmail.length > EMAIL_MAX_LENGTH) {
+      res.status(400).json({ error: "email_too_long" });
+      return;
+    }
     if (!EMAIL_REGEX.test(normalizedEmail)) {
       res.status(400).json({ error: "invalid_email" });
       return;
     }
-    if (!password || password.length < PASSWORD_MIN_LENGTH) {
+    if (password.length < PASSWORD_MIN_LENGTH) {
       res.status(400).json({ error: "password_too_short" });
+      return;
+    }
+    if (password.length > PASSWORD_MAX_LENGTH) {
+      res.status(400).json({ error: "password_too_long" });
       return;
     }
     if (normalizedEmail === DEMO_USER_EMAIL) {
       res.status(400).json({ error: "email_reserved" });
       return;
     }
+
+    const name = nameRaw?.trim().slice(0, NAME_MAX_LENGTH) || null;
 
     const existing = await withTimeout(
       prisma.user.findUnique({
@@ -423,7 +446,7 @@ authRouter.post("/email/register", async (req: Request, res: Response) => {
       prisma.user.create({
         data: {
           email: normalizedEmail,
-          name: name?.trim() || null,
+          name,
           passwordHash,
         },
       }),
@@ -450,10 +473,17 @@ authRouter.post("/email/register", async (req: Request, res: Response) => {
 // POST /api/auth/email/login — Login with email and password
 authRouter.post("/email/login", async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body as { email?: string; password?: string };
-    const normalizedEmail = (email ?? "").trim().toLowerCase();
+    const emailRaw = getStringField(req.body, "email");
+    const password = getStringField(req.body, "password");
 
-    if (!EMAIL_REGEX.test(normalizedEmail) || !password) {
+    if (emailRaw === undefined || password === undefined) {
+      res.status(400).json({ error: "invalid_credentials" });
+      return;
+    }
+
+    const normalizedEmail = emailRaw.trim().toLowerCase();
+
+    if (normalizedEmail.length > EMAIL_MAX_LENGTH || !EMAIL_REGEX.test(normalizedEmail)) {
       res.status(400).json({ error: "invalid_credentials" });
       return;
     }
