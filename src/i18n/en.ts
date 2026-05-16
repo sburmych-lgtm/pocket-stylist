@@ -221,6 +221,7 @@ export const en: Translations = {
       descDisabled: "Current batch is still processing. Wait a few seconds.",
       clickToSelect: "Click to select",
       googleDrive: "Google Drive",
+      connectGoogleDrive: "Connect Google Drive",
     },
 
     drive: {

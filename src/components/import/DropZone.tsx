@@ -55,7 +55,34 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
   const [googleDriveAvailable, setGoogleDriveAvailable] = useState(false);
   const [usePicker, setUsePicker] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  // null = not checked yet; true = user already granted Drive scope; false = need consent
+  const [driveReady, setDriveReady] = useState<boolean | null>(null);
   const pickerScriptLoaded = useRef(false);
+
+  // Probe whether the current user already has a Google access token (i.e.
+  // they ran the drive-consent flow before). If yes — show "Import"; if no —
+  // show "Connect Google Drive" which redirects to /api/auth/google/drive-consent.
+  useEffect(() => {
+    if (!getToken()) {
+      setDriveReady(false);
+      return;
+    }
+    fetch("/api/auth/google-access-token", {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+      .then((r) => setDriveReady(r.ok))
+      .catch(() => setDriveReady(false));
+  }, []);
+
+  // Auto-open Drive picker after the user comes back from the consent screen.
+  useEffect(() => {
+    if (driveReady !== true) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("driveGranted") === "1") {
+      window.history.replaceState({}, "", window.location.pathname);
+      setModalOpen(true);
+    }
+  }, [driveReady]);
 
   useEffect(() => {
     getAppStatus()
@@ -164,13 +191,22 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
       if (disabled || driveLoading || !googleDriveAvailable) return;
       setDriveError(null);
 
+      // User hasn't granted Drive scope yet — bounce them through the
+      // incremental consent flow. The server callback brings them back to
+      // /import?driveGranted=1, where the auto-open effect fires.
+      if (driveReady === false) {
+        const returnTo = window.location.pathname || "/import";
+        window.location.href = `/api/auth/google/drive-consent?returnTo=${encodeURIComponent(returnTo)}`;
+        return;
+      }
+
       if (usePicker) {
         void openPicker();
       } else {
         setModalOpen(true);
       }
     },
-    [disabled, driveLoading, googleDriveAvailable, usePicker, openPicker],
+    [disabled, driveLoading, googleDriveAvailable, usePicker, openPicker, driveReady],
   );
 
   const handleModalPicked = useCallback(
@@ -286,15 +322,19 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
                 <button
                   type="button"
                   onClick={handleGoogleDriveClick}
-                  disabled={disabled || driveLoading}
+                  disabled={disabled || driveLoading || driveReady === null}
                   className="metric-pill cursor-pointer transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {driveLoading ? (
+                  {driveLoading || driveReady === null ? (
                     <Loader2 size={14} className="animate-spin text-[var(--accent)]" />
                   ) : (
                     <HardDrive size={14} className="text-[var(--accent)]" />
                   )}
-                  {driveLoading ? t("common.loading") : t("import.dropzone.googleDrive")}
+                  {driveLoading
+                    ? t("common.loading")
+                    : driveReady === false
+                      ? t("import.dropzone.connectGoogleDrive")
+                      : t("import.dropzone.googleDrive")}
                 </button>
               )}
             </div>

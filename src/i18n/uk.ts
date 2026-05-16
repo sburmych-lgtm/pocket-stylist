@@ -221,6 +221,7 @@ export const uk: Translations = {
       descDisabled: "Поточна партія ще обробляється. Зачекайте кілька секунд.",
       clickToSelect: "Натисніть для вибору",
       googleDrive: "Google Drive",
+      connectGoogleDrive: "Підключити Google Drive",
     },
 
     drive: {
