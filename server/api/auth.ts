@@ -405,23 +405,31 @@ authRouter.post("/email/register", async (req: Request, res: Response) => {
       return;
     }
 
-    const existing = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-      select: { id: true, passwordHash: true },
-    });
+    const existing = await withTimeout(
+      prisma.user.findUnique({
+        where: { email: normalizedEmail },
+        select: { id: true, passwordHash: true },
+      }),
+      5_000,
+      "Database lookup timed out",
+    );
     if (existing) {
       res.status(409).json({ error: "email_in_use" });
       return;
     }
 
     const passwordHash = await hashPassword(password);
-    const user = await prisma.user.create({
-      data: {
-        email: normalizedEmail,
-        name: name?.trim() || null,
-        passwordHash,
-      },
-    });
+    const user = await withTimeout(
+      prisma.user.create({
+        data: {
+          email: normalizedEmail,
+          name: name?.trim() || null,
+          passwordHash,
+        },
+      }),
+      5_000,
+      "Database create timed out",
+    );
 
     const token = signToken(user.id);
     res.json({
@@ -450,9 +458,13 @@ authRouter.post("/email/login", async (req: Request, res: Response) => {
       return;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-    });
+    const user = await withTimeout(
+      prisma.user.findUnique({
+        where: { email: normalizedEmail },
+      }),
+      5_000,
+      "Database lookup timed out",
+    );
 
     if (!user?.passwordHash) {
       res.status(401).json({ error: "invalid_credentials" });
