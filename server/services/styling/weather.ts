@@ -136,10 +136,18 @@ function mockWeatherForecast(lat: number, _lon: number): WeatherData[] {
   });
 }
 
+/**
+ * Map a real-world temperature in °C onto our 4-season clothing bucket.
+ * Tightened in May 2026 after a 26°C-day suggested a winter coat — the old
+ * thresholds (25/15/5) treated everything from a chilly +6°C to a balmy
+ * +24°C as borderline spring/fall, which made the AI prompt ambiguous.
+ * New buckets line up with how most people actually dress in Kyiv-like
+ * climates and feed the strict Gemini rule "season MUST match".
+ */
 export function weatherToSeason(temp: number): string {
-  if (temp >= 25) return "summer";
+  if (temp >= 22) return "summer";
   if (temp >= 15) return "spring";
-  if (temp >= 5) return "fall";
+  if (temp >= 7) return "fall";
   return "winter";
 }
 

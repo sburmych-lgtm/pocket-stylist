@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { ScanLine, Sparkles, LoaderCircle, RefreshCcw } from "lucide-react";
+import { ScanLine, Sparkles, LoaderCircle, RefreshCcw, AlertTriangle } from "lucide-react";
 import { CameraCapture } from "../components/scanner/CameraCapture";
 import { VerdictCard } from "../components/scanner/VerdictCard";
+import { ErrorBoundary } from "../components/common/ErrorBoundary";
 import { scannerApi } from "../services/api";
 import type { ScanResult } from "../services/api";
 import { useI18n } from "../i18n";
@@ -63,7 +64,33 @@ export function ScannerPage() {
         </div>
       </section>
 
-      {!result && !loading && <CameraCapture onCapture={handleCapture} disabled={loading} />}
+      {!result && !loading && (
+        <ErrorBoundary
+          scope="camera-capture"
+          fallback={(err, reset) => (
+            <div
+              role="alert"
+              className="luxe-card flex flex-col gap-3 border-[rgba(239,138,128,0.22)] p-5 text-sm text-[var(--danger)]"
+            >
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={16} />
+                <span className="font-semibold">{t("scanner.cameraError")}</span>
+              </div>
+              <p className="text-xs opacity-80">{err.message}</p>
+              <p className="text-xs opacity-80">{t("scanner.cameraFallbackHint")}</p>
+              <button
+                type="button"
+                onClick={reset}
+                className="ghost-action self-start px-4 py-2 text-xs"
+              >
+                {t("common.back")}
+              </button>
+            </div>
+          )}
+        >
+          <CameraCapture onCapture={handleCapture} disabled={loading} />
+        </ErrorBoundary>
+      )}
 
       {loading && (
         <section className="luxe-card flex flex-col items-center gap-5 p-8 text-center">

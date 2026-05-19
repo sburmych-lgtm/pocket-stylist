@@ -83,20 +83,37 @@ stylingRouter.post("/suggest", async (req: Request, res: Response) => {
       return;
     }
 
-    // Filter by rules
+    // Filter by rules — pass real temperature so the fabric/category gates fire
     const candidates = filterWardrobe(allItems, {
       mood,
       weatherSeason,
+      temp: weather.temp,
       formalityRange,
       avoidRecentDays: 7,
       colorPalette,
       avoidColors,
     });
 
-    // Generate outfits
-    const outfits = await generateOutfits(candidates.length > 0 ? candidates : allItems, {
+    // Generate outfits. CRITICAL: do NOT fall back to allItems when the
+    // weather filter returns empty — that's exactly how a wool coat ends up
+    // in a 26°C suggestion. Instead, return an empty list with a friendly
+    // message so the UI can prompt the user to add seasonally appropriate
+    // pieces.
+    if (candidates.length === 0) {
+      res.json({
+        outfits: [],
+        weather,
+        candidateCount: 0,
+        message: `No items match today's weather (${Math.round(weather.temp)}°C, ${weather.condition}). Add seasonally appropriate pieces and try again.`,
+      });
+      return;
+    }
+
+    const outfits = await generateOutfits(candidates, {
       mood,
       weatherSeason,
+      temp: weather.temp,
+      condition: weather.condition,
       formalityRange,
     });
 

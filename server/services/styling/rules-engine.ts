@@ -8,11 +8,34 @@ interface ColorEntry {
 interface StylingContext {
   mood: { energy: number; boldness: number };
   weatherSeason: string;
+  /** Real ambient temperature in °C — used by fabric/category temperature filters. */
+  temp?: number;
   formalityRange: { min: number; max: number };
   avoidRecentDays?: number;
   colorPalette?: ColorEntry[];
   avoidColors?: ColorEntry[];
 }
+
+/**
+ * Fabrics that are physically too warm for hot weather. If the user has a
+ * fleece tracksuit and the forecast says 28°C, we never want to surface it
+ * as a candidate — the Gemini prompt is also told to avoid these, but this
+ * is the belt-and-braces server-side guard.
+ */
+const HOT_WEATHER_BLOCKED_FABRICS = new Set([
+  "fleece",
+  "wool",
+  "cashmere",
+  "velvet",
+  "suede",
+]);
+
+/**
+ * Inverse: fabrics that don't belong in cold weather (silk dresses,
+ * chiffon blouses). Less aggressive than the hot-weather list because
+ * layering is a thing.
+ */
+const COLD_WEATHER_BLOCKED_CATEGORIES = new Set(["swimwear"]);
 
 // Pure-code rules engine — no Gemini needed, unlimited usage
 export function filterWardrobe(
@@ -21,10 +44,20 @@ export function filterWardrobe(
 ): WardrobeItem[] {
   const now = Date.now();
   const recentMs = (ctx.avoidRecentDays ?? 7) * 24 * 60 * 60 * 1000;
+  const temp = ctx.temp;
 
   return items.filter((item) => {
     // Season filter
     if (item.season !== "all" && item.season !== ctx.weatherSeason) return false;
+
+    // Hot-weather guard: at +20°C and above, exclude obviously heavy fabrics.
+    if (temp !== undefined && temp >= 20 && item.fabric && HOT_WEATHER_BLOCKED_FABRICS.has(item.fabric)) {
+      return false;
+    }
+    // Cold-weather guard: at <=10°C, exclude swimwear.
+    if (temp !== undefined && temp <= 10 && COLD_WEATHER_BLOCKED_CATEGORIES.has(item.category)) {
+      return false;
+    }
 
     // Formality filter
     if (item.formalityLevel < ctx.formalityRange.min) return false;
@@ -39,6 +72,8 @@ export function filterWardrobe(
     return true;
   });
 }
+
+export { HOT_WEATHER_BLOCKED_FABRICS, COLD_WEATHER_BLOCKED_CATEGORIES };
 
 export function scoreItem(
   item: WardrobeItem,

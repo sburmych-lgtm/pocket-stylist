@@ -97,18 +97,39 @@ lookbookRouter.post("/generate", async (req: Request, res: Response) => {
       const candidates = filterWardrobe(allItems, {
         mood: { energy: 50, boldness: 50 },
         weatherSeason,
+        temp: dayWeather.temp,
         formalityRange: { min: 1, max: 5 },
         avoidRecentDays: 0, // Don't filter by lastWornAt for lookbook planning
         colorPalette,
         avoidColors,
       }).filter((item) => !previousDayItems.has(item.id));
 
-      const pool = candidates.length > 0 ? candidates : allItems;
+      // No fallback to allItems — surfacing winter coats on a hot day is
+      // exactly the bug we're closing. If there's nothing seasonally
+      // appropriate left, the day shows outfit:null and the UI prompts
+      // the user to import suitable items.
+      if (candidates.length === 0) {
+        usedItemsByDay.push(new Set());
+        days.push({
+          date: dateStr,
+          weather: {
+            temp: dayWeather.temp,
+            feelsLike: dayWeather.feelsLike,
+            condition: dayWeather.condition,
+            icon: dayWeather.icon,
+            location: dayWeather.location,
+          },
+          outfit: null,
+        });
+        continue;
+      }
 
       try {
-        const outfits = await generateOutfits(pool, {
+        const outfits = await generateOutfits(candidates, {
           mood: { energy: 50, boldness: 50 },
           weatherSeason,
+          temp: dayWeather.temp,
+          condition: dayWeather.condition,
           formalityRange: { min: 1, max: 5 },
         }, 1);
 
@@ -250,16 +271,24 @@ lookbookRouter.post("/regenerate-day", async (req: Request, res: Response) => {
     const candidates = filterWardrobe(allItems, {
       mood: { energy: 50, boldness: 50 },
       weatherSeason,
+      temp: weather.temp,
       formalityRange: { min: 1, max: 5 },
       avoidRecentDays: 0,
       colorPalette,
       avoidColors,
     }).filter((item) => !excluded.has(item.id));
 
-    const pool = candidates.length > 0 ? candidates : allItems;
-    const outfits = await generateOutfits(pool, {
+    // No allItems fallback — see comment in /generate above.
+    if (candidates.length === 0) {
+      res.json({ outfit: null });
+      return;
+    }
+
+    const outfits = await generateOutfits(candidates, {
       mood: { energy: 50, boldness: 50 },
       weatherSeason,
+      temp: weather.temp,
+      condition: weather.condition,
       formalityRange: { min: 1, max: 5 },
     }, 1);
 
