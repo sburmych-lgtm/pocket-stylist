@@ -2,14 +2,12 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
 import { isConfiguredSecret } from "./app-status.js";
 import { parseGeminiJson, withTimeout } from "./gemini-utils.js";
+import { WARDROBE_CATEGORIES, normalizeCategory } from "../../src/shared/wardrobe-categories.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
 const GEMINI_TIMEOUT_MS = 10_000;
 
-const CLOTHING_CATEGORIES = [
-  "tops", "bottoms", "dresses", "outerwear", "shoes",
-  "accessories", "activewear", "swimwear", "sleepwear", "suits",
-] as const;
+const CLOTHING_CATEGORIES = WARDROBE_CATEGORIES;
 
 const COLORS = [
   "black", "white", "grey", "navy", "blue", "light-blue", "red", "burgundy",
@@ -56,7 +54,12 @@ export const FALLBACK_CLOTHING_ANALYSIS = {
 } as const satisfies ClothingAnalysis;
 
 const ClothingAnalysisSchema = z.object({
-  category: z.enum(CLOTHING_CATEGORIES).catch(FALLBACK_CLOTHING_ANALYSIS.category),
+  // Accept anything (string), then normalize through alias map so legacy values
+  // like "shoes"/"activewear" land on the new canonical sections.
+  category: z
+    .string()
+    .transform((v) => normalizeCategory(v))
+    .catch(FALLBACK_CLOTHING_ANALYSIS.category),
   subcategory: z.string().min(1).catch(FALLBACK_CLOTHING_ANALYSIS.subcategory),
   colorPrimary: z.enum(COLORS).catch(FALLBACK_CLOTHING_ANALYSIS.colorPrimary),
   colorHex: z.string().regex(/^#[0-9A-Fa-f]{6}$/).catch(FALLBACK_CLOTHING_ANALYSIS.colorHex),
@@ -71,7 +74,7 @@ const ClothingAnalysisSchema = z.object({
 const ANALYSIS_PROMPT = `Analyze this clothing item photo. Return ONLY valid JSON with these exact fields:
 {
   "category": one of [${CLOTHING_CATEGORIES.join(", ")}],
-  "subcategory": specific type (e.g. "t-shirt", "jeans", "sneakers"),
+  "subcategory": specific type (e.g. "t-shirt", "sneaker", "blazer"),
   "colorPrimary": one of [${COLORS.join(", ")}],
   "colorHex": hex color code of the dominant color,
   "pattern": one of [${PATTERNS.join(", ")}],
@@ -81,6 +84,22 @@ const ANALYSIS_PROMPT = `Analyze this clothing item photo. Return ONLY valid JSO
   "brand": brand name if visible or null,
   "confidence": 0-1 how confident you are in the analysis
 }
+
+Category routing rules — pick the MOST SPECIFIC section:
+- "jeans" for any denim trousers (do NOT use "bottoms" or "pants" for denim)
+- "pants" for non-denim trousers/chinos/joggers
+- "skirts" for skirts only (not dresses)
+- "footwear" for any shoes/boots/sneakers/sandals
+- "underwear" for bras/panties/briefs/boxers
+- "pajamas" for sleepwear sets and nightgowns
+- "swimwear" for bikinis/one-pieces/swim trunks
+- "sportswear" for athletic / gym wear (workout tops, leggings, training shoes)
+- "accessories" for bags/belts/scarves/hats/jewelry/watches
+- "outerwear" for coats/jackets/parkas
+- "suits" only for formal matching sets
+- "dresses" for one-piece dresses
+- "tops" for non-athletic shirts/blouses/t-shirts
+- "bottoms" ONLY as a last resort if none of the above applies
 
 Rules:
 - Respond with ONLY the JSON object, no markdown fences

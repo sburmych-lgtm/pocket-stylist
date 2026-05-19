@@ -101,7 +101,7 @@ export function DriveModal({ open, onClose, onPicked }: DriveModalProps) {
         for (let i = 0; i < byteStr.length; i++) bytes[i] = byteStr.charCodeAt(i);
         imported.push(new File([bytes], fileName, { type: mimeType }));
       } catch (err) {
-        console.error("Drive download failed for", file.name, err);
+        console.error("[DRIVE] download failed for", file.name, err);
       }
       done += 1;
       setDownloadProgress({ done, total: selected.size });

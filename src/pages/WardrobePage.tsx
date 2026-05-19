@@ -1,29 +1,59 @@
 import { useState, useEffect, useCallback } from "react";
 import { wardrobeApi, type WardrobeItem } from "../services/api";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Pencil, Check, X } from "lucide-react";
 import { useI18n } from "../i18n";
-
-const CATEGORY_KEYS = [
-  "all", "tops", "bottoms", "dresses", "outerwear",
-  "shoes", "accessories", "activewear", "swimwear", "suits",
-] as const;
+import { WARDROBE_CATEGORIES, normalizeCategory } from "../shared/wardrobe-categories";
 
 const CATEGORY_ICONS: Record<string, string> = {
-  all: "👗", tops: "👕", bottoms: "👖", dresses: "👗", outerwear: "🧥",
-  shoes: "👟", accessories: "👜", activewear: "🏃", swimwear: "🩱", suits: "🤵",
+  all: "👗",
+  tops: "👕",
+  bottoms: "👖",
+  jeans: "👖",
+  pants: "👖",
+  skirts: "🩳",
+  dresses: "👗",
+  outerwear: "🧥",
+  footwear: "👟",
+  swimwear: "🩱",
+  pajamas: "🛌",
+  underwear: "🩲",
+  accessories: "👜",
+  sportswear: "🏃",
+  suits: "🤵",
 };
+
+const CATEGORY_KEYS = ["all", ...WARDROBE_CATEGORIES] as const;
 
 function ItemCard({
   item,
   onDelete,
+  onCategoryChange,
 }: {
   item: WardrobeItem;
   onDelete: (id: string) => void;
+  onCategoryChange: (id: string, newCategory: string) => Promise<void>;
 }) {
   const { t } = useI18n();
   const [showDetails, setShowDetails] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draftCategory, setDraftCategory] = useState(item.category);
+  const [saving, setSaving] = useState(false);
+
+  const handleSaveCategory = async () => {
+    if (draftCategory === item.category) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      await onCategoryChange(item.id, draftCategory);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="group relative overflow-hidden rounded-xl border border-white/[0.06] bg-[#1a1a2e] shadow-lg shadow-black/20 transition-all duration-300 hover:border-white/[0.12] hover:shadow-xl hover:shadow-black/30 hover:-translate-y-0.5">
@@ -41,17 +71,66 @@ function ItemCard({
       </button>
 
       <div className="p-2">
-        <div className="flex items-center gap-1.5">
-          {item.colorHex && (
-            <span
-              className="inline-block h-3 w-3 rounded-full border border-white/10"
-              style={{ backgroundColor: item.colorHex }}
-            />
-          )}
-          <span className="truncate text-xs font-medium text-[#f0ece4]/80">
-            {item.subcategory ?? item.category}
-          </span>
-        </div>
+        {editing ? (
+          <div className="flex items-center gap-1">
+            <select
+              value={draftCategory}
+              onChange={(e) => setDraftCategory(e.target.value)}
+              disabled={saving}
+              className="flex-1 rounded bg-white/[0.08] px-1.5 py-0.5 text-xs text-[#f0ece4] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/40 disabled:opacity-50"
+            >
+              {WARDROBE_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat} className="bg-[#1a1a2e]">
+                  {CATEGORY_ICONS[cat] ?? "·"} {t(`categories.${cat}`)}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={handleSaveCategory}
+              disabled={saving}
+              aria-label={t("common.save")}
+              className="rounded p-1 text-[var(--success)] hover:bg-white/10 disabled:opacity-50"
+            >
+              <Check size={12} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDraftCategory(item.category);
+                setEditing(false);
+              }}
+              disabled={saving}
+              aria-label={t("common.cancel")}
+              className="rounded p-1 text-[var(--text-muted)] hover:bg-white/10 disabled:opacity-50"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            {item.colorHex && (
+              <span
+                className="inline-block h-3 w-3 rounded-full border border-white/10"
+                style={{ backgroundColor: item.colorHex }}
+              />
+            )}
+            <span className="truncate text-xs font-medium text-[#f0ece4]/80">
+              {item.subcategory ?? t(`categories.${item.category}`)}
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditing(true);
+              }}
+              aria-label={t("wardrobe.editCategory")}
+              className="ml-auto rounded p-0.5 text-[#f0ece4]/40 opacity-0 transition-all hover:bg-white/10 hover:text-[var(--accent)] group-hover:opacity-100"
+            >
+              <Pencil size={10} />
+            </button>
+          </div>
+        )}
         <div className="mt-0.5 flex items-center gap-1 text-[10px] text-[#f0ece4]/35">
           <span>{item.colorPrimary}</span>
           <span>·</span>
@@ -96,7 +175,8 @@ function ItemCard({
           </button>
           <div className="space-y-1 text-xs text-white/90">
             <p>
-              <span className="font-semibold text-[var(--accent)]">{t("wardrobe.category")}:</span> {item.category}
+              <span className="font-semibold text-[var(--accent)]">{t("wardrobe.category")}:</span>{" "}
+              {t(`categories.${item.category}`)}
               {item.subcategory && ` / ${item.subcategory}`}
             </p>
             <p>
@@ -165,7 +245,10 @@ export function WardrobePage() {
   const loadItems = useCallback(async () => {
     try {
       const data = await wardrobeApi.getAll();
-      setItems(data);
+      // Normalize legacy values defensively (server already does, but in case
+      // an older row slips through a non-canonical name, the UI should still
+      // route correctly).
+      setItems(data.map((it) => ({ ...it, category: normalizeCategory(it.category) })));
     } catch (e) {
       setError(e instanceof Error ? e.message : t("common.error"));
     } finally {
@@ -187,6 +270,23 @@ export function WardrobePage() {
       }
     },
     [t],
+  );
+
+  const handleCategoryChange = useCallback(
+    async (itemId: string, newCategory: string) => {
+      // Optimistic update
+      const previous = items;
+      setItems((prev) =>
+        prev.map((i) => (i.id === itemId ? { ...i, category: newCategory } : i)),
+      );
+      try {
+        await wardrobeApi.updateItem(itemId, { category: newCategory });
+      } catch (e) {
+        setItems(previous);
+        setError(e instanceof Error ? e.message : t("common.error"));
+      }
+    },
+    [items, t],
   );
 
   const filtered = items.filter((item) => {
@@ -312,7 +412,12 @@ export function WardrobePage() {
           ) : (
             <div className="stagger-children grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {filtered.map((item) => (
-                <ItemCard key={item.id} item={item} onDelete={handleDelete} />
+                <ItemCard
+                  key={item.id}
+                  item={item}
+                  onDelete={handleDelete}
+                  onCategoryChange={handleCategoryChange}
+                />
               ))}
             </div>
           )}

@@ -3,6 +3,7 @@ import { CloudUpload, ImagePlus, Sparkles, HardDrive, Loader2 } from "lucide-rea
 import { useI18n } from "../../i18n";
 import { getAppStatus, getToken } from "../../services/api";
 import { DriveModal } from "./DriveModal";
+import { ErrorBoundary } from "../common/ErrorBoundary";
 
 interface DropZoneProps {
   onFiles: (files: File[]) => void;
@@ -245,9 +246,14 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
         return;
       }
 
-      const files = Array.from(e.dataTransfer.files).filter((file) =>
-        file.type.startsWith("image/"),
-      );
+      const files = Array.from(e.dataTransfer.files).filter((file) => {
+        const name = file.name.toLowerCase();
+        return (
+          file.type.startsWith("image/") ||
+          name.endsWith(".heic") ||
+          name.endsWith(".heif")
+        );
+      });
 
       if (files.length) {
         setDriveError(null);
@@ -265,7 +271,9 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
     const input = document.createElement("input");
     input.type = "file";
     input.multiple = true;
-    input.accept = "image/*";
+    // image/* on Safari iOS already includes HEIC, but desktop browsers
+    // don't always. List HEIC explicitly so the file dialog allows them.
+    input.accept = "image/*,.heic,.heif";
     input.onchange = () => {
       const files = Array.from(input.files ?? []);
       if (files.length) {
@@ -377,11 +385,36 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
         </div>
       </div>
 
-      <DriveModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onPicked={handleModalPicked}
-      />
+      <ErrorBoundary
+        scope="drive-modal"
+        fallback={(err, reset) => (
+          <div
+            role="alert"
+            className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-md rounded-2xl border border-[rgba(239,138,128,0.24)] bg-[rgba(239,138,128,0.08)] px-4 py-3 text-sm text-[var(--danger)] shadow-xl"
+          >
+            <p className="font-semibold">{t("import.drive.crashTitle")}</p>
+            <p className="mt-1 text-xs opacity-80">{err.message}</p>
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setModalOpen(false);
+                  reset();
+                }}
+                className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-[var(--text-primary)] hover:bg-white/20"
+              >
+                {t("common.close")}
+              </button>
+            </div>
+          </div>
+        )}
+      >
+        <DriveModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onPicked={handleModalPicked}
+        />
+      </ErrorBoundary>
     </>
   );
 }

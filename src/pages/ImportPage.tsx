@@ -1,132 +1,149 @@
 import { useCallback, useState } from "react";
-import { Layers, ArrowRight, LoaderCircle, BadgeCheck, AlertTriangle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import {
+  Layers,
+  ArrowRight,
+  LoaderCircle,
+  BadgeCheck,
+  AlertTriangle,
+  Sparkles,
+} from "lucide-react";
 import { DropZone } from "../components/import/DropZone";
-import { TagEditor } from "../components/import/TagEditor";
-import { analyzeImage, saveItems } from "../services/api";
+import { ingestImage } from "../services/api";
 import { compressImageToBase64 } from "../utils/imageCompress";
 import { useI18n } from "../i18n";
-import type { ImportItem, WardrobeItemTag } from "../types/wardrobe";
 
 let nextId = 0;
 
+// Direct-ingest item shape — discriminated by status. There is no longer a
+// "needs save" middle state; once status === "done" the item is already
+// persisted in the wardrobe.
+type Stage =
+  | { status: "queued"; previewUrl: string; fileName: string; id: string }
+  | { status: "uploading"; previewUrl: string; fileName: string; id: string }
+  | { status: "analyzing"; previewUrl: string; fileName: string; id: string }
+  | {
+      status: "done";
+      previewUrl: string;
+      fileName: string;
+      id: string;
+      itemId: string;
+      category: string;
+      colorPrimary: string;
+      confidence: number;
+    }
+  | {
+      status: "error";
+      previewUrl: string;
+      fileName: string;
+      id: string;
+      error: string;
+    };
+
+function mapErrorCode(message: string, t: (k: string) => string): string {
+  if (message === "HEIC_LOADER_UNAVAILABLE") return t("import.errors.heicLoader");
+  if (message === "HEIC_CONVERSION_FAILED") return t("import.errors.heicConvert");
+  if (/network|fetch/i.test(message)) return t("import.errors.network");
+  return message || t("common.error");
+}
+
 export function ImportPage() {
   const { t } = useI18n();
-  const [items, setItems] = useState<ImportItem[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [saveResult, setSaveResult] = useState<{ text: string; isError: boolean } | null>(null);
+  const navigate = useNavigate();
+  const [items, setItems] = useState<Stage[]>([]);
 
-  const processFile = useCallback(async (file: File, id: string) => {
-    try {
-      setItems((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, status: "uploading" as const } : item)),
-      );
-      // Compress image client-side to avoid 413 errors
-      const base64 = await compressImageToBase64(file);
-      setItems((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, status: "analyzing" as const } : item)),
-      );
-      const result = await analyzeImage(base64, "image/jpeg", file.name);
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === id
-            ? {
-                ...item,
-                status: "done" as const,
-                tags: result.tags,
-                imageUrl: result.imageUrl,
-                thumbnailUrl: result.thumbnailUrl,
-              }
-            : item,
-        ),
-      );
-    } catch (err) {
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === id
-            ? { ...item, status: "error" as const, error: (err as Error).message }
-            : item,
-        ),
-      );
-    }
-  }, []);
+  const processFile = useCallback(
+    async (file: File, id: string) => {
+      try {
+        setItems((prev) =>
+          prev.map((it) => (it.id === id ? { ...it, status: "uploading" } : it)),
+        );
+
+        const base64 = await compressImageToBase64(file);
+
+        setItems((prev) =>
+          prev.map((it) => (it.id === id ? { ...it, status: "analyzing" } : it)),
+        );
+
+        const result = await ingestImage(base64, "image/jpeg", file.name);
+
+        setItems((prev) =>
+          prev.map((it) =>
+            it.id === id
+              ? {
+                  status: "done",
+                  previewUrl: it.previewUrl,
+                  fileName: it.fileName,
+                  id: it.id,
+                  itemId: result.id,
+                  category: result.tags.category,
+                  colorPrimary: result.tags.colorPrimary,
+                  confidence: result.tags.confidence,
+                }
+              : it,
+          ),
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "";
+        setItems((prev) =>
+          prev.map((it) =>
+            it.id === id
+              ? {
+                  status: "error",
+                  previewUrl: it.previewUrl,
+                  fileName: it.fileName,
+                  id: it.id,
+                  error: mapErrorCode(msg, t),
+                }
+              : it,
+          ),
+        );
+      }
+    },
+    [t],
+  );
 
   const handleFiles = useCallback(
     (files: File[]) => {
-      setSaveResult(null);
+      if (!files.length) return;
 
-      const newItems: ImportItem[] = files.map((file) => ({
-        id: String(++nextId),
-        fileName: file.name,
+      const seeds: Stage[] = files.map((file) => ({
+        status: "queued" as const,
         previewUrl: URL.createObjectURL(file),
-        status: "pending" as const,
+        fileName: file.name,
+        id: String(++nextId),
       }));
 
-      setItems((prev) => [...prev, ...newItems]);
+      setItems((prev) => [...seeds, ...prev]);
 
-      const queue = [...newItems];
-      const fileMap = new Map(files.map((file, index) => [newItems[index].id, file]));
+      // Concurrency: 3 in-flight at a time. Each call to processFile is a
+      // full direct-ingest round-trip (upload + Gemini + DB).
+      const queue = [...seeds];
+      const fileById = new Map(files.map((file, idx) => [seeds[idx].id, file]));
 
-      const processNext = async () => {
-        const item = queue.shift();
-        if (!item) return;
-        const file = fileMap.get(item.id);
-        if (file) await processFile(file, item.id);
-        await processNext();
+      const worker = async (): Promise<void> => {
+        while (queue.length) {
+          const next = queue.shift();
+          if (!next) return;
+          const file = fileById.get(next.id);
+          if (file) await processFile(file, next.id);
+        }
       };
 
-      void Promise.all([processNext(), processNext(), processNext()]);
+      void Promise.all([worker(), worker(), worker()]);
     },
     [processFile],
   );
 
-  const handleUpdateTags = useCallback((id: string, updates: Partial<WardrobeItemTag>) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id && item.tags ? { ...item, tags: { ...item.tags, ...updates } } : item,
-      ),
-    );
-  }, []);
+  const inFlight = items.filter(
+    (i) => i.status === "queued" || i.status === "uploading" || i.status === "analyzing",
+  ).length;
+  const doneCount = items.filter((i) => i.status === "done").length;
+  const errorCount = items.filter((i) => i.status === "error").length;
 
   const handleRemove = useCallback((id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
+    setItems((prev) => prev.filter((it) => it.id !== id));
   }, []);
-
-  const doneItems = items.filter((item) => item.status === "done");
-  const pendingCount = items.filter((item) =>
-    ["pending", "uploading", "analyzing"].includes(item.status),
-  ).length;
-  const errorCount = items.filter((item) => item.status === "error").length;
-
-  const handleSave = async () => {
-    if (!doneItems.length) return;
-    setSaving(true);
-    setSaveResult(null);
-
-    try {
-      const payload = doneItems.map((item) => ({
-        imageUrl: item.imageUrl!,
-        thumbnailUrl: item.thumbnailUrl!,
-        category: item.tags!.category,
-        subcategory: item.tags!.subcategory,
-        colorPrimary: item.tags!.colorPrimary,
-        colorHex: item.tags!.colorHex,
-        pattern: item.tags!.pattern,
-        fabric: item.tags!.fabric,
-        formalityLevel: item.tags!.formalityLevel,
-        season: item.tags!.season,
-        brand: item.tags!.brand ?? undefined,
-        confidence: item.tags!.confidence,
-      }));
-
-      const result = await saveItems(payload);
-      setSaveResult({ text: t("import.savedCount", { count: result.saved }), isError: false });
-      setItems((prev) => prev.filter((item) => item.status !== "done"));
-    } catch (err) {
-      setSaveResult({ text: `${t("common.error")}: ${(err as Error).message}`, isError: true });
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const steps = [
     { title: t("import.step1Title"), copy: t("import.step1Desc") },
@@ -136,8 +153,7 @@ export function ImportPage() {
 
   return (
     <div className="page-shell-tight space-y-8">
-      {/* Upload zone at top for better UX */}
-      <DropZone onFiles={handleFiles} disabled={pendingCount > 0} />
+      <DropZone onFiles={handleFiles} disabled={false} />
 
       <section className="page-header p-6 sm:p-8">
         <div className="relative z-10 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
@@ -158,9 +174,16 @@ export function ImportPage() {
 
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
             {steps.map((step, index) => (
-              <div key={index} className="rounded-[1.3rem] border border-white/8 bg-white/[0.03] p-4">
-                <p className="section-subtitle">{t("import.step")} {index + 1}</p>
-                <h2 className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{step.title}</h2>
+              <div
+                key={index}
+                className="rounded-[1.3rem] border border-white/8 bg-white/[0.03] p-4"
+              >
+                <p className="section-subtitle">
+                  {t("import.step")} {index + 1}
+                </p>
+                <h2 className="mt-2 text-lg font-semibold text-[var(--text-primary)]">
+                  {step.title}
+                </h2>
                 <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{step.copy}</p>
               </div>
             ))}
@@ -169,114 +192,124 @@ export function ImportPage() {
       </section>
 
       {items.length > 0 && (
-        <section className="grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
-          <aside className="space-y-5 xl:sticky xl:top-32 xl:self-start">
-            <div className="luxe-card p-6">
-              <p className="section-subtitle">{t("import.batchOverview")}</p>
-              <h2 className="section-title mt-2">{t("import.currentBatch")}</h2>
-
-              <div className="mt-5 space-y-3">
-                <div className="rounded-[1.2rem] border border-white/8 bg-white/[0.03] p-4">
-                  <p className="section-subtitle">{t("import.files")}</p>
-                  <p className="mt-2 text-3xl font-semibold text-[var(--text-primary)]">
-                    {items.length}
-                  </p>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-                  <div className="rounded-[1.2rem] border border-white/8 bg-white/[0.03] p-4">
-                    <div className="flex items-center gap-2 text-[var(--accent)]">
-                      <LoaderCircle size={16} className={pendingCount > 0 ? "animate-spin" : ""} />
-                      <p className="section-subtitle text-[var(--accent)]">{t("import.processing")}</p>
-                    </div>
-                    <p className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">{pendingCount}</p>
-                  </div>
-                  <div className="rounded-[1.2rem] border border-white/8 bg-white/[0.03] p-4">
-                    <div className="flex items-center gap-2 text-[var(--success)]">
-                      <BadgeCheck size={16} />
-                      <p className="section-subtitle text-[var(--success)]">{t("import.ready")}</p>
-                    </div>
-                    <p className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">{doneItems.length}</p>
-                  </div>
-                  <div className="rounded-[1.2rem] border border-white/8 bg-white/[0.03] p-4">
-                    <div className="flex items-center gap-2 text-[var(--danger)]">
-                      <AlertTriangle size={16} />
-                      <p className="section-subtitle text-[var(--danger)]">{t("import.needsFix")}</p>
-                    </div>
-                    <p className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">{errorCount}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="editorial-divider my-5" />
-
-              <p className="text-sm leading-6 text-[var(--text-secondary)]">
-                {t("import.lowConfidenceHint")}
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="section-subtitle">{t("import.reviewDesk")}</p>
+              <h2 className="section-title mt-2">{t("import.directSaveHeading")}</h2>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                {t("import.directSaveDesc")}
               </p>
-
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving || doneItems.length === 0}
-                className="primary-action mt-6 inline-flex w-full items-center justify-center gap-2 px-5 py-3 text-sm disabled:opacity-50"
-              >
-                {saving ? t("import.saving") : t("import.saveToWardrobe")}
-                <ArrowRight size={15} />
-              </button>
             </div>
-
-            {saveResult && (
-              <div
-                className={[
-                  "luxe-card p-4 text-sm leading-6",
-                  saveResult.isError
-                    ? "border-[rgba(239,138,128,0.22)] text-[var(--danger)]"
-                    : "border-[rgba(111,212,171,0.22)] text-[var(--success)]",
-                ].join(" ")}
-              >
-                {saveResult.text}
-              </div>
-            )}
-          </aside>
-
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="section-subtitle">{t("import.reviewDesk")}</p>
-                <h2 className="section-title mt-2">{t("import.reviewHeading")}</h2>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {pendingCount > 0 && (
-                  <span className="status-chip bg-[rgba(201,165,90,0.12)] text-[var(--accent)]">
-                    <LoaderCircle size={12} className="animate-spin" />
-                    {pendingCount} {t("import.inProgress")}
-                  </span>
-                )}
-                {doneItems.length > 0 && (
-                  <span className="status-chip bg-[rgba(111,212,171,0.12)] text-[var(--success)]">
-                    <BadgeCheck size={12} />
-                    {doneItems.length} {t("import.ready")}
-                  </span>
-                )}
-                {errorCount > 0 && (
-                  <span className="status-chip bg-[rgba(239,138,128,0.12)] text-[var(--danger)]">
-                    <AlertTriangle size={12} />
-                    {errorCount} {t("import.issue")}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {items.map((item) => (
-                <TagEditor
-                  key={item.id}
-                  item={item}
-                  onUpdate={handleUpdateTags}
-                  onRemove={handleRemove}
-                />
-              ))}
+            <div className="flex flex-wrap gap-2">
+              {inFlight > 0 && (
+                <span className="status-chip bg-[rgba(201,165,90,0.12)] text-[var(--accent)]">
+                  <LoaderCircle size={12} className="animate-spin" />
+                  {inFlight} {t("import.inProgress")}
+                </span>
+              )}
+              {doneCount > 0 && (
+                <span className="status-chip bg-[rgba(111,212,171,0.12)] text-[var(--success)]">
+                  <BadgeCheck size={12} />
+                  {doneCount} {t("import.savedInline")}
+                </span>
+              )}
+              {errorCount > 0 && (
+                <span className="status-chip bg-[rgba(239,138,128,0.12)] text-[var(--danger)]">
+                  <AlertTriangle size={12} />
+                  {errorCount} {t("import.issue")}
+                </span>
+              )}
             </div>
           </div>
+
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {items.map((item) => (
+              <li
+                key={item.id}
+                className={[
+                  "luxe-card flex items-center gap-3 p-3",
+                  item.status === "error" ? "border-[rgba(239,138,128,0.24)]" : "",
+                  item.status === "done" ? "border-[rgba(111,212,171,0.22)]" : "",
+                ].join(" ")}
+              >
+                <div className="h-20 w-16 shrink-0 overflow-hidden rounded-xl bg-white/[0.04]">
+                  <img
+                    src={item.previewUrl}
+                    alt={item.fileName}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
+                    {item.fileName}
+                  </p>
+                  {item.status === "queued" && (
+                    <p className="mt-1 text-xs text-[var(--text-muted)]">
+                      {t("tagEditor.pending")}
+                    </p>
+                  )}
+                  {item.status === "uploading" && (
+                    <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--accent)]">
+                      <LoaderCircle size={11} className="animate-spin" />
+                      {t("import.processing")}
+                    </p>
+                  )}
+                  {item.status === "analyzing" && (
+                    <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--accent)]">
+                      <Sparkles size={11} />
+                      {t("import.dropzone.kicker")}…
+                    </p>
+                  )}
+                  {item.status === "done" && (
+                    <>
+                      <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--success)]">
+                        <BadgeCheck size={11} />
+                        {t("import.savedInline")}
+                      </p>
+                      <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
+                        {t(`categories.${item.category}`)} · {item.colorPrimary}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => navigate("/wardrobe")}
+                        className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--accent)] hover:underline"
+                      >
+                        {t("import.editInWardrobe")}
+                        <ArrowRight size={11} />
+                      </button>
+                    </>
+                  )}
+                  {item.status === "error" && (
+                    <>
+                      <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--danger)]">
+                        <AlertTriangle size={11} />
+                        {item.error}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleRemove(item.id)}
+                        className="mt-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                      >
+                        {t("common.close")}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {doneCount > 0 && (
+            <button
+              type="button"
+              onClick={() => navigate("/wardrobe")}
+              className="primary-action inline-flex items-center gap-2 px-5 py-3 text-sm"
+            >
+              {t("import.openWardrobe")}
+              <ArrowRight size={15} />
+            </button>
+          )}
         </section>
       )}
     </div>

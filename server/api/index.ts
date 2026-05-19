@@ -8,6 +8,7 @@ import { analyticsRouter } from "./analytics.js";
 import { profileRouter } from "./profile.js";
 import { lookbookRouter } from "./lookbook.js";
 import { familyRouter } from "./family.js";
+import { feedbackRouter } from "./feedback.js";
 import { requireAuth } from "../middleware/auth.js";
 import { getAppStatus } from "../services/app-status.js";
 
@@ -15,6 +16,9 @@ export const apiRouter = Router();
 
 // Public routes — no auth required
 apiRouter.use("/auth", authRouter);
+
+// Feedback — optional auth (anonymous senders allowed)
+apiRouter.use("/feedback", feedbackRouter);
 
 apiRouter.get("/status", (_req, res) => {
   res.set("Cache-Control", "no-store");

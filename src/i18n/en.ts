@@ -157,6 +157,7 @@ export const en: Translations = {
     season: "Season",
     formality: "Formality",
     timesWorn: "Times worn",
+    editCategory: "Edit category",
   },
 
   /* ---- Categories ---- */
@@ -164,12 +165,19 @@ export const en: Translations = {
     all: "All",
     tops: "Tops",
     bottoms: "Bottoms",
+    jeans: "Jeans",
+    pants: "Pants",
+    skirts: "Skirts",
     dresses: "Dresses",
     outerwear: "Outerwear",
-    shoes: "Shoes",
-    accessories: "Accessories",
-    activewear: "Activewear",
+    footwear: "Footwear",
+    shoes: "Footwear", // legacy alias
     swimwear: "Swimwear",
+    pajamas: "Pajamas",
+    underwear: "Underwear",
+    accessories: "Accessories / Jewelry",
+    sportswear: "Sportswear",
+    activewear: "Sportswear", // legacy alias
     suits: "Suits",
   },
 
@@ -209,6 +217,17 @@ export const en: Translations = {
     inProgress: "in progress",
     issue: "issue",
 
+    directSaveHeading: "Latest uploads",
+    directSaveDesc: "Items are saved to your wardrobe instantly — you can re-categorize them there.",
+    savedInline: "saved",
+    editInWardrobe: "Edit in wardrobe",
+    openWardrobe: "Open wardrobe",
+    errors: {
+      heicLoader: "Couldn't load the HEIC decoder. Reload the page or export your iOS photo as JPEG.",
+      heicConvert: "This .HEIC file is corrupted or too large. Save a JPEG copy and try again.",
+      network: "Network problem. Check your connection and retry.",
+    },
+
     dropzone: {
       kicker: "Upload",
       heading: "Drop photos\nto build your archive.",
@@ -236,6 +255,7 @@ export const en: Translations = {
       selectedCount: "Selected: {count}",
       downloading: "Downloading {done}/{total}…",
       allFailed: "No photos could be imported.",
+      crashTitle: "Google Drive: unexpected error",
     },
   },
 
@@ -520,6 +540,18 @@ export const en: Translations = {
     sharedWardrobe: "Shared Wardrobe",
     hide: "Hide",
     emptyWardrobe: "Wardrobe is empty",
+  },
+
+  /* ---- Feedback widget ---- */
+  feedback: {
+    open: "Contact us",
+    title: "Share your thoughts",
+    subtitle: "Bug, idea or kind word — we read everything.",
+    emailPlaceholder: "Email (optional)",
+    messagePlaceholder: "Your message…",
+    send: "Send",
+    sent: "Thanks! We've received your feedback.",
+    tooShort: "Message is too short (min 3 characters).",
   },
 
   /* ---- Analytics ---- */

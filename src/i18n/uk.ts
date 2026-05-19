@@ -157,6 +157,7 @@ export const uk: Translations = {
     season: "Сезон",
     formality: "Формальність",
     timesWorn: "Носили",
+    editCategory: "Змінити категорію",
   },
 
   /* ---- Categories ---- */
@@ -164,12 +165,19 @@ export const uk: Translations = {
     all: "Все",
     tops: "Верх",
     bottoms: "Низ",
+    jeans: "Джинси",
+    pants: "Штани",
+    skirts: "Спідниці",
     dresses: "Сукні",
     outerwear: "Верхній одяг",
-    shoes: "Взуття",
-    accessories: "Аксесуари",
-    activewear: "Спортивне",
-    swimwear: "Купальне",
+    footwear: "Взуття",
+    shoes: "Взуття", // legacy alias
+    swimwear: "Купальники",
+    pajamas: "Піжама",
+    underwear: "Білизна",
+    accessories: "Аксесуари / Прикраси",
+    sportswear: "Спортивний одяг",
+    activewear: "Спортивний одяг", // legacy alias
     suits: "Костюми",
   },
 
@@ -209,6 +217,17 @@ export const uk: Translations = {
     inProgress: "у роботі",
     issue: "помилка",
 
+    directSaveHeading: "Останні завантаження",
+    directSaveDesc: "Речі зберігаються у гардероб одразу — категорію можна змінити у гардеробі.",
+    savedInline: "збережено",
+    editInWardrobe: "Редагувати в гардеробі",
+    openWardrobe: "Перейти в гардероб",
+    errors: {
+      heicLoader: "Не вдалося завантажити HEIC-декодер. Спробуйте оновити сторінку або експортуйте з iOS у JPEG.",
+      heicConvert: "Файл .HEIC пошкоджено або занадто великий. Збережіть копію як JPEG і повторіть.",
+      network: "Проблема з мережею. Перевірте з'єднання та повторіть.",
+    },
+
     dropzone: {
       kicker: "Завантаження",
       heading: "Перетягніть фото\nдля створення архіву.",
@@ -236,6 +255,7 @@ export const uk: Translations = {
       selectedCount: "Обрано: {count}",
       downloading: "Завантаження {done}/{total}…",
       allFailed: "Не вдалося завантажити жодного фото.",
+      crashTitle: "Google Drive: неочікувана помилка",
     },
   },
 
@@ -520,6 +540,18 @@ export const uk: Translations = {
     sharedWardrobe: "Спільний гардероб",
     hide: "Сховати",
     emptyWardrobe: "Гардероб порожній",
+  },
+
+  /* ---- Feedback widget ---- */
+  feedback: {
+    open: "Зв'язок з нами",
+    title: "Поділіться враженням",
+    subtitle: "Помилка, ідея чи відгук — усе читаємо.",
+    emailPlaceholder: "Email (необов'язково)",
+    messagePlaceholder: "Ваше повідомлення…",
+    send: "Надіслати",
+    sent: "Дякуємо! Ми отримали ваш відгук.",
+    tooShort: "Повідомлення занадто коротке (мінімум 3 символи).",
   },
 
   /* ---- Analytics ---- */

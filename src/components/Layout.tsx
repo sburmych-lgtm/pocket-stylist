@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../i18n";
 import type { Language } from "../i18n";
+import { FeedbackWidget } from "./common/FeedbackWidget";
 import {
   Home,
   Shirt,
@@ -215,6 +216,8 @@ export function Layout() {
       <main className="pb-28 pt-24 md:pb-12 md:pt-28">
         <Outlet />
       </main>
+
+      {user && <FeedbackWidget initialEmail={user.email} />}
 
       {/* Mobile bottom nav */}
       <nav className="fixed inset-x-0 bottom-4 z-50 px-3 md:hidden">

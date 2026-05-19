@@ -157,6 +157,38 @@ export function analyzeImage(image: string, mimeType: string, fileName: string) 
   });
 }
 
+export interface IngestResponse {
+  id: string;
+  imageUrl: string;
+  thumbnailUrl: string;
+  tags: {
+    category: string;
+    subcategory: string;
+    colorPrimary: string;
+    colorHex: string;
+    pattern: string;
+    fabric: string;
+    formalityLevel: number;
+    season: string;
+    brand: string | null;
+    confidence: number;
+  };
+  fileName: string;
+  createdAt: string;
+  timings?: { uploadMs: number; geminiMs: number; dbMs: number; totalMs: number };
+}
+
+/**
+ * Direct-ingestion: upload + analyze + commit in a single round-trip.
+ * Replaces the old two-step analyze-then-save flow.
+ */
+export function ingestImage(image: string, mimeType: string, fileName: string) {
+  return apiFetch<IngestResponse>("/import/ingest", {
+    method: "POST",
+    body: JSON.stringify({ image, mimeType, fileName }),
+  });
+}
+
 export function saveItems(
   items: Array<{
     imageUrl: string;
@@ -424,6 +456,18 @@ export const familyApi = {
 
 /* ---------- Wardrobe API ---------- */
 
+export interface WardrobeItemPatch {
+  category?: string;
+  subcategory?: string | null;
+  colorPrimary?: string;
+  colorHex?: string | null;
+  pattern?: string;
+  fabric?: string | null;
+  formalityLevel?: number;
+  season?: "spring" | "summer" | "fall" | "winter" | "all";
+  brand?: string | null;
+}
+
 export const wardrobeApi = {
   getAll(): Promise<WardrobeItem[]> {
     return apiFetch<WardrobeItem[]>("/import/wardrobe");
@@ -432,6 +476,24 @@ export const wardrobeApi = {
   deleteItem(itemId: string): Promise<{ ok: boolean }> {
     return apiFetch<{ ok: boolean }>(`/import/wardrobe/${itemId}`, {
       method: "DELETE",
+    });
+  },
+
+  updateItem(itemId: string, patch: WardrobeItemPatch): Promise<{ item: WardrobeItem }> {
+    return apiFetch<{ item: WardrobeItem }>(`/import/wardrobe/${itemId}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    });
+  },
+};
+
+/* ---------- Feedback ---------- */
+
+export const feedbackApi = {
+  send(message: string, email?: string, source?: string): Promise<{ ok: boolean }> {
+    return apiFetch<{ ok: boolean }>("/feedback", {
+      method: "POST",
+      body: JSON.stringify({ message, email, source }),
     });
   },
 };

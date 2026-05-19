@@ -130,6 +130,19 @@ model FamilyMember {
   @@map("family_members")
 }
 
+model Feedback {
+  id        String   @id @default(cuid())
+  userId    String?
+  email     String?
+  message   String   @db.Text
+  userAgent String?  @db.Text
+  source    String?  // page / context (e.g. "import", "wardrobe")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("feedback")
+}
+
 model GeminiUsage {
   id          String   @id @default(cuid())
   date        DateTime @default(now()) @db.Date

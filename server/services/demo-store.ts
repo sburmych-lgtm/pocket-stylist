@@ -81,3 +81,41 @@ export function deleteDemoWardrobeItem(userId: string, itemId: string): boolean 
   wardrobeItems.set(userId, next);
   return next.length !== existing.length;
 }
+
+export function updateDemoWardrobeItem(
+  userId: string,
+  itemId: string,
+  patch: Partial<{
+    category: string;
+    subcategory: string | null;
+    colorPrimary: string;
+    colorHex: string | null;
+    pattern: string;
+    fabric: string | null;
+    formalityLevel: number;
+    season: string;
+    brand: string | null;
+  }>,
+): WardrobeItem | null {
+  const existing = wardrobeItems.get(userId) ?? [];
+  const idx = existing.findIndex((item) => item.id === itemId);
+  if (idx === -1) return null;
+  const before = existing[idx];
+  const updated: WardrobeItem = {
+    ...before,
+    category: patch.category ?? before.category,
+    subcategory: patch.subcategory === undefined ? before.subcategory : patch.subcategory,
+    colorPrimary: patch.colorPrimary ?? before.colorPrimary,
+    colorHex: patch.colorHex === undefined ? before.colorHex : patch.colorHex,
+    pattern: patch.pattern ?? before.pattern,
+    fabric: patch.fabric === undefined ? before.fabric : patch.fabric,
+    formalityLevel: patch.formalityLevel ?? before.formalityLevel,
+    season: patch.season ?? before.season,
+    brand: patch.brand === undefined ? before.brand : patch.brand,
+    updatedAt: new Date(),
+  };
+  const next = [...existing];
+  next[idx] = updated;
+  wardrobeItems.set(userId, next);
+  return updated;
+}
