@@ -253,7 +253,10 @@ authRouter.get("/google/drive-consent", async (req: Request, res: Response) => {
     scopes: [...BASIC_SCOPES, ...DRIVE_SCOPES],
     prompt: "consent",
     includeGrantedScopes: true,
-    state: `drive:${encodeURIComponent(safeReturnTo)}`,
+    // Pass returnTo through `state` without pre-encoding — URLSearchParams
+    // (inside buildGoogleAuthUrl) does that exactly once. Otherwise the slash
+    // would be double-encoded and the callback couldn't route the user back.
+    state: `drive:${safeReturnTo}`,
     loginHint,
   });
 
