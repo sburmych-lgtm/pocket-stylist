@@ -14,9 +14,14 @@ export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+interface ApiFetchOptions extends RequestInit {
+  /** Optional client-side timeout in ms. Aborts the request and throws "timeout". */
+  timeoutMs?: number;
+}
+
 async function apiFetch<T>(
   path: string,
-  options?: RequestInit,
+  options?: ApiFetchOptions,
 ): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -26,15 +31,37 @@ async function apiFetch<T>(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers,
-    ...options,
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? `API error ${res.status}`);
+  const { timeoutMs, ...fetchOpts } = options ?? {};
+  const controller = new AbortController();
+  // Compose with any caller-supplied signal so they can also cancel.
+  const callerSignal = fetchOpts.signal as AbortSignal | undefined;
+  if (callerSignal) {
+    if (callerSignal.aborted) controller.abort();
+    else callerSignal.addEventListener("abort", () => controller.abort(), { once: true });
   }
-  return res.json() as Promise<T>;
+  const timeoutId = timeoutMs
+    ? setTimeout(() => controller.abort(new DOMException("timeout", "TimeoutError")), timeoutMs)
+    : undefined;
+
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...fetchOpts,
+      headers: { ...headers, ...(fetchOpts.headers as Record<string, string> | undefined) },
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error((body as { error?: string }).error ?? `API error ${res.status}`);
+    }
+    return res.json() as Promise<T>;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("timeout");
+    }
+    throw err;
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  }
 }
 
 /* ---------- Auth types ---------- */
@@ -88,7 +115,10 @@ export const authApi = {
   },
 
   async getMe(): Promise<AuthUser> {
-    const res = await apiFetch<{ user: AuthUser }>("/auth/me");
+    // Tight timeout so a degraded DB on Railway never freezes the login UI
+    // on AuthContext init. 4 s is enough for a healthy round-trip; anything
+    // longer means DB is down and we should fall through to the login page.
+    const res = await apiFetch<{ user: AuthUser }>("/auth/me", { timeoutMs: 4_000 });
     return res.user;
   },
 };
