@@ -25,7 +25,12 @@ interface AuthContextType {
   isDemoMode: boolean;
   loginWithGoogle: (credential: string) => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
-  registerWithEmail: (email: string, password: string, name?: string) => Promise<void>;
+  registerWithEmail: (
+    email: string,
+    password: string,
+    name: string | undefined,
+    acceptedTerms: boolean,
+  ) => Promise<void>;
   loginDemo: () => Promise<void>;
   logout: () => void;
 }
@@ -82,8 +87,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const registerWithEmail = useCallback(
-    async (email: string, password: string, name?: string) => {
-      const data = await authApi.registerEmail(email, password, name);
+    async (
+      email: string,
+      password: string,
+      name: string | undefined,
+      acceptedTerms: boolean,
+    ) => {
+      const data = await authApi.registerEmail(email, password, name, acceptedTerms);
       handleAuthResponse(data);
     },
     [handleAuthResponse],

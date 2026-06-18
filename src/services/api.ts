@@ -107,10 +107,11 @@ export const authApi = {
     email: string,
     password: string,
     name?: string,
+    acceptedTerms?: boolean,
   ): Promise<AuthResponse> {
     return apiFetch<AuthResponse>("/auth/email/register", {
       method: "POST",
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({ email, password, name, acceptedTerms }),
     });
   },
 

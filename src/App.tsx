@@ -13,6 +13,7 @@ import { LookbookPage } from "./pages/LookbookPage";
 import FamilyPage from "./pages/FamilyPage";
 import { WardrobePage } from "./pages/WardrobePage";
 import { LoginPage } from "./pages/LoginPage";
+import { LegalPage } from "./pages/LegalPage";
 import { Layout } from "./components/Layout";
 
 const queryClient = new QueryClient({
@@ -54,6 +55,14 @@ export default function App() {
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/privacy"
+              element={<LegalPage docPath="/privacy.md" titleKey="legal.privacyTitle" />}
+            />
+            <Route
+              path="/terms"
+              element={<LegalPage docPath="/terms.md" titleKey="legal.termsTitle" />}
+            />
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
                 <Route path="/" element={<HomePage />} />

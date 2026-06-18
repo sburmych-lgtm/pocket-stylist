@@ -25,6 +25,7 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [authError, setAuthError] = useState<string | null>(null);
   const [authInProgress, setAuthInProgress] = useState(false);
@@ -74,6 +75,8 @@ export function LoginPage() {
           return t("login.emailReserved");
         case "invalid_credentials":
           return t("login.invalidCredentials");
+        case "terms_not_accepted":
+          return t("login.termsRequired");
         default:
           return t("login.authError");
       }
@@ -95,11 +98,20 @@ export function LoginPage() {
         setAuthError(t("login.passwordTooShort", { min: String(PASSWORD_MIN_LENGTH) }));
         return;
       }
+      if (mode === "register" && !acceptedTerms) {
+        setAuthError(t("login.termsRequired"));
+        return;
+      }
 
       setAuthInProgress(true);
       try {
         if (mode === "register") {
-          await registerWithEmail(trimmedEmail, password, name.trim() || undefined);
+          await registerWithEmail(
+            trimmedEmail,
+            password,
+            name.trim() || undefined,
+            acceptedTerms,
+          );
         } else {
           await loginWithEmail(trimmedEmail, password);
         }
@@ -111,7 +123,18 @@ export function LoginPage() {
         setAuthInProgress(false);
       }
     },
-    [email, password, name, mode, registerWithEmail, loginWithEmail, navigate, t, mapServerError],
+    [
+      email,
+      password,
+      name,
+      mode,
+      acceptedTerms,
+      registerWithEmail,
+      loginWithEmail,
+      navigate,
+      t,
+      mapServerError,
+    ],
   );
 
   const handleDemo = useCallback(async () => {
@@ -279,9 +302,43 @@ export function LoginPage() {
               </div>
             </label>
 
+            {mode === "register" && (
+              <label className="flex cursor-pointer items-start gap-2 px-1 text-[11px] leading-snug text-[var(--text-secondary)]">
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  disabled={authInProgress}
+                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border border-white/20 bg-white/5 accent-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/40 disabled:opacity-50"
+                  required
+                />
+                <span>
+                  {t("login.termsPrefix")}{" "}
+                  <a
+                    href="/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-[var(--accent)] hover:underline"
+                  >
+                    {t("login.termsLink")}
+                  </a>{" "}
+                  {t("login.termsAnd")}{" "}
+                  <a
+                    href="/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-[var(--accent)] hover:underline"
+                  >
+                    {t("login.privacyLink")}
+                  </a>
+                  .
+                </span>
+              </label>
+            )}
+
             <button
               type="submit"
-              disabled={authInProgress}
+              disabled={authInProgress || (mode === "register" && !acceptedTerms)}
               className="gold-btn flex w-full items-center justify-center gap-2 rounded-full px-4 py-3.5 text-sm font-semibold disabled:opacity-50"
             >
               {mode === "register" ? (

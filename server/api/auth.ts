@@ -31,6 +31,12 @@ function getStringField(body: unknown, key: string): string | undefined {
   return typeof v === "string" ? v : undefined;
 }
 
+function getBoolField(body: unknown, key: string): boolean | undefined {
+  if (!body || typeof body !== "object") return undefined;
+  const v = (body as Record<string, unknown>)[key];
+  return typeof v === "boolean" ? v : undefined;
+}
+
 async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
   const hash = await scryptAsync(password, salt, 64);
@@ -498,9 +504,16 @@ authRouter.post("/email/register", async (req: Request, res: Response) => {
     const emailRaw = getStringField(req.body, "email");
     const password = getStringField(req.body, "password");
     const nameRaw = getStringField(req.body, "name");
+    const acceptedTerms = getBoolField(req.body, "acceptedTerms");
 
     if (emailRaw === undefined || password === undefined) {
       res.status(400).json({ error: "invalid_payload" });
+      return;
+    }
+    // GDPR: explicit opt-in required for new sign-ups. Existing accounts
+    // pre-dating this requirement are grandfathered (termsAcceptedAt NULL).
+    if (acceptedTerms !== true) {
+      res.status(400).json({ error: "terms_not_accepted" });
       return;
     }
 
@@ -552,6 +565,7 @@ authRouter.post("/email/register", async (req: Request, res: Response) => {
           email: normalizedEmail,
           name,
           passwordHash,
+          termsAcceptedAt: new Date(),
         },
       }),
       5_000,

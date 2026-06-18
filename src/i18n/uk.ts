@@ -74,6 +74,17 @@ export const uk: Translations = {
     passwordTooLong: "Пароль задовгий (максимум 200 символів).",
     nameTooLong: "Ім'я задовге (максимум 100 символів).",
     invalidPayload: "Некоректний формат запиту.",
+    termsRequired: "Прийміть Умови використання та Політику конфіденційності для продовження.",
+    termsPrefix: "Я погоджуюсь з",
+    termsLink: "Умовами використання",
+    termsAnd: "та",
+    privacyLink: "Політикою конфіденційності",
+  },
+
+  /* ---- Legal pages ---- */
+  legal: {
+    privacyTitle: "Політика конфіденційності",
+    termsTitle: "Умови використання",
   },
 
   /* ---- Home ---- */

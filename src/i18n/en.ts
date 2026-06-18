@@ -74,6 +74,17 @@ export const en: Translations = {
     passwordTooLong: "Password is too long (max 200 characters).",
     nameTooLong: "Name is too long (max 100 characters).",
     invalidPayload: "Invalid request format.",
+    termsRequired: "Please accept the Terms and Privacy Policy to continue.",
+    termsPrefix: "I agree to the",
+    termsLink: "Terms of Service",
+    termsAnd: "and",
+    privacyLink: "Privacy Policy",
+  },
+
+  /* ---- Legal pages ---- */
+  legal: {
+    privacyTitle: "Privacy Policy",
+    termsTitle: "Terms of Service",
   },
 
   /* ---- Home ---- */
