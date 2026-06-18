@@ -175,9 +175,9 @@ function ItemCard({
           setDeleteModalOpen(true);
         }}
         aria-label={t("wardrobe.delete")}
-        className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white/80 backdrop-blur-md transition-all hover:bg-red-500 hover:text-white focus-visible:ring-2 focus-visible:ring-red-500/40"
+        className="absolute left-1.5 top-1.5 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/30 bg-red-500/90 text-white shadow-lg backdrop-blur-md transition-all hover:bg-red-600 hover:scale-110 focus-visible:ring-2 focus-visible:ring-red-500/60"
       >
-        <Trash2 size={12} />
+        <Trash2 size={18} strokeWidth={2.5} />
       </button>
 
       {deleteModalOpen && (
