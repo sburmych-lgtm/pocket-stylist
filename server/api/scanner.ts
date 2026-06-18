@@ -3,11 +3,14 @@ import type { Request, Response } from "express";
 import { prisma } from "../services/prisma.js";
 import { analyzeClothingImage, FALLBACK_CLOTHING_ANALYSIS } from "../services/gemini.js";
 import { getDemoWardrobe, isDemoUser } from "../services/demo-store.js";
+import { rateLimitPerUser } from "../middleware/rate-limit.js";
+
+const geminiLimiter = rateLimitPerUser({ tag: "gemini" });
 
 export const scannerRouter = Router();
 
 // POST /api/scanner/analyze — Scan item in store, get BUY/SKIP verdict
-scannerRouter.post("/analyze", async (req: Request, res: Response) => {
+scannerRouter.post("/analyze", geminiLimiter, async (req: Request, res: Response) => {
   try {
     const { image, mimeType } = req.body as {
       image: string;

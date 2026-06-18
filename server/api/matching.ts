@@ -7,6 +7,9 @@ import { isConfiguredSecret } from "../services/app-status.js";
 import { getDemoWardrobe, isDemoUser } from "../services/demo-store.js";
 import { parseGeminiJson, withTimeout } from "../services/gemini-utils.js";
 import { colorsHarmonize } from "../services/styling/rules-engine.js";
+import { rateLimitPerUser } from "../middleware/rate-limit.js";
+
+const geminiLimiter = rateLimitPerUser({ tag: "gemini" });
 
 export const matchingRouter = Router();
 
@@ -43,7 +46,7 @@ const GarmentBreakdownSchema = z.object({
 });
 
 // POST /api/matching/analyze — Upload reference photo, decompose into garments
-matchingRouter.post("/analyze", async (req: Request, res: Response) => {
+matchingRouter.post("/analyze", geminiLimiter, async (req: Request, res: Response) => {
   try {
     const { image, mimeType } = req.body as {
       image: string;

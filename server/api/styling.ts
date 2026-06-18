@@ -6,11 +6,14 @@ import { filterWardrobe } from "../services/styling/rules-engine.js";
 import { generateOutfits } from "../services/styling/outfit-generator.js";
 import { resolveTargetUser } from "../services/family.js";
 import { getDemoWardrobe, isDemoUser } from "../services/demo-store.js";
+import { rateLimitPerUser } from "../middleware/rate-limit.js";
+
+const geminiLimiter = rateLimitPerUser({ tag: "gemini" });
 
 export const stylingRouter = Router();
 
 // POST /api/styling/suggest — Get outfit suggestions
-stylingRouter.post("/suggest", async (req: Request, res: Response) => {
+stylingRouter.post("/suggest", geminiLimiter, async (req: Request, res: Response) => {
   try {
     const {
       mood,

@@ -12,6 +12,9 @@ import {
   isDemoUser,
   updateDemoWardrobeItem,
 } from "../services/demo-store.js";
+import { rateLimitPerUser } from "../middleware/rate-limit.js";
+
+const geminiLimiter = rateLimitPerUser({ tag: "gemini" });
 import { normalizeCategory } from "../../src/shared/wardrobe-categories.js";
 import { withTimeout } from "../services/gemini-utils.js";
 
@@ -44,7 +47,7 @@ const ItemPatchSchema = z
 // Uploads -> analyzes with Gemini -> commits to wardrobe in ONE round-trip.
 // This is the production path; /analyze + /save below are deprecated shims
 // kept for older clients still in the wild.
-importRouter.post("/ingest", async (req: Request, res: Response) => {
+importRouter.post("/ingest", geminiLimiter, async (req: Request, res: Response) => {
   const t0 = Date.now();
   try {
     const { image, mimeType, fileName } = req.body as {
@@ -155,7 +158,7 @@ importRouter.post("/ingest", async (req: Request, res: Response) => {
 // POST /api/import/analyze — DEPRECATED: kept for old clients.
 // New code paths use /ingest. This shim returns the analyze-only response
 // (no DB commit) and signals deprecation via header.
-importRouter.post("/analyze", async (req: Request, res: Response) => {
+importRouter.post("/analyze", geminiLimiter, async (req: Request, res: Response) => {
   try {
     const { image, mimeType, fileName } = req.body as {
       image: string;

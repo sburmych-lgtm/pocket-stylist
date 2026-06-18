@@ -4,6 +4,9 @@ import { prisma } from "../services/prisma.js";
 import { analyzeColorType } from "../services/color-analysis.js";
 import type { ColorAnalysisResult } from "../services/color-analysis.js";
 import { DEMO_USER, isDemoUser } from "../services/demo-store.js";
+import { rateLimitPerUser } from "../middleware/rate-limit.js";
+
+const geminiLimiter = rateLimitPerUser({ tag: "gemini" });
 
 export const profileRouter = Router();
 
@@ -90,6 +93,7 @@ profileRouter.patch("/", async (req: Request, res: Response) => {
 // POST /api/profile/color-analysis — Analyze selfie for color type
 profileRouter.post(
   "/color-analysis",
+  geminiLimiter,
   async (req: Request, res: Response) => {
     try {
       const userId = req.userId!;
