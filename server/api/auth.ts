@@ -386,31 +386,23 @@ authRouter.get("/google/callback", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/auth/demo — Demo user login (always available as fallback)
-authRouter.post("/demo", async (_req: Request, res: Response) => {
+// POST /api/auth/demo — Demo user login.
+// Pure in-memory: no Prisma upsert, no FK relations. This guarantees that
+// (a) the JWT always carries `userId = DEMO_USER_ID` so every protected
+// route lands in the isDemoUser() branch (which is where ensureDemoSeed
+// pre-populates 10 stock items), and (b) /demo works even when Postgres
+// is offline — exactly the contract the FE relies on for the "Try the
+// demo" link on the login page.
+authRouter.post("/demo", (_req: Request, res: Response) => {
   try {
-    const user = await withTimeout(
-      prisma.user.upsert({
-        where: { email: DEMO_USER_EMAIL },
-        update: {},
-        create: { email: DEMO_USER_EMAIL, name: DEMO_USER.name },
-      }),
-      5_000,
-      "Demo database login timed out",
-    ).catch((err) => {
-      console.error("Demo auth falling back to in-memory user:", err);
-      return DEMO_USER;
-    });
-
-    const token = signToken(user.id);
-
+    const token = signToken(DEMO_USER.id);
     res.json({
       token,
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        avatarUrl: user.avatarUrl,
+        id: DEMO_USER.id,
+        email: DEMO_USER.email,
+        name: DEMO_USER.name,
+        avatarUrl: null,
       },
     });
   } catch (err) {
