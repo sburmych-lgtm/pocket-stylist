@@ -223,8 +223,23 @@ familyRouter.get(
       const familyId = param(req.params.familyId);
       const memberId = param(req.params.memberId);
 
-      if (!(await isFamilyMember(userId, familyId))) {
+      // IDOR fix: confirm BOTH parties belong to the SAME family. Previously
+      // we only checked that the caller was a member of `familyId`, which
+      // meant any authenticated user in any family could trivially read
+      // any other user's wardrobe by passing their own familyId + the
+      // victim's userId.
+      const [callerIsMember, targetIsMember] = await Promise.all([
+        isFamilyMember(userId, familyId),
+        isFamilyMember(memberId, familyId),
+      ]);
+
+      if (!callerIsMember) {
         res.status(403).json({ error: "Not a member of this family" });
+        return;
+      }
+      if (!targetIsMember) {
+        // 404 (not 403) so we don't leak the existence of an unrelated user.
+        res.status(404).json({ error: "Member not found in this family" });
         return;
       }
 

@@ -96,3 +96,56 @@ export function _ratelimitDebug() {
 export function _ratelimitReset() {
   buckets.clear();
 }
+
+interface IpRateLimitOptions {
+  limit?: number;
+  windowMs?: number;
+  tag?: string;
+}
+
+/**
+ * IP-keyed rate limiter for endpoints without an authenticated userId
+ * yet — registration, login, password reset, etc. Prevents credential
+ * stuffing and brute-force account enumeration.
+ */
+export function rateLimitByIp(options: IpRateLimitOptions = {}) {
+  const limit = options.limit ?? 20;
+  const windowMs = options.windowMs ?? 60 * 60 * 1000; // 1 hour
+  const tag = options.tag ?? "ip";
+
+  return (
+    req: import("express").Request,
+    res: import("express").Response,
+    next: import("express").NextFunction,
+  ): void => {
+    // Trust Railway's X-Forwarded-For (one hop). Same logic Express's
+    // `trust proxy` would do, but we don't rely on the global setting.
+    const xff = req.headers["x-forwarded-for"];
+    const ip =
+      (typeof xff === "string" ? xff.split(",")[0]?.trim() : Array.isArray(xff) ? xff[0] : null) ||
+      req.socket?.remoteAddress ||
+      "unknown";
+    const key = `${tag}:${ip}`;
+    const now = Date.now();
+    const cutoff = now - windowMs;
+    const existing = buckets.get(key) ?? [];
+    const pruned = pruneBucket(existing, cutoff);
+
+    if (pruned.length >= limit) {
+      const retryAfterMs = Math.max(0, windowMs - (now - pruned[0]));
+      const retryAfterSec = Math.ceil(retryAfterMs / 1000);
+      res.setHeader("Retry-After", String(retryAfterSec));
+      res.status(429).json({
+        error: "rate_limit_exceeded",
+        retryAfter: retryAfterSec,
+        scope: tag,
+      });
+      buckets.set(key, pruned);
+      return;
+    }
+
+    pruned.push(now);
+    buckets.set(key, pruned);
+    next();
+  };
+}

@@ -15,7 +15,34 @@ const isProd = process.env.NODE_ENV === "production";
 
 app.disable("x-powered-by");
 
-app.use(cors());
+/**
+ * CORS allowlist. Production locks the API to our own origins so a stolen
+ * JWT in someone else's localhost SPA can't make calls. Localhost (any
+ * port) stays open for local development.
+ */
+const ALLOWED_ORIGINS = [
+  "https://pocket-stylist-production.up.railway.app",
+  ...(process.env.APP_URL ? [process.env.APP_URL] : []),
+  ...(process.env.RAILWAY_PUBLIC_DOMAIN
+    ? [`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`]
+    : []),
+];
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Same-origin requests + curl / mobile native fetches have no Origin
+      // header — those are safe, browsers add Origin for cross-site.
+      if (!origin) return callback(null, true);
+      if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+      if (!isProd && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        return callback(null, true);
+      }
+      callback(new Error("CORS: origin not allowed"));
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json({ limit: "50mb" }));
 
 // JSON-only error handler — converts body-parser HTML errors (e.g. malformed JSON)

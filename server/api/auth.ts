@@ -9,6 +9,12 @@ import { requireAuth, JWT_SECRET } from "../middleware/auth.js";
 import { isConfiguredSecret } from "../services/app-status.js";
 import { DEMO_USER, DEMO_USER_EMAIL, isDemoUser } from "../services/demo-store.js";
 import { withTimeout } from "../services/gemini-utils.js";
+import { rateLimitByIp } from "../middleware/rate-limit.js";
+
+// Anti-bot: 20 attempts / hour per IP for credential endpoints.
+// Bounded enough to keep humans unaffected while pushing automated
+// credential-stuffing well beyond the 24h-account-creation window.
+const authLimiter = rateLimitByIp({ tag: "auth", limit: 20, windowMs: 60 * 60 * 1000 });
 
 export const authRouter = Router();
 
@@ -499,7 +505,7 @@ authRouter.get("/google-access-token", requireAuth, async (req: Request, res: Re
 });
 
 // POST /api/auth/email/register — Register with email and password
-authRouter.post("/email/register", async (req: Request, res: Response) => {
+authRouter.post("/email/register", authLimiter, async (req: Request, res: Response) => {
   try {
     const emailRaw = getStringField(req.body, "email");
     const password = getStringField(req.body, "password");
@@ -589,7 +595,7 @@ authRouter.post("/email/register", async (req: Request, res: Response) => {
 });
 
 // POST /api/auth/email/login — Login with email and password
-authRouter.post("/email/login", async (req: Request, res: Response) => {
+authRouter.post("/email/login", authLimiter, async (req: Request, res: Response) => {
   try {
     const emailRaw = getStringField(req.body, "email");
     const password = getStringField(req.body, "password");
