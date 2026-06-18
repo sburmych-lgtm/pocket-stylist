@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { wardrobeApi, type WardrobeItem } from "../services/api";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Pencil, Check, X } from "lucide-react";
+import { Plus, Search, Pencil, Check, X, Trash2, AlertTriangle } from "lucide-react";
 import { useI18n } from "../i18n";
 import { WARDROBE_CATEGORIES, normalizeCategory } from "../shared/wardrobe-categories";
 
@@ -31,15 +31,36 @@ function ItemCard({
   onCategoryChange,
 }: {
   item: WardrobeItem;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => Promise<void> | void;
   onCategoryChange: (id: string, newCategory: string) => Promise<void>;
 }) {
   const { t } = useI18n();
   const [showDetails, setShowDetails] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draftCategory, setDraftCategory] = useState(item.category);
   const [saving, setSaving] = useState(false);
+
+  // Close the confirm modal on Escape — standard modal UX.
+  useEffect(() => {
+    if (!deleteModalOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setDeleteModalOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [deleteModalOpen]);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    setDeleting(true);
+    try {
+      await onDelete(item.id);
+      // Parent already removes the item; the card unmounts naturally.
+    } finally {
+      setDeleting(false);
+    }
+  }, [item.id, onDelete]);
 
   const handleSaveCategory = async () => {
     if (draftCategory === item.category) {
@@ -144,25 +165,87 @@ function ItemCard({
         </div>
       </div>
 
+      {/* Always-visible delete affordance. On mobile there's no hover, so the
+          old opacity-0 group-hover:opacity-100 pattern made delete invisible
+          there. Now it's a small but tappable trash icon in the corner. */}
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          if (confirmDelete) {
-            onDelete(item.id);
-          } else {
-            setConfirmDelete(true);
-            setTimeout(() => setConfirmDelete(false), 3000);
-          }
+          setDeleteModalOpen(true);
         }}
-        className={`absolute right-1.5 top-1.5 rounded-full px-2 py-0.5 text-xs font-medium opacity-0 transition-all group-hover:opacity-100 ${
-          confirmDelete
-            ? "bg-red-500 text-white"
-            : "bg-black/50 text-white/80 hover:bg-red-500 hover:text-white"
-        }`}
+        aria-label={t("wardrobe.delete")}
+        className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white/80 backdrop-blur-md transition-all hover:bg-red-500 hover:text-white focus-visible:ring-2 focus-visible:ring-red-500/40"
       >
-        {confirmDelete ? t("wardrobe.deleteConfirm") : "✕"}
+        <Trash2 size={12} />
       </button>
+
+      {deleteModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={`delete-title-${item.id}`}
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 px-4 py-6 backdrop-blur-sm sm:items-center"
+          onClick={() => !deleting && setDeleteModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl border border-white/[0.06] bg-[var(--bg-surface)] p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--danger)]/12 text-[var(--danger)]">
+                <AlertTriangle size={18} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3
+                  id={`delete-title-${item.id}`}
+                  className="text-sm font-semibold text-[var(--text-primary)]"
+                >
+                  {t("wardrobe.deleteTitle")}
+                </h3>
+                <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
+                  {t("wardrobe.deleteBody")}
+                </p>
+              </div>
+            </div>
+
+            <div className="my-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <img
+                src={item.thumbnailUrl ?? item.imageUrl}
+                alt=""
+                className="h-14 w-12 shrink-0 rounded-xl object-cover"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+                  {item.subcategory ?? t(`categories.${item.category}`)}
+                </p>
+                <p className="text-[11px] text-[var(--text-muted)]">
+                  {item.colorPrimary} · {item.pattern}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteModalOpen(false)}
+                disabled={deleting}
+                className="ghost-action flex-1 rounded-full px-4 py-2.5 text-xs font-semibold disabled:opacity-50"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                disabled={deleting}
+                className="flex-1 rounded-full bg-[var(--danger)] px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[var(--danger)]/90 disabled:opacity-50"
+              >
+                {deleting ? t("import.saving") : t("wardrobe.delete")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showDetails && (
         <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/90 via-black/50 to-transparent p-3">
