@@ -20,6 +20,7 @@
     "db:push": "npx prisma db push"
   },
   "dependencies": {
+    "@fal-ai/client": "^1.10.1",
     "@google/generative-ai": "^0.24.1",
     "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.4.2",

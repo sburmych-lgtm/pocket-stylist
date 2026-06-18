@@ -1,6 +1,9 @@
-import { BadgeCheck, Heart, RefreshCcw, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { BadgeCheck, Heart, RefreshCcw, Sparkles, Wand2 } from "lucide-react";
 import type { WardrobeItem } from "../../types/wardrobe";
 import { useI18n } from "../../i18n";
+import { getAppStatus } from "../../services/api";
+import { TryOnModal } from "./TryOnModal";
 
 interface OutfitCardProps {
   name: string;
@@ -22,6 +25,24 @@ export function OutfitCard({
   onWear,
 }: OutfitCardProps) {
   const { t } = useI18n();
+  const [tryOnAvailable, setTryOnAvailable] = useState(false);
+  const [tryOnOpen, setTryOnOpen] = useState(false);
+
+  // Hide the Try-on button until the server reports FAL_KEY is set so we
+  // don't ship a CTA that returns 503.
+  useEffect(() => {
+    getAppStatus()
+      .then((s) => setTryOnAvailable(s.tryOnConfigured))
+      .catch(() => setTryOnAvailable(false));
+  }, []);
+
+  // First image-bearing top is the "headline garment" for the try-on.
+  // Falls back to the first item with an http/data image at all.
+  const tryOnTarget = items.find(
+    (i) =>
+      (i.category === "tops" || i.category === "dresses") &&
+      (i.imageUrl.startsWith("http") || i.imageUrl.startsWith("data:")),
+  ) ?? items.find((i) => i.imageUrl.startsWith("http") || i.imageUrl.startsWith("data:"));
 
   const confidenceTone =
     confidence >= 0.7
@@ -104,12 +125,32 @@ export function OutfitCard({
               <RefreshCcw size={15} />
               {t("outfit.alternative")}
             </button>
+            {tryOnAvailable && tryOnTarget && (
+              <button
+                type="button"
+                onClick={() => setTryOnOpen(true)}
+                className="ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm"
+                title={t("tryon.title")}
+              >
+                <Wand2 size={15} className="text-[var(--accent)]" />
+                {t("tryon.cta")}
+              </button>
+            )}
             <button type="button" onClick={onWear} className="primary-action inline-flex flex-1 items-center justify-center gap-2 px-4 py-3 text-sm sm:flex-none">
               {t("outfit.willWear")}
             </button>
           </div>
         </div>
       </div>
+
+      {tryOnTarget && tryOnOpen && (
+        <TryOnModal
+          open={tryOnOpen}
+          onClose={() => setTryOnOpen(false)}
+          garmentImageUrl={tryOnTarget.imageUrl}
+          garmentLabel={tryOnTarget.subcategory ?? tryOnTarget.category}
+        />
+      )}
     </article>
   );
 }

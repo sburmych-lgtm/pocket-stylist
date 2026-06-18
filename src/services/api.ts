@@ -259,6 +259,7 @@ export interface AppStatus {
   googleDriveConfigured: boolean;
   googleDrivePickerConfigured: boolean;
   emailAuthEnabled: boolean;
+  tryOnConfigured: boolean;
   googleClientId: string | null;
   googlePickerApiKey: string | null;
 }
@@ -553,6 +554,11 @@ export interface StylingResponse {
   avgCostPerWear?: number;
 }
 
+export interface TryOnResponse {
+  imageUrl: string;
+  durationMs: number;
+}
+
 export const stylingApi = {
   suggest(params: {
     mood: { energy: number; boldness: number };
@@ -564,6 +570,16 @@ export const stylingApi = {
     return apiFetch<StylingResponse>("/styling/suggest", {
       method: "POST",
       body: JSON.stringify(params),
+    });
+  },
+
+  tryOn(modelImage: string, garmentImage: string): Promise<TryOnResponse> {
+    // Fal.ai try-on can run ~10–30 s end-to-end on cold queues. 60 s
+    // timeout matches our server-side `fal.subscribe` upper bound.
+    return apiFetch<TryOnResponse>("/styling/tryon", {
+      method: "POST",
+      body: JSON.stringify({ modelImage, garmentImage }),
+      timeoutMs: 60_000,
     });
   },
 };

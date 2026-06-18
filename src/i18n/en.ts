@@ -564,6 +564,27 @@ export const en: Translations = {
     emptyWardrobe: "Wardrobe is empty",
   },
 
+  /* ---- Virtual Try-On ---- */
+  tryon: {
+    cta: "Try on",
+    title: "Virtual Try-On",
+    instructions: "Upload a full-body photo of yourself with a clean background and we'll show how this look fits.",
+    uploadSelfie: "Upload photo",
+    generating: "Generating your try-on…",
+    generatingHint: "Usually 10–30 seconds. Don't close this window.",
+    resultAlt: "Generated try-on image",
+    tryAgain: "Try another photo",
+    privacyHint: "Photo is processed by a third-party AI (Fal.ai). The result is not made public.",
+    generatedIn: "Generated in {ms}",
+    notAvailable: "Try-on is not configured — add FAL_KEY in Railway env.",
+    errors: {
+      generic: "Failed to generate the try-on. Please try again.",
+      notConfigured: "Try-on is temporarily unavailable — ask the service owner to add FAL_KEY to Railway.",
+      rateLimit: "You've hit your daily try-on limit. Try again in 24 hours.",
+      timeout: "Request timed out. Try again — the model may have been cold.",
+    },
+  },
+
   /* ---- Feedback widget ---- */
   feedback: {
     open: "Contact us",

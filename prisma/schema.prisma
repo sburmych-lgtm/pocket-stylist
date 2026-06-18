@@ -133,6 +133,19 @@ model FamilyMember {
   @@map("family_members")
 }
 
+model OutfitRender {
+  id              String   @id @default(cuid())
+  userId          String
+  modelImageUrl   String   @db.Text
+  garmentImageUrl String   @db.Text
+  resultImageUrl  String   @db.Text
+  durationMs      Int
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("outfit_renders")
+}
+
 model Feedback {
   id        String   @id @default(cuid())
   userId    String?

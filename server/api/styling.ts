@@ -7,8 +7,18 @@ import { generateOutfits } from "../services/styling/outfit-generator.js";
 import { resolveTargetUser } from "../services/family.js";
 import { getDemoWardrobe, isDemoUser } from "../services/demo-store.js";
 import { rateLimitPerUser } from "../middleware/rate-limit.js";
+import { runTryOn } from "../services/styling/tryon.js";
+import { z } from "zod";
 
 const geminiLimiter = rateLimitPerUser({ tag: "gemini" });
+// Try-on is far more expensive per call (~$0.05) than Gemini. Hard cap users
+// at 10 generations / rolling 24h until paid tiers exist.
+const falLimiter = rateLimitPerUser({ tag: "fal", limit: 10 });
+
+const TryOnRequestSchema = z.object({
+  modelImage: z.string().min(8).max(8_000_000),
+  garmentImage: z.string().min(8).max(8_000_000),
+});
 
 export const stylingRouter = Router();
 
@@ -195,5 +205,54 @@ stylingRouter.get("/weather", async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Weather error:", err);
     res.status(500).json({ error: "Failed to fetch weather" });
+  }
+});
+
+// POST /api/styling/tryon — virtual try-on via Fal.ai
+// Body: { modelImage, garmentImage } — both can be HTTPS URLs OR data URLs.
+// Returns: { imageUrl, durationMs }
+stylingRouter.post("/tryon", falLimiter, async (req: Request, res: Response) => {
+  const parsed = TryOnRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid_payload" });
+    return;
+  }
+
+  try {
+    const result = await runTryOn({
+      modelImage: parsed.data.modelImage,
+      garmentImage: parsed.data.garmentImage,
+    });
+
+    // Persist for analytics / cost tracking. Best-effort — a DB hiccup
+    // shouldn't kill the response since we already paid Fal for the call.
+    const userId = req.userId!;
+    if (!isDemoUser(userId)) {
+      prisma.outfitRender
+        .create({
+          data: {
+            userId,
+            modelImageUrl: parsed.data.modelImage.startsWith("data:")
+              ? "[base64]"
+              : parsed.data.modelImage.slice(0, 1024),
+            garmentImageUrl: parsed.data.garmentImage.startsWith("data:")
+              ? "[base64]"
+              : parsed.data.garmentImage.slice(0, 1024),
+            resultImageUrl: result.imageUrl,
+            durationMs: result.durationMs,
+          },
+        })
+        .catch((err) => console.error("[tryon] persist failed:", err));
+    }
+
+    res.json({ imageUrl: result.imageUrl, durationMs: result.durationMs });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "tryon_failed";
+    if (msg === "tryon_not_configured") {
+      res.status(503).json({ error: "tryon_not_configured" });
+      return;
+    }
+    console.error("[tryon] error:", err);
+    res.status(502).json({ error: "tryon_failed" });
   }
 });

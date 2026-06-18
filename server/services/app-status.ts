@@ -9,6 +9,7 @@ export interface AppStatus {
   googleDriveConfigured: boolean;
   googleDrivePickerConfigured: boolean;
   emailAuthEnabled: boolean;
+  tryOnConfigured: boolean;
   googleClientId: string | null;
   googlePickerApiKey: string | null;
 }
@@ -46,6 +47,7 @@ export function getAppStatus(env: EnvMap = process.env): AppStatus {
     googleDriveConfigured: googleRedirectConfigured,
     googleDrivePickerConfigured: googleRedirectConfigured && googlePickerConfigured,
     emailAuthEnabled: true,
+    tryOnConfigured: isConfiguredSecret(env.FAL_KEY),
     googleClientId: googleSignInConfigured ? googleClientId : null,
     googlePickerApiKey: googlePickerConfigured ? googlePickerApiKey : null,
   };
