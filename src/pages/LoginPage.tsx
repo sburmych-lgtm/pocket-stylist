@@ -173,7 +173,15 @@ export function LoginPage() {
           <h1 className="font-display text-3xl font-semibold tracking-wide text-[var(--accent)]">
             {t("brand.name")}
           </h1>
-          <p className="mt-2 text-sm text-[var(--text-secondary)]">{t("login.subtitle")}</p>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+            {t("login.subtitle")}{" "}
+            <a
+              href="/how-it-works"
+              className="text-[var(--accent)] hover:underline"
+            >
+              {t("login.howItWorksLink")}
+            </a>
+          </p>
         </div>
 
         <div className="space-y-4">

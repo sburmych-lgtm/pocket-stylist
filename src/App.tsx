@@ -14,6 +14,7 @@ import FamilyPage from "./pages/FamilyPage";
 import { WardrobePage } from "./pages/WardrobePage";
 import { LoginPage } from "./pages/LoginPage";
 import { LegalPage } from "./pages/LegalPage";
+import { HowItWorksPage } from "./pages/HowItWorksPage";
 import { Layout } from "./components/Layout";
 
 const queryClient = new QueryClient({
@@ -63,6 +64,7 @@ export default function App() {
               path="/terms"
               element={<LegalPage docPath="/terms.md" titleKey="legal.termsTitle" />}
             />
+            <Route path="/how-it-works" element={<HowItWorksPage />} />
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
                 <Route path="/" element={<HomePage />} />

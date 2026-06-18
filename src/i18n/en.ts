@@ -79,6 +79,49 @@ export const en: Translations = {
     termsLink: "Terms of Service",
     termsAnd: "and",
     privacyLink: "Privacy Policy",
+    howItWorksLink: "How does it work?",
+  },
+
+  /* ---- How it works (public landing) ---- */
+  howItWorks: {
+    kicker: "How it works",
+    heading: "A digital wardrobe\nthat thinks for you.",
+    description: "Upload your clothes once and get AI-curated outfits from your own wardrobe — weather-aware, mood-aware, color-aware. Family sharing and a store-scanner are included.",
+    tryFree: "Try for free",
+    stepsHeading: "Four steps",
+    differentiatorsHeading: "What sets us apart",
+    step1: {
+      title: "Snap your clothes",
+      copy: "Camera, gallery or Google Drive. iPhone HEIC files are converted on the fly.",
+    },
+    step2: {
+      title: "AI catalogues the wardrobe",
+      copy: "Category, color, fabric, season and formality — all extracted from the photo.",
+    },
+    step3: {
+      title: "Get curated outfits",
+      copy: "A hybrid engine (rules + Gemini) composes looks from your real items based on mood.",
+    },
+    step4: {
+      title: "Weather + weekly lookbook",
+      copy: "A 7-day style plan using the real forecast for your city.",
+    },
+    featureAi: {
+      title: "Not Pinterest — your wardrobe",
+      copy: "Pinterest shows other people's looks. We build outfits from your actual items, with cost-per-wear analytics.",
+    },
+    featureFamily: {
+      title: "Family wardrobe sharing",
+      copy: "Give your partner or kids shared access — rare in this category.",
+    },
+    featureScanner: {
+      title: "Store scanner",
+      copy: "Photograph an item in a store — get a BUY / SKIP verdict with cross-check against your wardrobe.",
+    },
+    ctaTitle: "Ready to try?",
+    ctaCopy: "Sign up in 30 seconds — or log in as a demo user with no email.",
+    ctaButton: "Get started",
+    betaTag: "beta",
   },
 
   /* ---- Legal pages ---- */
