@@ -13,7 +13,23 @@ export const DEMO_USER = {
   colorSeason: null,
   colorPalette: null,
   avoidColors: null,
+  stylistPersona: "classic" as const,
 };
+
+// Demo user's persona is held in-memory so they can experiment with it
+// without us touching the (non-existent) DB row.
+const demoPersona = new Map<string, "classic" | "sassy" | "manly" | "kind">();
+
+export function getDemoPersona(userId: string): "classic" | "sassy" | "manly" | "kind" {
+  return demoPersona.get(userId) ?? "classic";
+}
+
+export function setDemoPersona(
+  userId: string,
+  persona: "classic" | "sassy" | "manly" | "kind",
+): void {
+  demoPersona.set(userId, persona);
+}
 
 const wardrobeItems = new Map<string, WardrobeItem[]>();
 const seeded = new Set<string>();

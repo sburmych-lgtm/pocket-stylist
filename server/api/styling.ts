@@ -8,6 +8,7 @@ import { resolveTargetUser } from "../services/family.js";
 import { getDemoWardrobe, isDemoUser } from "../services/demo-store.js";
 import { rateLimitPerUser } from "../middleware/rate-limit.js";
 import { runTryOn } from "../services/styling/tryon.js";
+import { normalizePersona } from "../services/styling/personas.js";
 import { z } from "zod";
 
 const geminiLimiter = rateLimitPerUser({ tag: "gemini" });
@@ -56,8 +57,27 @@ stylingRouter.post("/suggest", geminiLimiter, async (req: Request, res: Response
       return;
     }
 
-    // Get weather
-    const weather = await getWeather(lat ?? 50.45, lon ?? 30.52); // Default: Kyiv
+    // Get target user with color data + stylist persona (drives Gemini voice)
+    // + saved location so the request falls back to the user's coords when
+    // the client didn't send any.
+    const userProfile = isDemoUser(targetUserId)
+      ? null
+      : await prisma.user.findUnique({
+          where: { id: targetUserId },
+          select: {
+            colorPalette: true,
+            avoidColors: true,
+            stylistPersona: true,
+            lat: true,
+            lon: true,
+            timezone: true,
+          },
+        });
+
+    // Get weather — prefer explicit lat/lon, then saved profile, then Kyiv.
+    const effectiveLat = lat ?? userProfile?.lat ?? 50.45;
+    const effectiveLon = lon ?? userProfile?.lon ?? 30.52;
+    const weather = await getWeather(effectiveLat, effectiveLon);
     const weatherSeason = weatherToSeason(weather.temp);
 
     const formalityRange = {
@@ -65,20 +85,13 @@ stylingRouter.post("/suggest", geminiLimiter, async (req: Request, res: Response
       max: formalityMax ?? 5,
     };
 
-    // Get target user with color data
-    const userProfile = isDemoUser(targetUserId)
-      ? null
-      : await prisma.user.findUnique({
-          where: { id: targetUserId },
-          select: { colorPalette: true, avoidColors: true },
-        });
-
     const colorPalette = (userProfile?.colorPalette ?? undefined) as
       | Array<{ name: string; hex: string }>
       | undefined;
     const avoidColors = (userProfile?.avoidColors ?? undefined) as
       | Array<{ name: string; hex: string }>
       | undefined;
+    const persona = normalizePersona(userProfile?.stylistPersona);
 
     // Get wardrobe
     const allItems = isDemoUser(targetUserId)
@@ -128,6 +141,7 @@ stylingRouter.post("/suggest", geminiLimiter, async (req: Request, res: Response
       temp: weather.temp,
       condition: weather.condition,
       formalityRange,
+      persona,
     });
 
     res.json({ outfits, weather, candidateCount: candidates.length });

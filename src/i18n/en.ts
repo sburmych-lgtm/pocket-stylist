@@ -448,6 +448,29 @@ export const en: Translations = {
     contrastHigh: "high",
     contrastMedium: "medium",
     contrastLow: "low",
+
+    /* Stylist persona — bot voice/tone selector */
+    personaSection: "Bot conversation style",
+    personaSectionDesc: "Choose the tone of advice. This affects voice only — item selection and logic stay the same.",
+    personaSampleLabel: "Sample:",
+    personaSaved: "Style saved",
+    personaError: "Failed to save style",
+    personaClassic: "Classic",
+    personaClassicDesc: "Neutral, professional tone. Calm and confident.",
+    personaClassicQuote: "This silhouette is beautifully balanced in proportion.",
+    personaSassy: "Sassy",
+    personaSassyDesc: "Sharp, witty, ironic — like your stylist best friend.",
+    personaSassyQuote: "Well well well, look at you — this isn't just an outfit, honey.",
+    personaManly: "Manly",
+    personaManlyDesc: "Terse, masculine. No fluff, no fuss.",
+    personaManlyQuote: "Solid. Black and blue — classic combo.",
+    personaKind: "Kind",
+    personaKindDesc: "Warm, motherly, encouraging tone in every tip.",
+    personaKindQuote: "Sweetie, you look absolutely lovely in this!",
+    personaIntroBanner: "Pick your stylist ✨",
+    personaIntroDesc: "Classic, sassy, manly or kind — choose the advice tone that fits you.",
+    personaIntroCta: "Choose stylist",
+    personaIntroDismiss: "Later",
   },
 
   /* ---- Verdict Card ---- */
@@ -631,6 +654,12 @@ export const en: Translations = {
     },
   },
 
+  /* ---- TTS / Speak button ---- */
+  tts: {
+    listen: "Listen",
+    stop: "Stop",
+  },
+
   /* ---- Feedback widget ---- */
   feedback: {
     open: "Contact us",
@@ -641,6 +670,16 @@ export const en: Translations = {
     send: "Send",
     sent: "Thanks! We've received your feedback.",
     tooShort: "Message is too short (min 3 characters).",
+  },
+
+  /* ---- Location ---- */
+  location: {
+    permissionAsk: "Share your location for accurate weather-aware outfits.",
+    detectAuto: "Detect automatically",
+    enterCity: "Or enter your city",
+    detected: "Location saved",
+    denied: "Location permission denied. Enter your city manually.",
+    cityNotFound: "City not found. Try a different spelling or a larger nearby city.",
   },
 
   /* ---- Analytics ---- */
@@ -697,5 +736,29 @@ export const en: Translations = {
     challengeDone: "Done",
     badgesKicker: "Badges",
     badgesTitle: "Achievement collection",
+  },
+
+  /* ---- Billing / Paywall ---- */
+  billing: {
+    kicker: "Pocket Stylist Pro",
+    title: "Pocket Stylist Pro",
+    subtitle: "Unlimited AI stylist for {price}. Cancel anytime.",
+    freeForNow: "Free for now — billing activates later. Everything is fully unlocked today.",
+    bulletUnlimited: "Unlimited AI recommendations and lookbooks",
+    bulletFamily: "Family wardrobe sharing",
+    bulletVoice: "Personal stylist voice",
+    bulletTryOn: "Virtual try-on",
+    upgrade: "Upgrade to Pro",
+    upgradeCta: "Upgrade to Pro · {price}",
+    redirecting: "Redirecting to checkout…",
+    checkoutError: "Checkout error",
+    manageSubscription: "Manage subscription",
+    trialDaysLeft: "{days} day(s) left on your trial — upgrade to keep your access.",
+    trialExpired: "Trial ended. Upgrade to Pro to keep using AI features.",
+    statusTrialing: "Trial",
+    statusActive: "Pro",
+    statusPastDue: "Payment failed",
+    statusCanceled: "Canceled",
+    paywallRequired: "This feature is unlocked on Pocket Stylist Pro.",
   },
 };

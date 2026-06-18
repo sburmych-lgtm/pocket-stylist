@@ -20,6 +20,13 @@ model User {
   colorPalette  Json?
   avoidColors   Json?
   genderMode    String    @default("neutral")
+  // Geolocation for weather (Open-Meteo). Optional — falls back to mock weather.
+  lat           Float?
+  lon           Float?
+  city          String?
+  timezone      String?
+  // Stylist persona: 'classic' | 'sassy' | 'manly' | 'kind'
+  stylistPersona String   @default("classic")
   // GDPR / Terms acceptance timestamp. NULL for users created before this
   // column existed (grandfathered) so we don't lock them out.
   termsAcceptedAt DateTime?
@@ -30,8 +37,31 @@ model User {
   outfits       Outfit[]
   outfitLogs    OutfitLog[]
   families      FamilyMember[]
+  subscription  Subscription?
 
   @@map("users")
+}
+
+// Subscription state per user. Created on first login with 7-day trial.
+// Stripe integration is gated behind STRIPE_SECRET_KEY — without it, all
+// users get a permanent "trial" status (gracefully unlimited).
+model Subscription {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  status               String    @default("trialing") // trialing | active | past_due | canceled | none
+  trialEndsAt          DateTime?
+  currentPeriodEnd     DateTime?
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  stripePriceId        String?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("subscriptions")
 }
 
 model WardrobeItem {

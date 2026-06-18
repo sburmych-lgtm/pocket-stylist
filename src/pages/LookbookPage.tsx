@@ -3,6 +3,7 @@ import { CalendarDays, LoaderCircle, RefreshCcw, Sparkles } from "lucide-react";
 import { lookbookApi } from "../services/api";
 import type { LookbookDay } from "../services/api";
 import { useI18n } from "../i18n";
+import { SpeakButton } from "../components/common/SpeakButton";
 
 function formatDate(dateStr: string, dayNames: string[]): { dayName: string; display: string } {
   const date = new Date(`${dateStr}T00:00:00`);
@@ -84,9 +85,12 @@ function DayCard({ day, index, onWear, onRegenerate, wornDays, regenerating }: D
               </div>
             ))}
           </div>
-          <p className="mt-4 text-sm leading-6 text-[var(--text-secondary)]">
-            {day.outfit.stylingTip}
-          </p>
+          <div className="mt-4 flex items-start justify-between gap-3">
+            <p className="flex-1 text-sm leading-6 text-[var(--text-secondary)]">
+              {day.outfit.stylingTip}
+            </p>
+            <SpeakButton text={day.outfit.stylingTip} persona="classic" />
+          </div>
         </>
       ) : (
         <div className="mt-5 flex flex-1 items-center justify-center rounded-[1.3rem] border border-dashed border-white/10 bg-white/[0.02] px-4 py-10 text-sm text-[var(--text-secondary)]">

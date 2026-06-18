@@ -43,7 +43,13 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json({ limit: "50mb" }));
+// Stripe webhook needs the raw byte stream for signature verification, so
+// skip the JSON parser for that one path. Every other /api/* path keeps its
+// pre-existing 50 MB JSON body limit.
+app.use((req, res, next) => {
+  if (req.path === "/api/billing/webhook") return next();
+  return express.json({ limit: "50mb" })(req, res, next);
+});
 
 // JSON-only error handler — converts body-parser HTML errors (e.g. malformed JSON)
 // into structured `{error: "invalid_json"}` so API clients aren't surprised by HTML.

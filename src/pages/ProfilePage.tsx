@@ -5,9 +5,11 @@ import { profileApi } from "../services/api";
 import type {
   ColorAnalysisResult,
   ColorPaletteEntry,
+  StylistPersona,
   UserProfile,
 } from "../services/api";
 import { useI18n } from "../i18n";
+import { PersonaSelector } from "../components/styling/PersonaSelector";
 
 /* ---------- Season display map ---------- */
 
@@ -161,6 +163,10 @@ export function ProfilePage() {
     queryFn: profileApi.getProfile,
   });
 
+  // Default to "classic" while profile is loading so the selector renders
+  // a sensible highlighted card instead of nothing.
+  const currentPersona: StylistPersona = profile?.stylistPersona ?? "classic";
+
   // Color analysis mutation
   const colorMutation = useMutation({
     mutationFn: (image: string) => profileApi.analyzeColor(image),
@@ -257,6 +263,11 @@ export function ProfilePage() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Stylist persona selector */}
+      <div className="mb-8">
+        <PersonaSelector current={currentPersona} />
       </div>
 
       {/* Color analysis section */}

@@ -3,6 +3,8 @@ import { BadgeCheck, Heart, RefreshCcw, Sparkles, Wand2 } from "lucide-react";
 import type { WardrobeItem } from "../../types/wardrobe";
 import { useI18n } from "../../i18n";
 import { getAppStatus } from "../../services/api";
+import type { StylistPersona } from "../../services/api";
+import { SpeakButton } from "../common/SpeakButton";
 import { TryOnModal } from "./TryOnModal";
 
 interface OutfitCardProps {
@@ -10,6 +12,7 @@ interface OutfitCardProps {
   items: WardrobeItem[];
   stylingTip: string;
   confidence: number;
+  persona?: StylistPersona;
   onLike?: () => void;
   onDislike?: () => void;
   onWear?: () => void;
@@ -20,6 +23,7 @@ export function OutfitCard({
   items,
   stylingTip,
   confidence,
+  persona = "classic",
   onLike,
   onDislike,
   onWear,
@@ -98,7 +102,10 @@ export function OutfitCard({
 
         <div className="flex flex-col gap-4">
           <div className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-5">
-            <p className="section-subtitle">{t("outfit.stylingNote")}</p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="section-subtitle">{t("outfit.stylingNote")}</p>
+              <SpeakButton text={stylingTip} persona={persona} />
+            </div>
             <p className="mt-4 text-base leading-7 text-[var(--text-secondary)]">
               {stylingTip}
             </p>

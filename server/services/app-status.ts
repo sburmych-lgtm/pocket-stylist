@@ -2,7 +2,6 @@ export interface AppStatus {
   version: string;
   geminiConfigured: boolean;
   cloudinaryConfigured: boolean;
-  weatherConfigured: boolean;
   googleAuthConfigured: boolean;
   googleSignInConfigured: boolean;
   googleRedirectConfigured: boolean;
@@ -10,6 +9,8 @@ export interface AppStatus {
   googleDrivePickerConfigured: boolean;
   emailAuthEnabled: boolean;
   tryOnConfigured: boolean;
+  /** True only when ELEVENLABS_API_KEY is set; client falls back to browser TTS otherwise. */
+  ttsConfigured?: boolean;
   googleClientId: string | null;
   googlePickerApiKey: string | null;
 }
@@ -38,7 +39,6 @@ export function getAppStatus(env: EnvMap = process.env): AppStatus {
     version: "0.1.0",
     geminiConfigured: isConfiguredSecret(env.GEMINI_API_KEY),
     cloudinaryConfigured,
-    weatherConfigured: isConfiguredSecret(env.OPENWEATHER_API_KEY),
     googleAuthConfigured: googleRedirectConfigured,
     googleSignInConfigured,
     googleRedirectConfigured,

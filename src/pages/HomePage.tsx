@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useI18n } from "../i18n";
+import { LocationRequest } from "../components/LocationRequest";
 
 function StatCard({
   icon: Icon,
@@ -164,6 +165,9 @@ export function HomePage() {
   const navigate = useNavigate();
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [loading, setLoading] = useState(true);
+  // Local override so the banner disappears the moment the city form
+  // succeeds, without waiting for AuthContext to refresh.
+  const [locationResolved, setLocationResolved] = useState(false);
 
   useEffect(() => {
     wardrobeApi
@@ -172,6 +176,11 @@ export function HomePage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  // Show the LocationRequest banner whenever we don't yet have a saved
+  // latitude. `lat` is undefined for demo users and null for new accounts;
+  // both should trigger the banner.
+  const needsLocation = !locationResolved && (user?.lat ?? null) === null;
 
   const categories = items.reduce<Record<string, number>>((acc, item) => {
     acc[item.category] = (acc[item.category] ?? 0) + 1;
@@ -265,6 +274,10 @@ export function HomePage() {
           </div>
         </div>
       </section>
+
+      {needsLocation && (
+        <LocationRequest onResolved={() => setLocationResolved(true)} />
+      )}
 
       {loading ? (
         <StatsSkeleton />

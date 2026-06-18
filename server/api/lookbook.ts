@@ -43,14 +43,22 @@ lookbookRouter.post("/generate", async (req: Request, res: Response) => {
       return;
     }
 
-    const userLat = lat ?? 50.45;
-    const userLon = lon ?? 30.52;
-
-    // Get target user profile for color data
+    // Get target user profile for color data + saved location (so the
+    // lookbook uses the user's actual coordinates when the client didn't
+    // pass any in the request body).
     const userProfile = await prisma.user.findUnique({
       where: { id: targetUserId },
-      select: { colorPalette: true, avoidColors: true },
+      select: {
+        colorPalette: true,
+        avoidColors: true,
+        lat: true,
+        lon: true,
+        timezone: true,
+      },
     });
+
+    const userLat = lat ?? userProfile?.lat ?? 50.45;
+    const userLon = lon ?? userProfile?.lon ?? 30.52;
 
     const colorPalette = (userProfile?.colorPalette ?? undefined) as
       | Array<{ name: string; hex: string }>
@@ -244,14 +252,21 @@ lookbookRouter.post("/regenerate-day", async (req: Request, res: Response) => {
       return;
     }
 
-    const userLat = lat ?? 50.45;
-    const userLon = lon ?? 30.52;
     const excluded = new Set(excludeItemIds ?? []);
 
     const userProfile = await prisma.user.findUnique({
       where: { id: userId },
-      select: { colorPalette: true, avoidColors: true },
+      select: {
+        colorPalette: true,
+        avoidColors: true,
+        lat: true,
+        lon: true,
+        timezone: true,
+      },
     });
+
+    const userLat = lat ?? userProfile?.lat ?? 50.45;
+    const userLon = lon ?? userProfile?.lon ?? 30.52;
 
     const colorPalette = (userProfile?.colorPalette ?? undefined) as
       | Array<{ name: string; hex: string }>

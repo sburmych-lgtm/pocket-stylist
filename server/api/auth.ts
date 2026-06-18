@@ -10,6 +10,7 @@ import { isConfiguredSecret } from "../services/app-status.js";
 import { DEMO_USER, DEMO_USER_EMAIL, isDemoUser } from "../services/demo-store.js";
 import { withTimeout } from "../services/gemini-utils.js";
 import { rateLimitByIp } from "../middleware/rate-limit.js";
+import { createTrialSubscription } from "../services/subscription.js";
 
 // Anti-bot: 20 attempts / hour per IP for credential endpoints.
 // Bounded enough to keep humans unaffected while pushing automated
@@ -85,7 +86,9 @@ interface GoogleUserProfile {
   googleRefreshToken?: string | null;
 }
 
-async function upsertGoogleUser(profile: GoogleUserProfile) {
+async function upsertGoogleUser(
+  profile: GoogleUserProfile,
+): Promise<{ user: Awaited<ReturnType<typeof prisma.user.update>>; isNew: boolean }> {
   const existing = await prisma.user.findFirst({
     where: {
       OR: [
@@ -101,7 +104,7 @@ async function upsertGoogleUser(profile: GoogleUserProfile) {
   };
 
   if (existing) {
-    return prisma.user.update({
+    const user = await prisma.user.update({
       where: { id: existing.id },
       data: {
         googleId: profile.googleId,
@@ -111,9 +114,10 @@ async function upsertGoogleUser(profile: GoogleUserProfile) {
         ...tokenData,
       },
     });
+    return { user, isNew: false };
   }
 
-  return prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       googleId: profile.googleId,
       email: profile.email,
@@ -121,6 +125,16 @@ async function upsertGoogleUser(profile: GoogleUserProfile) {
       avatarUrl: profile.picture ?? null,
       ...tokenData,
     },
+  });
+  return { user, isNew: true };
+}
+
+// Fire-and-forget trial creation. Trial setup must NEVER block signup — if
+// Prisma flakes, the user still gets a working session and a row will be
+// lazily created the next time their effective subscription is computed.
+function startTrialBackground(userId: string): void {
+  createTrialSubscription(userId).catch((err) => {
+    console.error("createTrialSubscription failed (non-fatal):", err);
   });
 }
 
@@ -154,7 +168,8 @@ authRouter.post("/google", async (req: Request, res: Response) => {
 
     const { sub: googleId, email, name, picture } = payload;
 
-    const user = await upsertGoogleUser({ googleId, email, name, picture });
+    const { user, isNew } = await upsertGoogleUser({ googleId, email, name, picture });
+    if (isNew) startTrialBackground(user.id);
 
     const token = signToken(user.id);
 
@@ -352,7 +367,7 @@ authRouter.get("/google/callback", async (req: Request, res: Response) => {
 
     const { sub: googleId, email, name, picture } = payload;
 
-    const user = await upsertGoogleUser({
+    const { user, isNew } = await upsertGoogleUser({
       googleId,
       email,
       name,
@@ -360,6 +375,7 @@ authRouter.get("/google/callback", async (req: Request, res: Response) => {
       googleAccessToken: tokens.access_token,
       googleRefreshToken: tokens.refresh_token ?? null,
     });
+    if (isNew) startTrialBackground(user.id);
 
     const appToken = signToken(user.id);
 
@@ -429,6 +445,10 @@ authRouter.get("/me", requireAuth, async (req: Request, res: Response) => {
         colorSeason: true,
         genderMode: true,
         createdAt: true,
+        lat: true,
+        lon: true,
+        city: true,
+        timezone: true,
       },
     });
 
@@ -569,6 +589,7 @@ authRouter.post("/email/register", authLimiter, async (req: Request, res: Respon
       5_000,
       "Database create timed out",
     );
+    startTrialBackground(user.id);
 
     const token = signToken(user.id);
     res.json({

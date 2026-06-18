@@ -17,7 +17,6 @@ test("getAppStatus only reports fully configured services", () => {
     CLOUDINARY_CLOUD_NAME: "cloud",
     CLOUDINARY_API_KEY: "key",
     CLOUDINARY_API_SECRET: "",
-    OPENWEATHER_API_KEY: "MOCK_KEY",
   });
 
   assert.equal(placeholderStatus.geminiConfigured, false);
@@ -28,7 +27,6 @@ test("getAppStatus only reports fully configured services", () => {
   assert.equal(placeholderStatus.googleClientId, null);
   assert.equal(placeholderStatus.googlePickerApiKey, null);
   assert.equal(placeholderStatus.cloudinaryConfigured, false);
-  assert.equal(placeholderStatus.weatherConfigured, false);
 
   const signInOnlyStatus = getAppStatus({
     GOOGLE_CLIENT_ID: "google-client",
@@ -48,7 +46,6 @@ test("getAppStatus only reports fully configured services", () => {
     CLOUDINARY_CLOUD_NAME: "cloud",
     CLOUDINARY_API_KEY: "key",
     CLOUDINARY_API_SECRET: "secret",
-    OPENWEATHER_API_KEY: "weather",
   });
 
   assert.equal(configuredStatus.geminiConfigured, true);
@@ -61,7 +58,6 @@ test("getAppStatus only reports fully configured services", () => {
   assert.equal(configuredStatus.googleClientId, "google-client");
   assert.equal(configuredStatus.googlePickerApiKey, "picker-key");
   assert.equal(configuredStatus.cloudinaryConfigured, true);
-  assert.equal(configuredStatus.weatherConfigured, true);
 });
 
 test("Drive access works with redirect OAuth even without Picker API key", () => {

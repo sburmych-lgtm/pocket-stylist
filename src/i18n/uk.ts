@@ -448,6 +448,29 @@ export const uk: Translations = {
     contrastHigh: "високий",
     contrastMedium: "середній",
     contrastLow: "низький",
+
+    /* Stylist persona — bot voice/tone selector */
+    personaSection: "Стиль спілкування з ботом",
+    personaSectionDesc: "Оберіть тон поради. Це впливає лише на голос — підбір речей, аналіз і логіка залишаються незмінними.",
+    personaSampleLabel: "Зразок:",
+    personaSaved: "Стиль збережено",
+    personaError: "Не вдалося зберегти стиль",
+    personaClassic: "Класичний",
+    personaClassicDesc: "Нейтральний професійний тон. Спокійно і впевнено.",
+    personaClassicQuote: "Цей силует чудово збалансований за пропорціями.",
+    personaSassy: "Дотепний",
+    personaSassyDesc: "Гострий язичок, легка іронія. Як друг-стиліст.",
+    personaSassyQuote: "Так-так-так, ну красавчик — це вже не просто аутфіт.",
+    personaManly: "Брутальний",
+    personaManlyDesc: "Лаконічно, по-чоловічому. Без зайвих слів.",
+    personaManlyQuote: "Норм. Чорне з синім — пацанська класика.",
+    personaKind: "Дбайливий",
+    personaKindDesc: "Тепло і по-материнськи, з турботою у кожній підказці.",
+    personaKindQuote: "Сонечко, у цьому светрику ти просто чудова!",
+    personaIntroBanner: "Вибери собі стиліста ✨",
+    personaIntroDesc: "Класичний, дотепний, брутальний чи дбайливий — оберіть тон порад, який вам ближче.",
+    personaIntroCta: "Обрати стиліста",
+    personaIntroDismiss: "Пізніше",
   },
 
   /* ---- Verdict Card ---- */
@@ -631,6 +654,12 @@ export const uk: Translations = {
     },
   },
 
+  /* ---- TTS / Speak button ---- */
+  tts: {
+    listen: "Прослухати",
+    stop: "Зупинити",
+  },
+
   /* ---- Feedback widget ---- */
   feedback: {
     open: "Зв'язок з нами",
@@ -641,6 +670,16 @@ export const uk: Translations = {
     send: "Надіслати",
     sent: "Дякуємо! Ми отримали ваш відгук.",
     tooShort: "Повідомлення занадто коротке (мінімум 3 символи).",
+  },
+
+  /* ---- Location ---- */
+  location: {
+    permissionAsk: "Поділіться своїм місцезнаходженням — складемо образи з урахуванням реальної погоди.",
+    detectAuto: "Визначити автоматично",
+    enterCity: "Або введіть своє місто",
+    detected: "Місцезнаходження збережено",
+    denied: "Доступ до геолокації заборонено. Введіть місто вручну.",
+    cityNotFound: "Місто не знайдено. Спробуйте інше написання або найближче велике місто.",
   },
 
   /* ---- Analytics ---- */
@@ -697,5 +736,29 @@ export const uk: Translations = {
     challengeDone: "Виконано",
     badgesKicker: "Нагороди",
     badgesTitle: "Колекція досягнень",
+  },
+
+  /* ---- Billing / Paywall ---- */
+  billing: {
+    kicker: "Pocket Stylist Pro",
+    title: "Pocket Stylist Pro",
+    subtitle: "Безлімітний AI-стиліст за {price}. Скасуйте будь-коли.",
+    freeForNow: "Поки безкоштовно — оплата активується пізніше. Користуйтеся всіма функціями вже зараз.",
+    bulletUnlimited: "Безлімітні AI-рекомендації та лукбуки",
+    bulletFamily: "Сімейний гардероб для близьких",
+    bulletVoice: "Голос особистого стиліста",
+    bulletTryOn: "Віртуальна примірочна (Try-On)",
+    upgrade: "Перейти на Pro",
+    upgradeCta: "Перейти на Pro · {price}",
+    redirecting: "Переходимо до оплати…",
+    checkoutError: "Помилка оформлення",
+    manageSubscription: "Керувати підпискою",
+    trialDaysLeft: "Залишилось {days} днів trial — оновіть, щоб не втратити доступ.",
+    trialExpired: "Trial завершено. Оновіть до Pro, щоб продовжити користуватися AI-функціями.",
+    statusTrialing: "Trial",
+    statusActive: "Pro",
+    statusPastDue: "Платіж не пройшов",
+    statusCanceled: "Скасовано",
+    paywallRequired: "Цю функцію розблоковано на тарифі Pocket Stylist Pro.",
   },
 };

@@ -10,6 +10,7 @@ import {
   HOT_WEATHER_BLOCKED_FABRICS,
   COLD_WEATHER_BLOCKED_CATEGORIES,
 } from "./rules-engine.js";
+import { applyPersona, type StylistPersona } from "./personas.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
 const GEMINI_TIMEOUT_MS = 10_000;
@@ -29,6 +30,8 @@ interface StylingContext {
   /** Optional weather descriptor ("Clear", "Rain", "Snow", "Clouds"). */
   condition?: string;
   formalityRange: { min: number; max: number };
+  /** Voice/tone persona for stylingTip copy. Selection logic unaffected. */
+  persona?: StylistPersona;
 }
 
 /**
@@ -270,8 +273,13 @@ Return ONLY valid JSON array (no markdown fences):
 
 Reply ONLY valid JSON. No markdown, no explanation.`;
 
+  // Persona affects ONLY the stylingTip voice. Item selection, JSON schema
+  // and the trailing JSON-only instruction in `prompt` stay intact because
+  // applyPersona prepends rather than rewrites.
+  const finalPrompt = applyPersona(prompt, ctx.persona ?? "classic");
+
   const result = await withTimeout(
-    model.generateContent(prompt),
+    model.generateContent(finalPrompt),
     GEMINI_TIMEOUT_MS,
     "Gemini outfit generation timed out",
   );

@@ -4,6 +4,7 @@ import { MoodSliders } from "../components/styling/MoodSliders";
 import { ContextSelector } from "../components/styling/ContextSelector";
 import { OutfitCard } from "../components/styling/OutfitCard";
 import { WeatherBadge } from "../components/styling/WeatherBadge";
+import { PersonaIntroBanner } from "../components/styling/PersonaIntroBanner";
 import { useAuth } from "../contexts/AuthContext";
 import { stylingApi } from "../services/api";
 import type { StylingResponse } from "../services/api";
@@ -70,6 +71,7 @@ export function StylingPage() {
 
   return (
     <div className="page-shell space-y-8">
+      <PersonaIntroBanner />
       <section className="page-header p-6 sm:p-8">
         <div className="relative z-10 grid gap-8 xl:grid-cols-[1.05fr_0.95fr]">
           <div className="space-y-5">

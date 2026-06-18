@@ -10,7 +10,7 @@
     "build": "prisma generate && tsc -p tsconfig.server.json && vite build",
     "start": "NODE_ENV=production sh -c 'npx prisma db push --accept-data-loss || echo \"db push failed — continuing without schema sync\"; exec node dist/server/server/index.js'",
     "lint": "eslint .",
-    "test": "node --import tsx --test ./tests/app-status.test.ts ./tests/gemini-utils.test.ts ./tests/password-hash.test.ts ./tests/rate-limit.test.ts ./tests/wardrobe-categories.test.ts",
+    "test": "node --import tsx --test ./tests/app-status.test.ts ./tests/gemini-utils.test.ts ./tests/password-hash.test.ts ./tests/personas.test.ts ./tests/rate-limit.test.ts ./tests/wardrobe-categories.test.ts ./tests/subscription.test.ts ./tests/tts.test.ts ./tests/weather-open-meteo.test.ts",
     "typecheck": "tsc -b --noEmit",
     "preview": "vite preview",
     "db:migrate": "npx prisma migrate dev",
@@ -38,6 +38,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.1",
+    "stripe": "^17.7.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
