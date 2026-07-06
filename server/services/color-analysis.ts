@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
 import { isConfiguredSecret } from "./app-status.js";
 import { parseGeminiJson, withTimeout } from "./gemini-utils.js";
+import { recordGeminiUsage } from "./gemini-usage.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
 const GEMINI_TIMEOUT_MS = 10_000;
@@ -34,11 +35,24 @@ const DEFAULT_PALETTE = [
   { name: "Soft Navy", hex: "#3C4A5C" },
   { name: "Dusty Rose", hex: "#D4A0A0" },
   { name: "Sage", hex: "#9CAF88" },
+  { name: "Slate Blue", hex: "#6A7B8C" },
+  { name: "Mauve", hex: "#B784A7" },
+  { name: "Soft Plum", hex: "#76506A" },
+  { name: "Cool Taupe", hex: "#9A8F8A" },
+  { name: "Powder Blue", hex: "#A9C6D9" },
+  { name: "Berry", hex: "#8A3F5D" },
+  { name: "Sea Green", hex: "#6F9C91" },
+  { name: "Charcoal", hex: "#4A4D52" },
+  { name: "Soft White", hex: "#F2EFEA" },
 ];
 
 const DEFAULT_AVOID = [
   { name: "Neon Orange", hex: "#FF6600" },
   { name: "Acid Yellow", hex: "#DFFF00" },
+  { name: "Electric Lime", hex: "#CCFF00" },
+  { name: "Warm Camel", hex: "#C19A6B" },
+  { name: "Tomato Red", hex: "#FF3B30" },
+  { name: "Bright Gold", hex: "#FFD700" },
 ];
 
 const ColorEntrySchema = z.object({
@@ -50,8 +64,8 @@ const ColorAnalysisSchema = z.object({
   season: z.enum(COLOR_SEASONS).catch("Soft Summer"),
   undertone: z.enum(["warm", "cool", "neutral"]).catch("neutral"),
   contrast: z.enum(["high", "medium", "low"]).catch("medium"),
-  palette: z.array(ColorEntrySchema).min(1).catch(DEFAULT_PALETTE),
-  avoid: z.array(ColorEntrySchema).min(1).catch(DEFAULT_AVOID),
+  palette: z.array(ColorEntrySchema).length(12).catch(DEFAULT_PALETTE),
+  avoid: z.array(ColorEntrySchema).length(6).catch(DEFAULT_AVOID),
   description: z.string().catch("Color analysis completed with a conservative fallback."),
 });
 
@@ -105,16 +119,20 @@ export async function analyzeColorType(
 
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
+  recordGeminiUsage("color-season");
   const result = await withTimeout(
-    model.generateContent([
-      COLOR_ANALYSIS_PROMPT,
-      {
-        inlineData: {
-          mimeType: "image/jpeg",
-          data: imageBase64,
+    model.generateContent(
+      [
+        COLOR_ANALYSIS_PROMPT,
+        {
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: imageBase64,
+          },
         },
-      },
-    ]),
+      ],
+      { timeout: GEMINI_TIMEOUT_MS },
+    ),
     GEMINI_TIMEOUT_MS,
     "Color analysis timed out",
   );

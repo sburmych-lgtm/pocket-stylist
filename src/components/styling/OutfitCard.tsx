@@ -31,6 +31,8 @@ export function OutfitCard({
   const { t } = useI18n();
   const [tryOnAvailable, setTryOnAvailable] = useState(false);
   const [tryOnOpen, setTryOnOpen] = useState(false);
+  const [reaction, setReaction] = useState<"liked" | "disliked" | null>(null);
+  const [worn, setWorn] = useState(false);
 
   // Hide the Try-on button until the server reports FAL_KEY is set so we
   // don't ship a CTA that returns 503.
@@ -124,14 +126,34 @@ export function OutfitCard({
           </div>
 
           <div className="mt-auto flex flex-wrap gap-2">
-            <button type="button" onClick={onLike} className="ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm">
-              <Heart size={15} />
-              {t("outfit.like")}
-            </button>
-            <button type="button" onClick={onDislike} className="ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm">
-              <RefreshCcw size={15} />
-              {t("outfit.alternative")}
-            </button>
+            {onLike && (
+              <button
+                type="button"
+                onClick={() => {
+                  setReaction("liked");
+                  onLike();
+                }}
+                aria-pressed={reaction === "liked"}
+                className={`ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm ${reaction === "liked" ? "text-[var(--success)]" : ""}`}
+              >
+                <Heart size={15} fill={reaction === "liked" ? "currentColor" : "none"} />
+                {reaction === "liked" ? t("outfit.liked") : t("outfit.like")}
+              </button>
+            )}
+            {onDislike && (
+              <button
+                type="button"
+                onClick={() => {
+                  setReaction("disliked");
+                  onDislike();
+                }}
+                aria-pressed={reaction === "disliked"}
+                className="ghost-action inline-flex items-center gap-2 px-4 py-3 text-sm"
+              >
+                <RefreshCcw size={15} />
+                {t("outfit.alternative")}
+              </button>
+            )}
             {tryOnAvailable && tryOnTarget && (
               <button
                 type="button"
@@ -143,9 +165,19 @@ export function OutfitCard({
                 {t("tryon.cta")}
               </button>
             )}
-            <button type="button" onClick={onWear} className="primary-action inline-flex flex-1 items-center justify-center gap-2 px-4 py-3 text-sm sm:flex-none">
-              {t("outfit.willWear")}
-            </button>
+            {onWear && (
+              <button
+                type="button"
+                disabled={worn}
+                onClick={() => {
+                  setWorn(true);
+                  onWear();
+                }}
+                className="primary-action inline-flex flex-1 items-center justify-center gap-2 px-4 py-3 text-sm disabled:opacity-60 sm:flex-none"
+              >
+                {worn ? t("outfit.wearLogged") : t("outfit.willWear")}
+              </button>
+            )}
           </div>
         </div>
       </div>

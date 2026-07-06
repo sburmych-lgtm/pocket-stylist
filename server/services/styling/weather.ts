@@ -29,6 +29,10 @@ interface WeatherData {
   condition: string;
   location: string;
   daily: DailyForecast[];
+  /** "live" = real Open-Meteo response, "mock" = fabricated fallback. */
+  source: "live" | "mock";
+  /** Current precipitation in mm (0 when dry / unknown). */
+  precipMm: number;
   // Backwards-compat fields used by existing callers (lookbook / styling)
   temp: number;
   feelsLike: number;
@@ -81,11 +85,23 @@ const OpenMeteoSchema = z.object({
     .optional(),
   daily: z
     .object({
-      time: z.array(z.string()),
-      temperature_2m_max: z.array(z.number()),
-      temperature_2m_min: z.array(z.number()),
-      weather_code: z.array(z.number()),
-      precipitation_sum: z.array(z.number()),
+      time: z.array(z.string()).min(1),
+      temperature_2m_max: z.array(z.number()).min(1),
+      temperature_2m_min: z.array(z.number()).min(1),
+      weather_code: z.array(z.number()).min(1),
+      precipitation_sum: z.array(z.number()).min(1),
+    })
+    .superRefine((daily, ctx) => {
+      const expected = daily.time.length;
+      for (const [key, values] of Object.entries(daily)) {
+        if (values.length !== expected) {
+          ctx.addIssue({
+            code: "custom",
+            path: [key],
+            message: "forecast_arrays_must_have_equal_length",
+          });
+        }
+      }
     })
     .optional(),
 });
@@ -143,6 +159,8 @@ function mockWeather(lat?: number, _lon?: number): WeatherData {
     condition,
     location: "Mock City",
     daily: mockDaily(safeLat, tempC),
+    source: "mock",
+    precipMm: 0,
     // Legacy aliases
     temp: tempC,
     feelsLike: tempC,
@@ -174,7 +192,7 @@ export async function fetchWeather(
     return mockWeather();
   }
 
-  const cacheKey = `${lat.toFixed(2)},${lon.toFixed(2)}`;
+  const cacheKey = `${lat.toFixed(4)},${lon.toFixed(4)},${input.timezone ?? "auto"}`;
   const cached = cache.get(cacheKey);
   if (cached && cached.expiry > Date.now()) return cached.data;
 
@@ -213,7 +231,11 @@ export async function fetchWeather(
     const { current, daily } = parsed.data;
     const currentCode = current?.weather_code ?? 0;
     const { condition, icon } = mapWeatherCode(currentCode);
-    const tempC = current?.temperature_2m ?? 0;
+    const tempC =
+      current?.temperature_2m ??
+      (daily
+        ? ((daily.temperature_2m_max[0] ?? 0) + (daily.temperature_2m_min[0] ?? 0)) / 2
+        : mockWeather(lat, lon).tempC);
 
     const dailyForecast: DailyForecast[] = daily
       ? daily.time.map((date, i) => {
@@ -233,6 +255,8 @@ export async function fetchWeather(
       condition,
       location: parsed.data.timezone ?? "",
       daily: dailyForecast,
+      source: "live",
+      precipMm: current?.precipitation ?? 0,
       // Legacy aliases — keep existing callers working.
       temp: tempC,
       feelsLike: tempC,
@@ -325,6 +349,8 @@ export async function getWeatherForecast(
       condition: d.condition,
       location: data.location,
       daily: data.daily,
+      source: data.source,
+      precipMm: d.precipMm,
       temp: tempMid,
       feelsLike: tempMid,
       humidity: 50,
@@ -368,11 +394,6 @@ export function weatherToSeason(temp: number): string {
   if (temp >= 15) return "spring";
   if (temp >= 7) return "fall";
   return "winter";
-}
-
-export function weatherToFormality(_condition: string): { min: number; max: number } {
-  // Weather doesn't restrict formality, but rain may suggest practical choices
-  return { min: 1, max: 5 };
 }
 
 // Exposed for tests to reset state between cases.

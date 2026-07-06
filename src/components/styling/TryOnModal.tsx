@@ -23,6 +23,7 @@ export function TryOnModal({ open, onClose, garmentImageUrl, garmentLabel }: Pro
   const [phase, setPhase] = useState<Phase>({ status: "select-selfie" });
   const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const selfieObjectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -33,13 +34,23 @@ export function TryOnModal({ open, onClose, garmentImageUrl, garmentLabel }: Pro
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  useEffect(
+    () => () => {
+      if (selfieObjectUrlRef.current) URL.revokeObjectURL(selfieObjectUrlRef.current);
+    },
+    [],
+  );
+
   // No reset effect: the parent passes a `key` that changes when the modal
   // is reopened, which remounts this tree and resets state naturally —
   // avoids the React 19 cascading-render warning around setState-in-effect.
 
   const handleSelfie = useCallback(
     async (file: File) => {
-      setSelfiePreview(URL.createObjectURL(file));
+      if (selfieObjectUrlRef.current) URL.revokeObjectURL(selfieObjectUrlRef.current);
+      const objectUrl = URL.createObjectURL(file);
+      selfieObjectUrlRef.current = objectUrl;
+      setSelfiePreview(objectUrl);
       setPhase({ status: "generating", startedAt: Date.now() });
       try {
         const base64 = await compressImageToBase64(file, 1024, 0.85);
@@ -51,7 +62,9 @@ export function TryOnModal({ open, onClose, garmentImageUrl, garmentLabel }: Pro
         let userMsg = t("tryon.errors.generic");
         if (message === "tryon_not_configured") userMsg = t("tryon.errors.notConfigured");
         else if (message === "rate_limit_exceeded") userMsg = t("tryon.errors.rateLimit");
-        else if (message === "timeout") userMsg = t("tryon.errors.timeout");
+        else if (message === "timeout" || message === "tryon_timeout") {
+          userMsg = t("tryon.errors.timeout");
+        }
         setPhase({ status: "error", error: userMsg });
       }
     },

@@ -8,6 +8,9 @@ import { getDemoWardrobe, isDemoUser } from "../services/demo-store.js";
 import { parseGeminiJson, withTimeout } from "../services/gemini-utils.js";
 import { colorsHarmonize } from "../services/styling/rules-engine.js";
 import { rateLimitPerUser } from "../middleware/rate-limit.js";
+import { recordGeminiUsage } from "../services/gemini-usage.js";
+import { ImageAnalyzeBodySchema as AnalyzeBodySchema } from "../services/request-schemas.js";
+import { normalizeCategory } from "../../src/shared/wardrobe-categories.js";
 
 const geminiLimiter = rateLimitPerUser({ tag: "gemini" });
 
@@ -29,15 +32,23 @@ interface GarmentBreakdown {
 const GARMENT_CATEGORIES = [
   "tops",
   "bottoms",
+  "jeans",
+  "pants",
+  "skirts",
   "dresses",
   "outerwear",
-  "shoes",
+  "footwear",
   "accessories",
 ] as const;
 
 const GarmentBreakdownSchema = z.object({
   garments: z.array(z.object({
-    category: z.enum(GARMENT_CATEGORIES).catch("tops"),
+    // Accept anything, then fold legacy names ("shoes") onto the canonical
+    // wardrobe taxonomy so matches against WardrobeItem.category work.
+    category: z
+      .string()
+      .transform((v) => normalizeCategory(v))
+      .catch("tops"),
     color: z.string().min(1).catch("black"),
     pattern: z.string().min(1).catch("solid"),
     fabric: z.string().min(1).catch("unknown"),
@@ -45,18 +56,32 @@ const GarmentBreakdownSchema = z.object({
   })).catch([]),
 });
 
+/**
+ * A reference-photo garment labelled "bottoms" must match wardrobe rows in
+ * any trouser-like section (the wardrobe taxonomy is more specific than the
+ * reference breakdown needs to be). Exported for tests.
+ */
+export const MATCH_CATEGORY_GROUPS: Record<string, readonly string[]> = {
+  bottoms: ["bottoms", "jeans", "pants", "skirts"],
+  jeans: ["jeans", "bottoms"],
+  pants: ["pants", "bottoms"],
+  skirts: ["skirts", "bottoms"],
+  footwear: ["footwear", "shoes"],
+};
+
+export function matchableCategories(garmentCategory: string): readonly string[] {
+  return MATCH_CATEGORY_GROUPS[garmentCategory] ?? [garmentCategory];
+}
+
 // POST /api/matching/analyze — Upload reference photo, decompose into garments
 matchingRouter.post("/analyze", geminiLimiter, async (req: Request, res: Response) => {
   try {
-    const { image, mimeType } = req.body as {
-      image: string;
-      mimeType: string;
-    };
-
-    if (!image || !mimeType) {
-      res.status(400).json({ error: "image and mimeType are required" });
+    const bodyParsed = AnalyzeBodySchema.safeParse(req.body);
+    if (!bodyParsed.success) {
+      res.status(400).json({ error: "invalid_payload" });
       return;
     }
+    const { image, mimeType } = bodyParsed.data;
 
     if (!isConfiguredSecret(process.env.GEMINI_API_KEY)) {
       res.json({
@@ -69,14 +94,16 @@ matchingRouter.post("/analyze", geminiLimiter, async (req: Request, res: Respons
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
+    recordGeminiUsage("reference-matching");
     const result = await withTimeout(
-      model.generateContent([
-        `Analyze this outfit photo and break it down into individual garments.
+      model.generateContent(
+        [
+          `Analyze this outfit photo and break it down into individual garments.
 Return ONLY valid JSON (no markdown fences):
 {
   "garments": [
     {
-      "category": "tops|bottoms|dresses|outerwear|shoes|accessories",
+      "category": "${GARMENT_CATEGORIES.join("|")}",
       "color": "primary color name",
       "pattern": "solid|striped|plaid|floral|etc",
       "fabric": "best guess fabric",
@@ -84,8 +111,10 @@ Return ONLY valid JSON (no markdown fences):
     }
   ]
 }`,
-        { inlineData: { mimeType, data: image } },
-      ]),
+          { inlineData: { mimeType, data: image } },
+        ],
+        { timeout: GEMINI_TIMEOUT_MS },
+      ),
       GEMINI_TIMEOUT_MS,
       "Gemini reference matching timed out",
     );
@@ -102,9 +131,11 @@ Return ONLY valid JSON (no markdown fences):
         });
 
     const recreations = breakdown.garments.map((garment) => {
-      // Find best matches per category
-      const categoryMatches = wardrobe.filter(
-        (w) => w.category === garment.category,
+      // Find best matches per category group — wardrobe rows are normalized
+      // at read time, but normalize again so legacy rows still match.
+      const allowed = matchableCategories(garment.category);
+      const categoryMatches = wardrobe.filter((w) =>
+        allowed.includes(normalizeCategory(w.category)),
       );
 
       const scored = categoryMatches.map((item) => {
@@ -133,7 +164,12 @@ Return ONLY valid JSON (no markdown fences):
     res.json({ breakdown: breakdown.garments, recreations: options });
   } catch (err) {
     console.error("Matching error:", err);
-    res.status(500).json({ error: "Failed to analyze reference photo" });
+    res.status(503).json({
+      error: "matching_temporarily_unavailable",
+      breakdown: [],
+      recreations: [],
+      analysisReliable: false,
+    });
   }
 });
 

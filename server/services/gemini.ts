@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
 import { isConfiguredSecret } from "./app-status.js";
 import { parseGeminiJson, withTimeout } from "./gemini-utils.js";
+import { recordGeminiUsage } from "./gemini-usage.js";
 import { WARDROBE_CATEGORIES, normalizeCategory } from "../../src/shared/wardrobe-categories.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
@@ -116,16 +117,20 @@ export async function analyzeClothingImage(
 
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
+  recordGeminiUsage("clothing-analysis");
   const result = await withTimeout(
-    model.generateContent([
-      ANALYSIS_PROMPT,
-      {
-        inlineData: {
-          mimeType,
-          data: imageBase64,
+    model.generateContent(
+      [
+        ANALYSIS_PROMPT,
+        {
+          inlineData: {
+            mimeType,
+            data: imageBase64,
+          },
         },
-      },
-    ]),
+      ],
+      { timeout: GEMINI_TIMEOUT_MS },
+    ),
     GEMINI_TIMEOUT_MS,
     "Gemini clothing analysis timed out",
   );

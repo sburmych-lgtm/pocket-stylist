@@ -10,6 +10,10 @@ interface StylingContext {
   weatherSeason: string;
   /** Real ambient temperature in °C — used by fabric/category temperature filters. */
   temp?: number;
+  /** Weather descriptor ("Clear" | "Clouds" | "Rain" | "Showers" | "Snow" | ...). */
+  condition?: string;
+  /** Expected precipitation in mm — drives the wet-weather footwear gate. */
+  precipMm?: number;
   formalityRange: { min: number; max: number };
   avoidRecentDays?: number;
   colorPalette?: ColorEntry[];
@@ -36,6 +40,66 @@ const HOT_WEATHER_BLOCKED_FABRICS = new Set([
  * layering is a thing.
  */
 const COLD_WEATHER_BLOCKED_CATEGORIES = new Set(["swimwear"]);
+const COLD_WEATHER_BLOCKED_FABRICS = new Set(["chiffon", "mesh", "linen"]);
+
+function normalizeColorName(value: string): string {
+  return value.toLowerCase().replace(/[^a-zа-яіїєґ0-9]+/giu, " ").trim();
+}
+
+function colorEntryMatches(
+  item: Pick<WardrobeItem, "colorPrimary" | "colorHex">,
+  entry: ColorEntry,
+): boolean {
+  if (
+    item.colorHex &&
+    entry.hex &&
+    item.colorHex.toLowerCase() === entry.hex.toLowerCase()
+  ) {
+    return true;
+  }
+  const itemName = normalizeColorName(item.colorPrimary);
+  const entryName = normalizeColorName(entry.name);
+  return (
+    itemName === entryName ||
+    entryName.split(" ").includes(itemName) ||
+    itemName.split(" ").includes(entryName)
+  );
+}
+
+/** Conditions that count as "wet" for the footwear gate. */
+const WET_CONDITIONS = new Set(["Rain", "Showers", "Thunderstorm", "Snow"]);
+
+/**
+ * Open-toe / fair-weather footwear that should never be suggested in rain
+ * or snow. Matched against the free-text `subcategory` (Gemini writes
+ * values like "sandals", "flip-flops", "espadrilles"; users may edit in
+ * Ukrainian).
+ */
+const WET_BLOCKED_FOOTWEAR_SUBCATEGORY =
+  /sandal|flip[- ]?flop|slide|slipper|espadrille|mule|сандал|шльопан|в'єтнам|капц/i;
+
+/** Suede/velvet footwear is ruined by rain — block those fabrics too. */
+const WET_BLOCKED_FOOTWEAR_FABRICS = new Set(["suede", "velvet"]);
+
+export function isWetWeather(ctx: Pick<StylingContext, "condition" | "precipMm">): boolean {
+  if (ctx.condition && WET_CONDITIONS.has(ctx.condition)) return true;
+  return typeof ctx.precipMm === "number" && ctx.precipMm >= 1;
+}
+
+/**
+ * Precipitation → footwear gate. Returns false for footwear that must not
+ * be worn in wet weather. Non-footwear items always pass.
+ */
+export function isFootwearWeatherOk(
+  item: Pick<WardrobeItem, "category" | "subcategory" | "fabric">,
+  ctx: Pick<StylingContext, "condition" | "precipMm">,
+): boolean {
+  if (item.category !== "footwear" && item.category !== "shoes") return true;
+  if (!isWetWeather(ctx)) return true;
+  if (item.fabric && WET_BLOCKED_FOOTWEAR_FABRICS.has(item.fabric)) return false;
+  if (item.subcategory && WET_BLOCKED_FOOTWEAR_SUBCATEGORY.test(item.subcategory)) return false;
+  return true;
+}
 
 // Pure-code rules engine — no Gemini needed, unlimited usage
 export function filterWardrobe(
@@ -49,6 +113,8 @@ export function filterWardrobe(
   return items.filter((item) => {
     // Season filter
     if (item.season !== "all" && item.season !== ctx.weatherSeason) return false;
+    if (item.condition === "worn") return false;
+    if (ctx.avoidColors?.some((entry) => colorEntryMatches(item, entry))) return false;
 
     // Hot-weather guard: at +20°C and above, exclude obviously heavy fabrics.
     if (temp !== undefined && temp >= 20 && item.fabric && HOT_WEATHER_BLOCKED_FABRICS.has(item.fabric)) {
@@ -58,6 +124,17 @@ export function filterWardrobe(
     if (temp !== undefined && temp <= 10 && COLD_WEATHER_BLOCKED_CATEGORIES.has(item.category)) {
       return false;
     }
+    if (
+      temp !== undefined &&
+      temp <= 5 &&
+      item.fabric &&
+      COLD_WEATHER_BLOCKED_FABRICS.has(item.fabric.toLowerCase())
+    ) {
+      return false;
+    }
+
+    // Precipitation guard: no sandals/suede footwear in rain or snow.
+    if (!isFootwearWeatherOk(item, ctx)) return false;
 
     // Formality filter
     if (item.formalityLevel < ctx.formalityRange.min) return false;
@@ -94,9 +171,11 @@ export function scoreItem(
     }
   }
 
-  // High energy → activewear bonus, low energy → comfort bonus
+  // High energy → sportswear bonus, low energy → comfort bonus
+  // ("sportswear" is the canonical category; "activewear" is its legacy alias
+  //  that can still exist on old DB rows.)
   if (ctx.mood.energy > 70) {
-    if (item.category === "activewear") score += 15;
+    if (item.category === "sportswear" || item.category === "activewear") score += 15;
     if (item.fabric === "cotton" || item.fabric === "knit") score += 5;
   } else if (ctx.mood.energy < 30) {
     if (item.fabric === "fleece" || item.fabric === "knit" || item.fabric === "cashmere") {
@@ -111,20 +190,28 @@ export function scoreItem(
   // High confidence items preferred
   score += item.confidence * 10;
 
+  // Wet weather → boots earn a bonus so they outrank fair-weather shoes.
+  if (
+    (item.category === "footwear" || item.category === "shoes") &&
+    isWetWeather(ctx) &&
+    item.subcategory &&
+    /boot|чобіт|черевик/i.test(item.subcategory)
+  ) {
+    score += 12;
+  }
+
   // Color palette bonus: items matching user's best colors get +15
   if (ctx.colorPalette && ctx.colorPalette.length > 0) {
-    const itemColor = item.colorPrimary.toLowerCase();
-    const matchesPalette = ctx.colorPalette.some(
-      (c) => c.name.toLowerCase() === itemColor,
+    const matchesPalette = ctx.colorPalette.some((entry) =>
+      colorEntryMatches(item, entry),
     );
     if (matchesPalette) score += 15;
   }
 
   // Avoid colors penalty: items matching colors to avoid get -10
   if (ctx.avoidColors && ctx.avoidColors.length > 0) {
-    const itemColor = item.colorPrimary.toLowerCase();
-    const matchesAvoid = ctx.avoidColors.some(
-      (c) => c.name.toLowerCase() === itemColor,
+    const matchesAvoid = ctx.avoidColors.some((entry) =>
+      colorEntryMatches(item, entry),
     );
     if (matchesAvoid) score -= 10;
   }

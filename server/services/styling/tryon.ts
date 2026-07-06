@@ -2,6 +2,13 @@ import { fal } from "@fal-ai/client";
 import { z } from "zod";
 import { isConfiguredSecret } from "../app-status.js";
 
+/**
+ * Fal cold-start queues can run 10–30 s; 60 s is the hard ceiling after
+ * which we give the client a clean `tryon_timeout` (mapped to HTTP 504)
+ * instead of pinning the request forever.
+ */
+const TRYON_TIMEOUT_MS = 60_000;
+
 let configured = false;
 function ensureConfigured(): boolean {
   if (configured) return true;
@@ -53,13 +60,25 @@ export async function runTryOn(input: {
   const endpoint = input.endpoint ?? "fashn/tryon/v1.6";
   const start = Date.now();
 
-  const result = await fal.subscribe(endpoint, {
-    input: {
-      model_image: input.modelImage,
-      garment_image: input.garmentImage,
-    },
-    logs: false,
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TRYON_TIMEOUT_MS);
+  let result: Awaited<ReturnType<typeof fal.subscribe>>;
+  try {
+    result = await fal.subscribe(endpoint, {
+      input: {
+        model_image: input.modelImage,
+        garment_image: input.garmentImage,
+      },
+      logs: false,
+      abortSignal: controller.signal,
+      startTimeout: Math.ceil(TRYON_TIMEOUT_MS / 1000),
+    });
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error("tryon_timeout");
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
 
   const parsed = TryOnResponseSchema.safeParse(result.data);
   if (!parsed.success) {

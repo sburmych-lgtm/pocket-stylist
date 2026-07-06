@@ -45,5 +45,5 @@ apiRouter.use("/scanner", requireAuth, requirePaidOrTrial, scannerRouter);
 apiRouter.use("/matching", requireAuth, requirePaidOrTrial, matchingRouter);
 apiRouter.use("/analytics", requireAuth, analyticsRouter);
 apiRouter.use("/profile", requireAuth, profileRouter);
-apiRouter.use("/lookbook", requireAuth, lookbookRouter);
+apiRouter.use("/lookbook", requireAuth, requirePaidOrTrial, lookbookRouter);
 apiRouter.use("/family", requireAuth, familyRouter);

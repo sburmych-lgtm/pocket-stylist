@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { CalendarDays, LoaderCircle, RefreshCcw, Sparkles } from "lucide-react";
 import { lookbookApi } from "../services/api";
-import type { LookbookDay } from "../services/api";
+import type { LookbookDay, StylistPersona } from "../services/api";
 import { useI18n } from "../i18n";
 import { SpeakButton } from "../components/common/SpeakButton";
 
@@ -39,9 +39,10 @@ interface DayCardProps {
   onRegenerate: (index: number) => void;
   wornDays: Set<number>;
   regenerating: number | null;
+  persona: StylistPersona;
 }
 
-function DayCard({ day, index, onWear, onRegenerate, wornDays, regenerating }: DayCardProps) {
+function DayCard({ day, index, onWear, onRegenerate, wornDays, regenerating, persona }: DayCardProps) {
   const { t } = useI18n();
   const dayNames = [
     t("lookbook.daySun"), t("lookbook.dayMon"), t("lookbook.dayTue"),
@@ -65,6 +66,11 @@ function DayCard({ day, index, onWear, onRegenerate, wornDays, regenerating }: D
           {weatherIcon(day.weather.condition)} {Math.round(day.weather.temp)}°
         </div>
       </div>
+      {day.weather.source === "mock" && (
+        <p className="mt-2 text-xs text-[var(--warning)]">
+          {t("styling.weatherEstimated")}
+        </p>
+      )}
 
       {day.outfit ? (
         <>
@@ -89,7 +95,7 @@ function DayCard({ day, index, onWear, onRegenerate, wornDays, regenerating }: D
             <p className="flex-1 text-sm leading-6 text-[var(--text-secondary)]">
               {day.outfit.stylingTip}
             </p>
-            <SpeakButton text={day.outfit.stylingTip} persona="classic" />
+            <SpeakButton text={day.outfit.stylingTip} persona={persona} />
           </div>
         </>
       ) : (
@@ -135,6 +141,10 @@ export function LookbookPage() {
   const [error, setError] = useState<string | null>(null);
   const [wornDays, setWornDays] = useState<Set<number>>(new Set());
   const [regenerating, setRegenerating] = useState<number | null>(null);
+  const [persona, setPersona] = useState<StylistPersona>("classic");
+  const [emptyMessageKey, setEmptyMessageKey] = useState<
+    "lookbook.noWardrobe" | "styling.locationNotSet"
+  >("lookbook.noWardrobe");
 
   const handleGenerate = useCallback(async () => {
     setLoading(true);
@@ -144,6 +154,12 @@ export function LookbookPage() {
     try {
       const result = await lookbookApi.generate();
       setDays(result.days);
+      setPersona(result.persona ?? "classic");
+      setEmptyMessageKey(
+        result.messageCode === "location_required"
+          ? "styling.locationNotSet"
+          : "lookbook.noWardrobe",
+      );
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -269,6 +285,7 @@ export function LookbookPage() {
                   onRegenerate={handleRegenerate}
                   wornDays={wornDays}
                   regenerating={regenerating}
+                  persona={persona}
                 />
               ))}
             </div>
@@ -279,10 +296,12 @@ export function LookbookPage() {
       {!loading && days && days.length === 0 && (
         <section className="luxe-card p-8 text-center">
           <p className="text-lg font-semibold text-[var(--text-primary)]">
-            {t("lookbook.noWardrobe")}
+            {t(emptyMessageKey)}
           </p>
           <p className="mt-3 text-sm text-[var(--text-secondary)]">
-            {t("lookbook.noWardrobeDesc")}
+            {emptyMessageKey === "lookbook.noWardrobe"
+              ? t("lookbook.noWardrobeDesc")
+              : t("location.permissionAsk")}
           </p>
         </section>
       )}

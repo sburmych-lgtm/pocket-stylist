@@ -5,7 +5,7 @@ import { ContextSelector } from "../components/styling/ContextSelector";
 import { OutfitCard } from "../components/styling/OutfitCard";
 import { WeatherBadge } from "../components/styling/WeatherBadge";
 import { PersonaIntroBanner } from "../components/styling/PersonaIntroBanner";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/auth-context";
 import { stylingApi } from "../services/api";
 import type { StylingResponse } from "../services/api";
 import { useI18n } from "../i18n";
@@ -68,6 +68,25 @@ export function StylingPage() {
   const handleGenerate = useCallback(() => {
     void fetchSuggestions({ energy: mood.energy, boldness: mood.boldness });
   }, [fetchSuggestions, mood]);
+
+  const handleLike = useCallback((outfitId: string, liked: boolean) => {
+    // Fire-and-forget: preference logging must never block the UI.
+    stylingApi.feedback(outfitId, liked).catch(() => undefined);
+  }, []);
+
+  const handleWear = useCallback((outfitId: string) => {
+    stylingApi.wear(outfitId).catch(() => undefined);
+  }, []);
+
+  const resultMessage = result?.messageCode
+    ? t({
+        empty_wardrobe: "styling.emptyWardrobe",
+        no_candidates: "styling.noCandidates",
+        location_required: "styling.locationNotSet",
+        wardrobe_too_small: "styling.wardrobeTooSmall",
+        recent_items_reused: "styling.recentItemsReused",
+      }[result.messageCode])
+    : result?.message;
 
   return (
     <div className="page-shell space-y-8">
@@ -180,9 +199,14 @@ export function StylingPage() {
                     condition={result.weather.condition}
                     location={result.weather.location}
                   />
-                  {result.message && (
+                  {resultMessage && (
                     <div className="rounded-full border border-[rgba(241,195,121,0.22)] bg-[rgba(241,195,121,0.08)] px-4 py-3 text-sm text-[var(--warning)]">
-                      {result.message}
+                      {resultMessage}
+                    </div>
+                  )}
+                  {result.weather.source === "mock" && result.locationSet !== false && (
+                    <div className="rounded-full border border-[rgba(241,195,121,0.22)] bg-[rgba(241,195,121,0.08)] px-4 py-3 text-sm text-[var(--warning)]">
+                      {t("styling.weatherEstimated")}
                     </div>
                   )}
                 </div>
@@ -192,16 +216,20 @@ export function StylingPage() {
                 <div className="space-y-5">
                   {result.outfits.map((outfit, index) => (
                     <OutfitCard
-                      key={index}
+                      key={outfit.id ?? `outfit-${index}`}
                       name={outfit.name}
                       items={outfit.items}
                       stylingTip={outfit.stylingTip}
                       confidence={outfit.confidence}
+                      persona={result.persona}
+                      onLike={outfit.id ? () => handleLike(outfit.id!, true) : undefined}
+                      onDislike={outfit.id ? () => handleLike(outfit.id!, false) : undefined}
+                      onWear={outfit.id ? () => handleWear(outfit.id!) : undefined}
                     />
                   ))}
                 </div>
               ) : (
-                !result.message && (
+                !resultMessage && (
                   <div className="luxe-card p-8 text-center">
                     <p className="text-lg font-semibold text-[var(--text-primary)]">{t("styling.noOutfit")}</p>
                     <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">{t("styling.noOutfitHint")}</p>
