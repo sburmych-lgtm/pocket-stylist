@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { API_NAVIGATION_DENYLIST } from "./src/shared/pwa-navigation";
 
 export default defineConfig({
   plugins: [
@@ -43,6 +44,7 @@ export default defineConfig({
         clientsClaim: true,
         cleanupOutdatedCaches: true,
         navigateFallback: "/index.html",
+        navigateFallbackDenylist: API_NAVIGATION_DENYLIST,
       },
     }),
   ],
