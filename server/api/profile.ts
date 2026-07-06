@@ -13,6 +13,7 @@ import {
 import { rateLimitPerUser } from "../middleware/rate-limit.js";
 import { requirePaidOrTrial } from "../middleware/require-access.js";
 import { geocodeCity } from "../services/styling/weather.js";
+import { deleteImage } from "../services/cloudinary.js";
 import {
   STYLIST_PERSONAS,
   normalizePersona,
@@ -44,6 +45,17 @@ const LocationCitySchema = z.object({
 
 // Either explicit coords (with optional city/timezone) or a city to geocode.
 const LocationBodySchema = z.union([LocationCoordsSchema, LocationCitySchema]);
+
+const ProfilePatchSchema = z
+  .object({
+    genderMode: z.enum(["neutral", "male", "female"]).optional(),
+    name: z.string().trim().min(1).max(100).optional(),
+  })
+  .strict();
+
+const ColorAnalysisBodySchema = z.object({
+  image: z.string().min(8).max(15_000_000),
+});
 
 interface LocationFields {
   lat: number | null;
@@ -217,15 +229,17 @@ profileRouter.patch("/location", async (req: Request, res: Response) => {
 profileRouter.patch("/", async (req: Request, res: Response) => {
   try {
     const userId = req.userId!;
-    if (isDemoUser(userId)) {
-      res.json({ ...DEMO_USER, ...(req.body as { genderMode?: string; name?: string }) });
+    const parsed = ProfilePatchSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "invalid_payload" });
       return;
     }
+    const { genderMode, name } = parsed.data;
 
-    const { genderMode, name } = req.body as {
-      genderMode?: string;
-      name?: string;
-    };
+    if (isDemoUser(userId)) {
+      res.json({ ...DEMO_USER, ...(genderMode !== undefined ? { genderMode } : {}), ...(name !== undefined ? { name } : {}) });
+      return;
+    }
 
     const data: Record<string, unknown> = {};
     if (genderMode !== undefined) data.genderMode = genderMode;
@@ -266,14 +280,13 @@ profileRouter.post(
   async (req: Request, res: Response) => {
     try {
       const userId = req.userId!;
-      const { image } = req.body as { image?: string };
-
-      if (!image) {
-        res.status(400).json({ error: "image (base64) is required" });
+      const parsed = ColorAnalysisBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "invalid_payload" });
         return;
       }
 
-      const result: ColorAnalysisResult = await analyzeColorType(image);
+      const result: ColorAnalysisResult = await analyzeColorType(parsed.data.image);
 
       if (isDemoUser(userId)) {
         res.json(result);
@@ -292,10 +305,53 @@ profileRouter.post(
 
       res.json(result);
     } catch (err) {
+      // Never forward raw upstream error text to the client — Gemini errors
+      // can contain request internals. Map the two states the UI can act on.
       console.error("Color analysis error:", err);
-      const message =
-        err instanceof Error ? err.message : "Color analysis failed";
-      res.status(500).json({ error: message });
+      const message = err instanceof Error ? err.message : "";
+      if (message.includes("not configured")) {
+        res.status(503).json({ error: "color_analysis_not_configured" });
+        return;
+      }
+      if (message.includes("timed out")) {
+        res.status(504).json({ error: "color_analysis_timeout" });
+        return;
+      }
+      res.status(500).json({ error: "color_analysis_failed" });
     }
   },
 );
+
+profileRouter.delete("/account", async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId!;
+    if (isDemoUser(userId)) {
+      res.status(403).json({ error: "demo_account_cannot_be_deleted" });
+      return;
+    }
+
+    const [items, ownerMemberships] = await Promise.all([
+      prisma.wardrobeItem.findMany({
+        where: { userId },
+        select: { imageUrl: true },
+      }),
+      prisma.familyMember.findMany({
+        where: { userId, role: "owner" },
+        select: { familyId: true },
+      }),
+    ]);
+
+    await prisma.$transaction([
+      prisma.family.deleteMany({
+        where: { id: { in: ownerMemberships.map(({ familyId }) => familyId) } },
+      }),
+      prisma.user.delete({ where: { id: userId } }),
+    ]);
+
+    await Promise.allSettled(items.map(({ imageUrl }) => deleteImage(imageUrl)));
+    res.json({ ok: true });
+  } catch (error) {
+    console.error("Account delete error:", error);
+    res.status(500).json({ error: "account_delete_failed" });
+  }
+});

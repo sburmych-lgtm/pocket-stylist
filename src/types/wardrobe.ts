@@ -38,5 +38,6 @@ export interface WardrobeItem {
   confidence: number;
   timesWorn: number;
   lastWornAt: string | null;
+  sharedWithFamily?: boolean;
   createdAt: string;
 }

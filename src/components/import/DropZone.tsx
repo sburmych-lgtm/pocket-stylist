@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CloudUpload, ImagePlus, Sparkles, HardDrive, Loader2 } from "lucide-react";
 import { useI18n } from "../../i18n";
-import { getAppStatus, getToken } from "../../services/api";
+import { authApi, getAppStatus, getToken } from "../../services/api";
+import { waitForGooglePicker } from "../../services/google-picker";
 import { DriveModal } from "./DriveModal";
 import { ErrorBoundary } from "../common/ErrorBoundary";
 
@@ -55,6 +56,11 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
   const [googlePickerApiKey, setGooglePickerApiKey] = useState<string | null>(null);
   const [googleDriveAvailable, setGoogleDriveAvailable] = useState(false);
   const [usePicker, setUsePicker] = useState(false);
+  const [pickerReady, setPickerReady] = useState(false);
+  const [appStatusLoaded, setAppStatusLoaded] = useState(false);
+  const [autoOpenDrive, setAutoOpenDrive] = useState(
+    () => new URLSearchParams(window.location.search).get("driveGranted") === "1",
+  );
   const [modalOpen, setModalOpen] = useState(false);
   // null = not checked yet; true = user already granted Drive scope; false = need consent
   const [driveReady, setDriveReady] = useState<boolean | null>(null);
@@ -75,16 +81,6 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
       .catch(() => setDriveReady(false));
   }, []);
 
-  // Auto-open Drive picker after the user comes back from the consent screen.
-  useEffect(() => {
-    if (driveReady !== true) return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("driveGranted") === "1") {
-      window.history.replaceState({}, "", window.location.pathname);
-      setModalOpen(true);
-    }
-  }, [driveReady]);
-
   useEffect(() => {
     getAppStatus()
       .then((s) => {
@@ -92,28 +88,52 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
         setGooglePickerApiKey(s.googlePickerApiKey ?? null);
         setGoogleDriveAvailable(s.googleDriveConfigured);
         setUsePicker(s.googleDrivePickerConfigured);
+        setAppStatusLoaded(true);
       })
       .catch(() => {
         setGoogleClientId(null);
         setGooglePickerApiKey(null);
         setGoogleDriveAvailable(false);
         setUsePicker(false);
+        setAppStatusLoaded(true);
       });
   }, []);
 
   // Load Google Picker API script when Picker is available
   useEffect(() => {
     if (!usePicker || pickerScriptLoaded.current) return;
+    let cancelled = false;
     const script = document.createElement("script");
     script.src = "https://apis.google.com/js/api.js";
     script.async = true;
-    script.onload = () => {
-      window.gapi?.load("picker", () => {
+    void waitForGooglePicker((ready, failed) => {
+      script.onload = () => {
+        if (!window.gapi) {
+          failed();
+          return;
+        }
+        window.gapi.load("picker", ready);
+      };
+      script.onerror = failed;
+      document.head.appendChild(script);
+    })
+      .then(() => {
+        if (cancelled) return;
         pickerScriptLoaded.current = true;
+        setPickerReady(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setUsePicker(false);
+        setDriveError(t("import.drive.loadError"));
       });
+
+    return () => {
+      cancelled = true;
+      script.onload = null;
+      script.onerror = null;
     };
-    document.head.appendChild(script);
-  }, [usePicker]);
+  }, [t, usePicker]);
 
   const openPicker = useCallback(async () => {
     setDriveError(null);
@@ -124,6 +144,9 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (!tokenRes.ok) {
+        if (tokenRes.status === 401 || tokenRes.status === 403) {
+          setDriveReady(false);
+        }
         const err = await tokenRes.json().catch(() => ({}));
         throw new Error(
           (err as { error?: string }).error ??
@@ -186,8 +209,24 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
     }
   }, [googleClientId, googlePickerApiKey, onFiles, t]);
 
+  useEffect(() => {
+    if (!autoOpenDrive || !appStatusLoaded || driveReady !== true) return;
+    if (usePicker && !pickerReady) return;
+    window.history.replaceState({}, "", window.location.pathname);
+    setAutoOpenDrive(false);
+    if (usePicker) void openPicker();
+    else setModalOpen(true);
+  }, [
+    appStatusLoaded,
+    autoOpenDrive,
+    driveReady,
+    openPicker,
+    pickerReady,
+    usePicker,
+  ]);
+
   const handleGoogleDriveClick = useCallback(
-    (e: React.MouseEvent) => {
+    async (e: React.MouseEvent) => {
       e.stopPropagation();
       if (disabled || driveLoading || !googleDriveAvailable) return;
       setDriveError(null);
@@ -197,7 +236,16 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
       // /import?driveGranted=1, where the auto-open effect fires.
       if (driveReady === false) {
         const returnTo = window.location.pathname || "/import";
-        window.location.href = `/api/auth/google/drive-consent?returnTo=${encodeURIComponent(returnTo)}`;
+        setDriveLoading(true);
+        try {
+          const { url } = await authApi.driveConsent(returnTo);
+          window.location.assign(url);
+        } catch (error) {
+          setDriveError(
+            error instanceof Error ? error.message : t("import.drive.loadError"),
+          );
+          setDriveLoading(false);
+        }
         return;
       }
 
@@ -207,7 +255,7 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
         setModalOpen(true);
       }
     },
-    [disabled, driveLoading, googleDriveAvailable, usePicker, openPicker, driveReady],
+    [disabled, driveLoading, googleDriveAvailable, usePicker, openPicker, driveReady, t],
   );
 
   const handleModalPicked = useCallback(
@@ -413,6 +461,7 @@ export function DropZone({ onFiles, disabled }: DropZoneProps) {
           open={modalOpen}
           onClose={() => setModalOpen(false)}
           onPicked={handleModalPicked}
+          onAuthorizationRequired={() => setDriveReady(false)}
         />
       </ErrorBoundary>
     </>

@@ -1,7 +1,6 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
-import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
-import { promisify } from "node:util";
+import { randomBytes } from "node:crypto";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 import { prisma } from "../services/prisma.js";
@@ -9,8 +8,11 @@ import { requireAuth, JWT_SECRET } from "../middleware/auth.js";
 import { isConfiguredSecret } from "../services/app-status.js";
 import { DEMO_USER, DEMO_USER_EMAIL, isDemoUser } from "../services/demo-store.js";
 import { withTimeout } from "../services/gemini-utils.js";
+import { fetchWithTimeout } from "../services/http.js";
 import { rateLimitByIp } from "../middleware/rate-limit.js";
 import { createTrialSubscription } from "../services/subscription.js";
+import { hashPassword, verifyPassword } from "../services/password.js";
+import { createOAuthState, verifyOAuthState } from "../services/oauth-state.js";
 
 // Anti-bot: 20 attempts / hour per IP for credential endpoints.
 // Bounded enough to keep humans unaffected while pushing automated
@@ -18,12 +20,6 @@ import { createTrialSubscription } from "../services/subscription.js";
 const authLimiter = rateLimitByIp({ tag: "auth", limit: 20, windowMs: 60 * 60 * 1000 });
 
 export const authRouter = Router();
-
-const scryptAsync = promisify(scrypt) as (
-  password: string,
-  salt: Buffer,
-  keylen: number,
-) => Promise<Buffer>;
 
 const PASSWORD_MIN_LENGTH = 8;
 const PASSWORD_MAX_LENGTH = 200;
@@ -42,22 +38,6 @@ function getBoolField(body: unknown, key: string): boolean | undefined {
   if (!body || typeof body !== "object") return undefined;
   const v = (body as Record<string, unknown>)[key];
   return typeof v === "boolean" ? v : undefined;
-}
-
-async function hashPassword(password: string): Promise<string> {
-  const salt = randomBytes(16);
-  const hash = await scryptAsync(password, salt, 64);
-  return `scrypt$${salt.toString("hex")}$${hash.toString("hex")}`;
-}
-
-async function verifyPassword(password: string, stored: string): Promise<boolean> {
-  const parts = stored.split("$");
-  if (parts.length !== 3 || parts[0] !== "scrypt") return false;
-  const salt = Buffer.from(parts[1], "hex");
-  const expected = Buffer.from(parts[2], "hex");
-  const actual = await scryptAsync(password, salt, expected.length);
-  if (actual.length !== expected.length) return false;
-  return timingSafeEqual(actual, expected);
 }
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -84,6 +64,15 @@ interface GoogleUserProfile {
   picture?: string;
   googleAccessToken?: string;
   googleRefreshToken?: string | null;
+  acceptedTerms?: boolean;
+  driveGranted?: boolean;
+}
+
+class TermsNotAcceptedError extends Error {
+  constructor() {
+    super("terms_not_accepted");
+    this.name = "TermsNotAcceptedError";
+  }
 }
 
 async function upsertGoogleUser(
@@ -101,6 +90,7 @@ async function upsertGoogleUser(
   const tokenData = {
     ...(profile.googleAccessToken ? { googleAccessToken: profile.googleAccessToken } : {}),
     ...(profile.googleRefreshToken ? { googleRefreshToken: profile.googleRefreshToken } : {}),
+    ...(profile.driveGranted ? { googleDriveGrantedAt: new Date() } : {}),
   };
 
   if (existing) {
@@ -117,12 +107,17 @@ async function upsertGoogleUser(
     return { user, isNew: false };
   }
 
+  if (profile.acceptedTerms !== true) {
+    throw new TermsNotAcceptedError();
+  }
+
   const user = await prisma.user.create({
     data: {
       googleId: profile.googleId,
       email: profile.email,
       name: profile.name ?? null,
       avatarUrl: profile.picture ?? null,
+      termsAcceptedAt: new Date(),
       ...tokenData,
     },
   });
@@ -148,7 +143,8 @@ authRouter.post("/google", async (req: Request, res: Response) => {
       return;
     }
 
-    const { credential } = req.body as { credential: string };
+    const credential = getStringField(req.body, "credential");
+    const acceptedTerms = getBoolField(req.body, "acceptedTerms");
 
     if (!credential) {
       res.status(400).json({ error: "credential is required" });
@@ -168,7 +164,13 @@ authRouter.post("/google", async (req: Request, res: Response) => {
 
     const { sub: googleId, email, name, picture } = payload;
 
-    const { user, isNew } = await upsertGoogleUser({ googleId, email, name, picture });
+    const { user, isNew } = await upsertGoogleUser({
+      googleId,
+      email,
+      name,
+      picture,
+      acceptedTerms,
+    });
     if (isNew) startTrialBackground(user.id);
 
     const token = signToken(user.id);
@@ -184,6 +186,10 @@ authRouter.post("/google", async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("Google auth error:", err);
+    if (err instanceof TermsNotAcceptedError) {
+      res.status(400).json({ error: "terms_not_accepted" });
+      return;
+    }
     res.status(401).json({ error: "Google authentication failed" });
   }
 });
@@ -195,7 +201,53 @@ authRouter.post("/google", async (req: Request, res: Response) => {
 // `drive.readonly` (restricted, requires CASA audit) — same UX for selective
 // imports, zero verification overhead.
 const BASIC_SCOPES = ["openid", "email", "profile"];
-const DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive.file"];
+const DRIVE_SCOPES = [
+  isConfiguredSecret(process.env.GOOGLE_PICKER_API_KEY)
+    ? "https://www.googleapis.com/auth/drive.file"
+    : "https://www.googleapis.com/auth/drive.readonly",
+];
+const OAUTH_NONCE_COOKIE = "pocket_stylist_oauth_nonce";
+
+function getCookie(req: Request, name: string): string | undefined {
+  const header = req.headers.cookie;
+  if (!header) return undefined;
+  for (const entry of header.split(";")) {
+    const [key, ...value] = entry.trim().split("=");
+    if (key === name) return decodeURIComponent(value.join("="));
+  }
+  return undefined;
+}
+
+function issueOAuthState(
+  res: Response,
+  flow: "login" | "drive",
+  returnTo: string,
+  acceptedTerms: boolean,
+  subjectUserId?: string,
+): string {
+  const nonce = randomBytes(24).toString("base64url");
+  const secure = process.env.NODE_ENV === "production";
+  res.cookie(OAUTH_NONCE_COOKIE, nonce, {
+    httpOnly: true,
+    secure,
+    sameSite: "lax",
+    maxAge: 10 * 60_000,
+    path: "/api/auth/google/callback",
+  });
+  return createOAuthState(
+    { nonce, flow, returnTo, acceptedTerms, subjectUserId },
+    JWT_SECRET,
+  );
+}
+
+function clearOAuthStateCookie(res: Response): void {
+  res.clearCookie(OAUTH_NONCE_COOKIE, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/api/auth/google/callback",
+  });
+}
 
 function buildGoogleAuthUrl(params: {
   clientId: string;
@@ -233,20 +285,22 @@ authRouter.get("/google/redirect", (req: Request, res: Response) => {
   }
 
   const appUrl = getAppUrl(req);
+  const acceptedTerms = req.query.acceptedTerms === "1";
   const authUrl = buildGoogleAuthUrl({
     clientId: GOOGLE_CLIENT_ID,
     redirectUri: `${appUrl}/api/auth/google/callback`,
     scopes: BASIC_SCOPES,
     prompt: "select_account",
+    state: issueOAuthState(res, "login", "/import", acceptedTerms),
   });
 
   res.redirect(authUrl.toString());
 });
 
-// GET /api/auth/google/drive-consent — incremental auth: add Drive scope to
+// POST /api/auth/google/drive-consent — incremental auth: add Drive scope to
 // an already signed-in user so they can use the Drive picker. The frontend
 // triggers this when the user clicks the Drive button for the first time.
-authRouter.get("/google/drive-consent", async (req: Request, res: Response) => {
+authRouter.post("/google/drive-consent", requireAuth, async (req: Request, res: Response) => {
   if (!isConfiguredSecret(GOOGLE_CLIENT_ID)) {
     res.status(503).json({ error: "Google auth not configured" });
     return;
@@ -255,24 +309,14 @@ authRouter.get("/google/drive-consent", async (req: Request, res: Response) => {
   const appUrl = getAppUrl(req);
 
   // Where to bounce the user once Drive is granted (default = import page).
-  const returnTo = typeof req.query.returnTo === "string" ? req.query.returnTo : "/import";
-  const safeReturnTo = returnTo.startsWith("/") ? returnTo : "/import";
+  const returnTo = getStringField(req.body, "returnTo") ?? "/import";
 
   // login_hint lets Google preselect the user that's currently signed in.
-  let loginHint: string | undefined;
-  const authHeader = req.headers.authorization;
-  if (authHeader?.startsWith("Bearer ")) {
-    try {
-      const payload = jwt.verify(authHeader.slice(7), JWT_SECRET) as { userId: string };
-      const user = await prisma.user.findUnique({
-        where: { id: payload.userId },
-        select: { email: true },
-      });
-      loginHint = user?.email;
-    } catch {
-      // unauthenticated request → just ask Google to show account chooser
-    }
-  }
+  const user = await prisma.user.findUnique({
+    where: { id: req.userId! },
+    select: { email: true },
+  });
+  const loginHint = user?.email;
 
   const authUrl = buildGoogleAuthUrl({
     clientId: GOOGLE_CLIENT_ID,
@@ -283,11 +327,11 @@ authRouter.get("/google/drive-consent", async (req: Request, res: Response) => {
     // Pass returnTo through `state` without pre-encoding — URLSearchParams
     // (inside buildGoogleAuthUrl) does that exactly once. Otherwise the slash
     // would be double-encoded and the callback couldn't route the user back.
-    state: `drive:${safeReturnTo}`,
+    state: issueOAuthState(res, "drive", returnTo, true, req.userId),
     loginHint,
   });
 
-  res.redirect(authUrl.toString());
+  res.json({ url: authUrl.toString() });
 });
 
 // GET /api/auth/google/callback — Handle redirect from Google
@@ -302,11 +346,18 @@ authRouter.get("/google/callback", async (req: Request, res: Response) => {
     };
     const appUrl = getAppUrl(req);
 
-    // Decode flow type from state. Drive-consent flow sends `drive:<returnTo>`.
-    const isDriveFlow = typeof state === "string" && state.startsWith("drive:");
-    const driveReturnTo = isDriveFlow
-      ? decodeURIComponent(state.slice("drive:".length)) || "/import"
-      : "/import";
+    const oauthState = verifyOAuthState(
+      state,
+      getCookie(req, OAUTH_NONCE_COOKIE),
+      JWT_SECRET,
+    );
+    clearOAuthStateCookie(res);
+    if (!oauthState) {
+      res.redirect(`${appUrl}/login?authError=invalid_oauth_state`);
+      return;
+    }
+    const isDriveFlow = oauthState.flow === "drive";
+    const driveReturnTo = oauthState.returnTo;
     const errorRedirect = isDriveFlow
       ? `${appUrl}${driveReturnTo}`
       : `${appUrl}/login`;
@@ -327,8 +378,9 @@ authRouter.get("/google/callback", async (req: Request, res: Response) => {
 
     const redirectUri = `${appUrl}/api/auth/google/callback`;
 
-    // Exchange authorization code for tokens
-    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    // Exchange authorization code for tokens (10 s deadline — a hung Google
+    // endpoint must not pin the callback request).
+    const tokenRes = await fetchWithTimeout("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
@@ -338,11 +390,10 @@ authRouter.get("/google/callback", async (req: Request, res: Response) => {
         redirect_uri: redirectUri,
         grant_type: "authorization_code",
       }),
-    });
+    }, 10_000);
 
     if (!tokenRes.ok) {
-      const errBody = await tokenRes.text();
-      console.error("Google token exchange failed:", errBody);
+      console.error("Google token exchange failed", { status: tokenRes.status });
       res.redirect(`${appUrl}/login?authError=token_exchange_failed`);
       return;
     }
@@ -367,37 +418,49 @@ authRouter.get("/google/callback", async (req: Request, res: Response) => {
 
     const { sub: googleId, email, name, picture } = payload;
 
+    if (isDriveFlow && oauthState.subjectUserId) {
+      const expectedUser = await prisma.user.findUnique({
+        where: { id: oauthState.subjectUserId },
+        select: { email: true },
+      });
+      if (!expectedUser || expectedUser.email.toLowerCase() !== email.toLowerCase()) {
+        res.redirect(`${appUrl}/login?authError=google_account_mismatch`);
+        return;
+      }
+    }
+
     const { user, isNew } = await upsertGoogleUser({
       googleId,
       email,
       name,
       picture,
-      googleAccessToken: tokens.access_token,
-      googleRefreshToken: tokens.refresh_token ?? null,
+      googleAccessToken: isDriveFlow ? tokens.access_token : undefined,
+      googleRefreshToken: isDriveFlow ? tokens.refresh_token ?? null : undefined,
+      acceptedTerms: oauthState.acceptedTerms,
+      driveGranted: isDriveFlow,
     });
     if (isNew) startTrialBackground(user.id);
 
     const appToken = signToken(user.id);
 
-    // Use HTML redirect (not 302) so the token-in-hash arrives reliably in all
-    // user agents — Playwright's chromium does not always follow 302 responses
-    // that carry a body when the Location is same-origin.
-    //
     // For Drive-consent flow the user is already logged in; just bounce them
     // back to where they were (returnTo) without re-issuing a token in the URL.
     // The newly persisted access token (with drive.file scope) is on the User
     // record server-side, so the next /api/auth/google-access-token call works.
     const target = isDriveFlow
-      ? `${appUrl}${driveReturnTo}?driveGranted=1`
-      : `${appUrl}/login#token=${encodeURIComponent(appToken)}`;
+      ? new URL(driveReturnTo, appUrl)
+      : new URL("/login", appUrl);
+    if (isDriveFlow) target.searchParams.set("driveGranted", "1");
+    else target.hash = `token=${encodeURIComponent(appToken)}`;
     res.setHeader("Cache-Control", "no-store");
-    res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.send(
-      `<!doctype html><html><head><meta charset="utf-8"><title>Pocket Stylist</title><meta http-equiv="refresh" content="0;url=${target}"><script>window.location.replace(${JSON.stringify(target)});</script></head><body></body></html>`,
-    );
+    res.redirect(302, target.toString());
   } catch (err) {
     console.error("Google callback error:", err);
     const appUrl = getAppUrl(req);
+    if (err instanceof TermsNotAcceptedError) {
+      res.redirect(`${appUrl}/login?authError=terms_not_accepted`);
+      return;
+    }
     res.redirect(`${appUrl}/login?authError=callback_failed`);
   }
 });
@@ -469,11 +532,15 @@ authRouter.get("/google-access-token", requireAuth, async (req: Request, res: Re
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.userId! },
-      select: { googleAccessToken: true, googleRefreshToken: true },
+      select: {
+        googleAccessToken: true,
+        googleRefreshToken: true,
+        googleDriveGrantedAt: true,
+      },
     });
 
-    if (!user?.googleAccessToken) {
-      res.status(401).json({ error: "No Google access token. Please re-login via Google redirect." });
+    if (!user?.googleDriveGrantedAt || !user.googleAccessToken) {
+      res.status(401).json({ error: "drive_access_required" });
       return;
     }
 
@@ -484,7 +551,7 @@ authRouter.get("/google-access-token", requireAuth, async (req: Request, res: Re
       isConfiguredSecret(GOOGLE_CLIENT_SECRET)
     ) {
       try {
-        const refreshRes = await fetch("https://oauth2.googleapis.com/token", {
+        const refreshRes = await fetchWithTimeout("https://oauth2.googleapis.com/token", {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: new URLSearchParams({
@@ -493,7 +560,7 @@ authRouter.get("/google-access-token", requireAuth, async (req: Request, res: Re
             refresh_token: user.googleRefreshToken,
             grant_type: "refresh_token",
           }),
-        });
+        }, 10_000);
 
         if (refreshRes.ok) {
           const tokens = (await refreshRes.json()) as { access_token: string };
@@ -577,18 +644,31 @@ authRouter.post("/email/register", authLimiter, async (req: Request, res: Respon
     }
 
     const passwordHash = await hashPassword(password);
-    const user = await withTimeout(
-      prisma.user.create({
-        data: {
-          email: normalizedEmail,
-          name,
-          passwordHash,
-          termsAcceptedAt: new Date(),
-        },
-      }),
-      5_000,
-      "Database create timed out",
-    );
+    let user;
+    try {
+      user = await withTimeout(
+        prisma.user.create({
+          data: {
+            email: normalizedEmail,
+            name,
+            passwordHash,
+            termsAcceptedAt: new Date(),
+          },
+        }),
+        5_000,
+        "Database create timed out",
+      );
+    } catch (createErr) {
+      // Unique-violation race: two concurrent registrations for the same
+      // email both pass the findUnique above — the loser must get a clean
+      // 409, not a 500.
+      const code = (createErr as { code?: string } | null)?.code;
+      if (code === "P2002") {
+        res.status(409).json({ error: "email_in_use" });
+        return;
+      }
+      throw createErr;
+    }
     startTrialBackground(user.id);
 
     const token = signToken(user.id);
@@ -658,6 +738,12 @@ authRouter.post("/email/login", authLimiter, async (req: Request, res: Response)
     console.error("Email login error:", err);
     res.status(500).json({ error: "login_failed" });
   }
+});
+
+// POST /api/auth/refresh — rotate a still-valid app JWT before it expires.
+authRouter.post("/refresh", requireAuth, (req: Request, res: Response) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ token: signToken(req.userId!) });
 });
 
 // POST /api/auth/logout — Placeholder (JWT is stateless)

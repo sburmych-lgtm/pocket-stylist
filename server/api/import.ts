@@ -3,8 +3,8 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import { prisma } from "../services/prisma.js";
 import { analyzeClothingImage, FALLBACK_CLOTHING_ANALYSIS } from "../services/gemini.js";
-import { uploadImage } from "../services/cloudinary.js";
-import { resolveTargetUser } from "../services/family.js";
+import { deleteImage, uploadImage } from "../services/cloudinary.js";
+import { resolveTargetUser, wardrobeVisibilityWhere } from "../services/family.js";
 import {
   addDemoWardrobeItems,
   deleteDemoWardrobeItem,
@@ -13,10 +13,43 @@ import {
   updateDemoWardrobeItem,
 } from "../services/demo-store.js";
 import { rateLimitPerUser } from "../middleware/rate-limit.js";
+import { requirePaidOrTrial } from "../middleware/require-access.js";
 
 const geminiLimiter = rateLimitPerUser({ tag: "gemini" });
 import { normalizeCategory } from "../../src/shared/wardrobe-categories.js";
 import { withTimeout } from "../services/gemini-utils.js";
+import { fetchBufferWithTimeout, fetchWithTimeout } from "../services/http.js";
+import { ImageAnalyzeBodySchema } from "../services/request-schemas.js";
+
+/** Drive files larger than this are rejected instead of buffered into RAM. */
+const DRIVE_MAX_FILE_BYTES = 20 * 1024 * 1024; // 20 MB
+const DRIVE_FETCH_TIMEOUT_MS = 20_000;
+
+const SaveItemsSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        imageUrl: z.string().min(1).max(2_000_000),
+        thumbnailUrl: z.string().max(2_000_000).optional(),
+        category: z.string().max(40),
+        subcategory: z.string().max(80).optional(),
+        colorPrimary: z.string().max(40),
+        colorHex: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+        pattern: z.string().max(40).optional(),
+        fabric: z.string().max(40).optional(),
+        formalityLevel: z.coerce.number().int().min(1).max(5).optional(),
+        season: z.enum(["spring", "summer", "fall", "winter", "all"]).optional(),
+        brand: z.string().max(80).optional(),
+        confidence: z.coerce.number().min(0).max(1).optional(),
+      }),
+    )
+    .min(1)
+    .max(100),
+});
+
+const DriveDownloadSchema = z.object({
+  fileId: z.string().min(1).max(128).regex(/^[\w-]+$/),
+});
 
 export const importRouter = Router();
 
@@ -40,6 +73,7 @@ const ItemPatchSchema = z
     formalityLevel: z.number().int().min(1).max(5).optional(),
     season: z.enum(["spring", "summer", "fall", "winter", "all"]).optional(),
     brand: z.string().max(80).nullable().optional(),
+    sharedWithFamily: z.boolean().optional(),
   })
   .strict();
 
@@ -47,19 +81,15 @@ const ItemPatchSchema = z
 // Uploads -> analyzes with Gemini -> commits to wardrobe in ONE round-trip.
 // This is the production path; /analyze + /save below are deprecated shims
 // kept for older clients still in the wild.
-importRouter.post("/ingest", geminiLimiter, async (req: Request, res: Response) => {
+importRouter.post("/ingest", requirePaidOrTrial, geminiLimiter, async (req: Request, res: Response) => {
   const t0 = Date.now();
   try {
-    const { image, mimeType, fileName } = req.body as {
-      image?: string;
-      mimeType?: string;
-      fileName?: string;
-    };
-
-    if (!image || !mimeType) {
-      res.status(400).json({ error: "image and mimeType are required" });
+    const parsedBody = ImageAnalyzeBodySchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      res.status(400).json({ error: "invalid_payload" });
       return;
     }
+    const { image, mimeType, fileName } = parsedBody.data;
 
     const userId = req.userId!;
 
@@ -71,10 +101,12 @@ importRouter.post("/ingest", geminiLimiter, async (req: Request, res: Response) 
     // 2. Analyze (Gemini with safe fallback)
     const tGemini0 = Date.now();
     let tags;
+    let analysisReliable = true;
     try {
       tags = await analyzeClothingImage(image, mimeType);
     } catch (err) {
       console.error("[ingest] Gemini analysis failed, using fallback:", err);
+      analysisReliable = false;
       tags = FALLBACK_CLOTHING_ANALYSIS;
     }
     const geminiMs = Date.now() - tGemini0;
@@ -123,6 +155,9 @@ importRouter.post("/ingest", geminiLimiter, async (req: Request, res: Response) 
             season: normalizedTags.season ?? "all",
             brand: normalizedTags.brand ?? null,
             confidence: normalizedTags.confidence ?? 0,
+            tags: analysisReliable
+              ? undefined
+              : { analysisReliable: false, needsReview: true },
           },
         }),
         7_000,
@@ -145,6 +180,7 @@ importRouter.post("/ingest", geminiLimiter, async (req: Request, res: Response) 
       imageUrl,
       thumbnailUrl,
       tags: normalizedTags,
+      analysisReliable,
       fileName,
       createdAt,
       timings: { uploadMs, geminiMs, dbMs, totalMs },
@@ -158,18 +194,14 @@ importRouter.post("/ingest", geminiLimiter, async (req: Request, res: Response) 
 // POST /api/import/analyze — DEPRECATED: kept for old clients.
 // New code paths use /ingest. This shim returns the analyze-only response
 // (no DB commit) and signals deprecation via header.
-importRouter.post("/analyze", geminiLimiter, async (req: Request, res: Response) => {
+importRouter.post("/analyze", requirePaidOrTrial, geminiLimiter, async (req: Request, res: Response) => {
   try {
-    const { image, mimeType, fileName } = req.body as {
-      image: string;
-      mimeType: string;
-      fileName: string;
-    };
-
-    if (!image || !mimeType) {
-      res.status(400).json({ error: "image and mimeType are required" });
+    const parsedBody = ImageAnalyzeBodySchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      res.status(400).json({ error: "invalid_payload" });
       return;
     }
+    const { image, mimeType, fileName } = parsedBody.data;
 
     const { imageUrl, thumbnailUrl } = await uploadImage(image, mimeType);
 
@@ -198,27 +230,12 @@ importRouter.post("/analyze", geminiLimiter, async (req: Request, res: Response)
 // POST /api/import/save — Save analyzed items to wardrobe
 importRouter.post("/save", async (req: Request, res: Response) => {
   try {
-    const { items } = req.body as {
-      items: Array<{
-        imageUrl: string;
-        thumbnailUrl: string;
-        category: string;
-        subcategory?: string;
-        colorPrimary: string;
-        colorHex?: string;
-        pattern?: string;
-        fabric?: string;
-        formalityLevel?: number;
-        season?: string;
-        brand?: string;
-        confidence?: number;
-      }>;
-    };
-
-    if (!items?.length) {
-      res.status(400).json({ error: "items array is required" });
+    const parsedBody = SaveItemsSchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      res.status(400).json({ error: "invalid_payload" });
       return;
     }
+    const { items } = parsedBody.data;
 
     const userId = req.userId!;
     if (isDemoUser(userId)) {
@@ -270,7 +287,7 @@ importRouter.get("/wardrobe", async (req: Request, res: Response) => {
     }
 
     const rawItems = await prisma.wardrobeItem.findMany({
-      where: { userId: targetUserId },
+      where: wardrobeVisibilityWhere(userId, targetUserId),
       orderBy: { createdAt: "desc" },
     });
     // Normalize legacy category strings ("shoes" -> "footwear" etc.) at read
@@ -321,12 +338,14 @@ importRouter.get("/drive/list", async (req: Request, res: Response) => {
     });
     if (pageToken) params.set("pageToken", pageToken);
 
-    const driveRes = await fetch(`https://www.googleapis.com/drive/v3/files?${params.toString()}`, {
-      headers: { Authorization: `Bearer ${user.googleAccessToken}` },
-    });
+    const driveRes = await fetchWithTimeout(
+      `https://www.googleapis.com/drive/v3/files?${params.toString()}`,
+      { headers: { Authorization: `Bearer ${user.googleAccessToken}` } },
+      DRIVE_FETCH_TIMEOUT_MS,
+    );
 
     if (driveRes.status === 401) {
-      res.status(401).json({ error: "Google access token expired. Re-login via Google." });
+      res.status(401).json({ error: "drive_access_expired" });
       return;
     }
     if (!driveRes.ok) {
@@ -362,11 +381,12 @@ importRouter.get("/drive/list", async (req: Request, res: Response) => {
 // POST /api/import/drive-download — Download image from Google Drive
 importRouter.post("/drive-download", async (req: Request, res: Response) => {
   try {
-    const { fileId } = req.body as { fileId: string };
-    if (!fileId) {
-      res.status(400).json({ error: "fileId is required" });
+    const parsedBody = DriveDownloadSchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      res.status(400).json({ error: "invalid_payload" });
       return;
     }
+    const { fileId } = parsedBody.data;
 
     const userId = req.userId!;
     if (isDemoUser(userId)) {
@@ -384,28 +404,60 @@ importRouter.post("/drive-download", async (req: Request, res: Response) => {
       return;
     }
 
-    // Get file metadata
-    const metaRes = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,mimeType`,
+    // Get file metadata — size first so we never buffer a 2 GB video into RAM.
+    const metaRes = await fetchWithTimeout(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,mimeType,size`,
       { headers: { Authorization: `Bearer ${user.googleAccessToken}` } },
+      DRIVE_FETCH_TIMEOUT_MS,
     );
     if (!metaRes.ok) {
+      if (metaRes.status === 401 || metaRes.status === 403) {
+        res.status(401).json({ error: "drive_access_expired" });
+        return;
+      }
       res.status(502).json({ error: "Failed to get file metadata from Drive" });
       return;
     }
-    const meta = (await metaRes.json()) as { name: string; mimeType: string };
+    const meta = (await metaRes.json()) as { name: string; mimeType: string; size?: string };
+
+    if (!meta.mimeType?.startsWith("image/")) {
+      res.status(400).json({ error: "not_an_image" });
+      return;
+    }
+    const declaredSize = Number(meta.size ?? 0);
+    if (declaredSize > DRIVE_MAX_FILE_BYTES) {
+      res.status(413).json({ error: "file_too_large" });
+      return;
+    }
 
     // Download file content
-    const contentRes = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-      { headers: { Authorization: `Bearer ${user.googleAccessToken}` } },
-    );
+    let contentRes: globalThis.Response;
+    let buffer: Buffer;
+    try {
+      const downloaded = await fetchBufferWithTimeout(
+        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+        { headers: { Authorization: `Bearer ${user.googleAccessToken}` } },
+        DRIVE_FETCH_TIMEOUT_MS,
+        DRIVE_MAX_FILE_BYTES,
+      );
+      contentRes = downloaded.response;
+      buffer = downloaded.buffer;
+    } catch (error) {
+      if (error instanceof Error && error.message === "response_body_too_large") {
+        res.status(413).json({ error: "file_too_large" });
+        return;
+      }
+      throw error;
+    }
     if (!contentRes.ok) {
+      if (contentRes.status === 401 || contentRes.status === 403) {
+        res.status(401).json({ error: "drive_access_expired" });
+        return;
+      }
       res.status(502).json({ error: "Failed to download file from Drive" });
       return;
     }
 
-    const buffer = Buffer.from(await contentRes.arrayBuffer());
     const base64 = buffer.toString("base64");
 
     res.json({
@@ -497,6 +549,7 @@ importRouter.delete("/wardrobe/:itemId", async (req: Request, res: Response) => 
     }
 
     await prisma.wardrobeItem.delete({ where: { id: itemId } });
+    await deleteImage(item.imageUrl);
     res.json({ ok: true });
   } catch (err) {
     console.error("Wardrobe delete error:", err);

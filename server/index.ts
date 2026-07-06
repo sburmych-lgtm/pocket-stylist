@@ -14,6 +14,20 @@ const PORT = process.env.PORT ?? 3001;
 const isProd = process.env.NODE_ENV === "production";
 
 app.disable("x-powered-by");
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(self), geolocation=(self), microphone=()");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self' https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://accounts.google.com https://*.googleapis.com; frame-src https://accounts.google.com https://docs.google.com https://*.google.com; media-src 'self' blob: https:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self' https://accounts.google.com",
+  );
+  if (isProd) {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+  next();
+});
 
 /**
  * CORS allowlist. Production locks the API to our own origins so a stolen
@@ -48,7 +62,7 @@ app.use(
 // pre-existing 50 MB JSON body limit.
 app.use((req, res, next) => {
   if (req.path === "/api/billing/webhook") return next();
-  return express.json({ limit: "50mb" })(req, res, next);
+  return express.json({ limit: "20mb" })(req, res, next);
 });
 
 // JSON-only error handler — converts body-parser HTML errors (e.g. malformed JSON)

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { wardrobeApi, type WardrobeItem } from "../services/api";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Pencil, Check, X, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, Search, Pencil, Check, X, Trash2, AlertTriangle, Users } from "lucide-react";
 import { useI18n } from "../i18n";
 import { WARDROBE_CATEGORIES, normalizeCategory } from "../shared/wardrobe-categories";
 
@@ -29,10 +29,12 @@ function ItemCard({
   item,
   onDelete,
   onCategoryChange,
+  onSharingChange,
 }: {
   item: WardrobeItem;
   onDelete: (id: string) => Promise<void> | void;
   onCategoryChange: (id: string, newCategory: string) => Promise<void>;
+  onSharingChange: (id: string, shared: boolean) => Promise<void>;
 }) {
   const { t } = useI18n();
   const [showDetails, setShowDetails] = useState(false);
@@ -77,7 +79,7 @@ function ItemCard({
   };
 
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-white/[0.06] bg-[#1a1a2e] shadow-lg shadow-black/20 transition-all duration-300 hover:border-white/[0.12] hover:shadow-xl hover:shadow-black/30 hover:-translate-y-0.5">
+    <div className="group relative overflow-hidden rounded-xl border border-white/[0.06] bg-[#1a1a2e] shadow-lg shadow-black/20 transition-[border-color,box-shadow] duration-300 hover:border-white/[0.12] hover:shadow-xl hover:shadow-black/30">
       <button
         type="button"
         onClick={() => setShowDetails(!showDetails)}
@@ -89,6 +91,32 @@ function ItemCard({
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
         />
+      </button>
+
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          void onSharingChange(item.id, !item.sharedWithFamily);
+        }}
+        aria-pressed={item.sharedWithFamily === true}
+        aria-label={
+          item.sharedWithFamily
+            ? t("wardrobe.stopFamilySharing")
+            : t("wardrobe.shareWithFamily")
+        }
+        title={
+          item.sharedWithFamily
+            ? t("wardrobe.stopFamilySharing")
+            : t("wardrobe.shareWithFamily")
+        }
+        className={`absolute right-1.5 top-1.5 z-10 flex h-9 w-9 items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition-all ${
+          item.sharedWithFamily
+            ? "border-emerald-300/50 bg-emerald-500/90 text-white"
+            : "border-white/30 bg-black/60 text-white"
+        }`}
+      >
+        <Users size={17} />
       </button>
 
       <div className="p-2">
@@ -146,7 +174,7 @@ function ItemCard({
                 setEditing(true);
               }}
               aria-label={t("wardrobe.editCategory")}
-              className="ml-auto rounded p-0.5 text-[#f0ece4]/40 opacity-0 transition-all hover:bg-white/10 hover:text-[var(--accent)] group-hover:opacity-100"
+              className="ml-auto rounded p-1 text-[#f0ece4]/60 opacity-100 transition-all hover:bg-white/10 hover:text-[var(--accent)] sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
             >
               <Pencil size={10} />
             </button>
@@ -372,6 +400,24 @@ export function WardrobePage() {
     [items, t],
   );
 
+  const handleSharingChange = useCallback(
+    async (itemId: string, sharedWithFamily: boolean) => {
+      const previous = items;
+      setItems((current) =>
+        current.map((item) =>
+          item.id === itemId ? { ...item, sharedWithFamily } : item,
+        ),
+      );
+      try {
+        await wardrobeApi.updateItem(itemId, { sharedWithFamily });
+      } catch (cause) {
+        setItems(previous);
+        setError(cause instanceof Error ? cause.message : t("common.error"));
+      }
+    },
+    [items, t],
+  );
+
   const filtered = items.filter((item) => {
     if (activeCategory !== "all" && item.category !== activeCategory) return false;
     if (searchQuery) {
@@ -493,13 +539,14 @@ export function WardrobePage() {
               </p>
             </div>
           ) : (
-            <div className="stagger-children grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {filtered.map((item) => (
                 <ItemCard
                   key={item.id}
                   item={item}
                   onDelete={handleDelete}
                   onCategoryChange={handleCategoryChange}
+                  onSharingChange={handleSharingChange}
                 />
               ))}
             </div>

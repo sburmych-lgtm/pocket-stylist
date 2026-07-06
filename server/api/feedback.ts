@@ -5,8 +5,14 @@ import { prisma } from "../services/prisma.js";
 import { optionalAuth } from "../middleware/auth.js";
 import { withTimeout } from "../services/gemini-utils.js";
 import { isDemoUser } from "../services/demo-store.js";
+import { rateLimitByIp } from "../middleware/rate-limit.js";
 
 export const feedbackRouter = Router();
+const feedbackLimiter = rateLimitByIp({
+  tag: "feedback",
+  limit: 10,
+  windowMs: 60 * 60_000,
+});
 
 const FeedbackSchema = z.object({
   message: z.string().min(3).max(2000),
@@ -17,7 +23,7 @@ const FeedbackSchema = z.object({
 // POST /api/feedback — anonymous OR authed user feedback. Stores into Feedback
 // table. Demo users still go through (anonymously) so the demo flow can prove
 // the end-to-end works without polluting the real users table.
-feedbackRouter.post("/", optionalAuth, async (req: Request, res: Response) => {
+feedbackRouter.post("/", feedbackLimiter, optionalAuth, async (req: Request, res: Response) => {
   try {
     const parsed = FeedbackSchema.safeParse(req.body);
     if (!parsed.success) {

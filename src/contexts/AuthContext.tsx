@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
   authApi,
@@ -14,40 +7,8 @@ import {
   getToken,
 } from "../services/api";
 import type { AuthUser } from "../services/api";
-
-/* ---------- Types ---------- */
-
-interface AuthContextType {
-  user: AuthUser | null;
-  token: string | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  isDemoMode: boolean;
-  loginWithGoogle: (credential: string) => Promise<void>;
-  loginWithEmail: (email: string, password: string) => Promise<void>;
-  registerWithEmail: (
-    email: string,
-    password: string,
-    name: string | undefined,
-    acceptedTerms: boolean,
-  ) => Promise<void>;
-  loginDemo: () => Promise<void>;
-  logout: () => void;
-}
-
-/* ---------- Context ---------- */
-
-const AuthContext = createContext<AuthContextType | null>(null);
-
-/* ---------- Hook ---------- */
-
-export function useAuth(): AuthContextType {
-  const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return ctx;
-}
+import { AuthContext } from "./auth-context";
+import type { AuthContextType } from "./auth-context";
 
 /* ---------- Provider ---------- */
 

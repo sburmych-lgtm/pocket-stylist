@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/auth-context";
 import { profileApi } from "../services/api";
 import type {
   ColorAnalysisResult,
@@ -152,10 +152,11 @@ function ColorResultDisplay({
 /* ---------- Main page ---------- */
 
 export function ProfilePage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const [analysisResult, setAnalysisResult] = useState<ColorAnalysisResult | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   // Fetch profile
   const { data: profile } = useQuery<UserProfile>({
@@ -339,6 +340,31 @@ export function ProfilePage() {
             </div>
           </div>
         )}
+      </div>
+
+      <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/5 p-6">
+        <h2 className="text-lg font-semibold text-[var(--danger)]">
+          {t("profile.deleteAccount")}
+        </h2>
+        <p className="mt-2 text-sm text-[var(--text-secondary)]">
+          {t("profile.deleteAccountDesc")}
+        </p>
+        <button
+          type="button"
+          disabled={deletingAccount}
+          onClick={() => {
+            if (!window.confirm(t("profile.deleteAccountConfirm"))) return;
+            setDeletingAccount(true);
+            void profileApi
+              .deleteAccount()
+              .then(() => logout())
+              .catch(() => window.alert(t("common.error")))
+              .finally(() => setDeletingAccount(false));
+          }}
+          className="mt-4 rounded-full bg-[var(--danger)] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          {deletingAccount ? t("common.loading") : t("profile.deleteAccount")}
+        </button>
       </div>
     </div>
   );

@@ -133,6 +133,7 @@ export function addDemoWardrobeItems(
     timesWorn: 0,
     lastWornAt: null,
     purchasedAt: null,
+    sharedWithFamily: false,
     tags: null,
     createdAt: now,
     updatedAt: now,

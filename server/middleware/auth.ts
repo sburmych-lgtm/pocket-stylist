@@ -30,7 +30,7 @@ function resolveJwtSecret(): string {
 const JWT_SECRET = resolveJwtSecret();
 
 function isDemoMode(): boolean {
-  return !process.env.GOOGLE_CLIENT_ID;
+  return process.env.NODE_ENV !== "production" && !process.env.GOOGLE_CLIENT_ID;
 }
 
 async function ensureDemoUser(): Promise<string> {

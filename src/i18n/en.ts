@@ -38,6 +38,9 @@ export const en: Translations = {
     times: "times",
     items: "items",
   },
+  pwa: {
+    offline: "You are offline. Previously loaded screens remain available; AI features need a connection.",
+  },
 
   /* ---- Login ---- */
   login: {
@@ -215,6 +218,8 @@ export const en: Translations = {
     formality: "Formality",
     timesWorn: "Times worn",
     editCategory: "Edit category",
+    shareWithFamily: "Share with family",
+    stopFamilySharing: "Stop family sharing",
   },
 
   /* ---- Categories ---- */
@@ -395,6 +400,12 @@ export const en: Translations = {
     itemsInPlay: "{count} items in play",
     noOutfit: "Couldn't compose a strong outfit yet.",
     noOutfitHint: "Try a different mood, change context or add new items to your wardrobe.",
+    emptyWardrobe: "Your wardrobe is empty. Add a few items first.",
+    noCandidates: "No items match the weather and selected occasion.",
+    locationNotSet: "Add your city or location for an accurate recommendation.",
+    weatherEstimated: "Weather is estimated right now — check the forecast before leaving.",
+    wardrobeTooSmall: "There are not enough pieces for a complete weather-safe outfit yet.",
+    recentItemsReused: "Some recently worn pieces were reused because the wardrobe is still small.",
     studioPrompt: "Style Studio",
     promptTitle: "Set your request and we'll show three outfits",
     promptDesc: "Start with a mood or context preset. The system will then compose ready-to-wear combinations that look cohesive and work in your real wardrobe.",
@@ -410,8 +421,10 @@ export const en: Translations = {
     point2: "Colors read as a unified capsule, not a random selection.",
     point3: "The look is easily adaptable with accessories without losing the mood.",
     like: "Like",
+    liked: "Liked",
     alternative: "Alternative",
     willWear: "Will wear this",
+    wearLogged: "Logged",
   },
 
   /* ---- Profile ---- */
@@ -448,6 +461,9 @@ export const en: Translations = {
     contrastHigh: "high",
     contrastMedium: "medium",
     contrastLow: "low",
+    deleteAccount: "Delete account",
+    deleteAccountDesc: "Your account, wardrobe, outfits, and family data will be permanently deleted.",
+    deleteAccountConfirm: "Permanently delete your account and all data?",
 
     /* Stylist persona — bot voice/tone selector */
     personaSection: "Bot conversation style",

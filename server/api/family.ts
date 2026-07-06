@@ -1,9 +1,23 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
+import { z } from "zod";
 import { prisma } from "../services/prisma.js";
-import { isFamilyAdmin, isFamilyMember } from "../services/family.js";
+import {
+  isFamilyAdmin,
+  isFamilyMember,
+  wardrobeVisibilityWhere,
+} from "../services/family.js";
 
 export const familyRouter = Router();
+
+const FamilyNameSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+});
+
+const AddMemberSchema = z.object({
+  email: z.string().trim().toLowerCase().email().max(254),
+  role: z.enum(["member", "admin"]).optional(),
+});
 
 /** Extract a single-value param from Express 5 (string | string[]) */
 function param(val: string | string[] | undefined): string {
@@ -51,16 +65,15 @@ familyRouter.get("/", async (req: Request, res: Response) => {
 familyRouter.post("/", async (req: Request, res: Response) => {
   try {
     const userId = req.userId!;
-    const { name } = req.body as { name: string };
-
-    if (!name?.trim()) {
+    const parsed = FamilyNameSchema.safeParse(req.body);
+    if (!parsed.success) {
       res.status(400).json({ error: "Family name is required" });
       return;
     }
 
     const family = await prisma.family.create({
       data: {
-        name: name.trim(),
+        name: parsed.data.name,
         members: { create: { userId, role: "owner" } },
       },
       include: {
@@ -82,7 +95,11 @@ familyRouter.patch("/:familyId", async (req: Request, res: Response) => {
   try {
     const userId = req.userId!;
     const familyId = param(req.params.familyId);
-    const { name } = req.body as { name: string };
+    const parsed = FamilyNameSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "invalid_payload" });
+      return;
+    }
 
     if (!(await isFamilyAdmin(userId, familyId))) {
       res.status(403).json({ error: "Only admins can update family" });
@@ -91,7 +108,7 @@ familyRouter.patch("/:familyId", async (req: Request, res: Response) => {
 
     const family = await prisma.family.update({
       where: { id: familyId },
-      data: { name: name.trim() },
+      data: { name: parsed.data.name },
     });
 
     res.json({ family });
@@ -129,10 +146,12 @@ familyRouter.post("/:familyId/members", async (req: Request, res: Response) => {
   try {
     const userId = req.userId!;
     const familyId = param(req.params.familyId);
-    const { email, role = "member" } = req.body as {
-      email: string;
-      role?: string;
-    };
+    const parsed = AddMemberSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "invalid_payload" });
+      return;
+    }
+    const { email, role = "member" } = parsed.data;
 
     if (!(await isFamilyAdmin(userId, familyId))) {
       res.status(403).json({ error: "Only admins can add members" });
@@ -200,6 +219,18 @@ familyRouter.delete(
           res.status(403).json({ error: "Cannot remove the owner" });
           return;
         }
+      } else {
+        const selfMember = await prisma.familyMember.findUnique({
+          where: { familyId_userId: { familyId, userId } },
+        });
+        if (!selfMember) {
+          res.status(404).json({ error: "membership_not_found" });
+          return;
+        }
+        if (selfMember.role === "owner") {
+          res.status(409).json({ error: "owner_must_delete_family" });
+          return;
+        }
       }
 
       await prisma.familyMember.delete({
@@ -244,7 +275,7 @@ familyRouter.get(
       }
 
       const items = await prisma.wardrobeItem.findMany({
-        where: { userId: memberId },
+        where: wardrobeVisibilityWhere(userId, memberId),
         orderBy: { createdAt: "desc" },
       });
 

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, User as UserIcon, LogIn, UserPlus, Eye, EyeOff } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/auth-context";
 import { getAppStatus } from "../services/api";
 import type { AppStatus } from "../services/api";
 import { useI18n } from "../i18n";
@@ -203,8 +203,14 @@ export function LoginPage() {
 
           {googleEnabled && !authInProgress && (
             <a
-              href="/api/auth/google/redirect"
-              className="flex w-full items-center justify-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-3.5 text-sm font-semibold text-[var(--text-primary)] transition-all duration-300 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40"
+              href={`/api/auth/google/redirect${acceptedTerms ? "?acceptedTerms=1" : ""}`}
+              onClick={(event) => {
+                if (mode === "register" && !acceptedTerms) event.preventDefault();
+              }}
+              aria-disabled={mode === "register" && !acceptedTerms}
+              className={`flex w-full items-center justify-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-3.5 text-sm font-semibold text-[var(--text-primary)] transition-all duration-300 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40 ${
+                mode === "register" && !acceptedTerms ? "cursor-not-allowed opacity-50" : ""
+              }`}
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                 <path

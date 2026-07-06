@@ -16,7 +16,7 @@ import {
   type FamilyMembership,
   type WardrobeItem,
 } from "../services/api";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/auth-context";
 import { useI18n } from "../i18n";
 
 function RoleBadge({ role }: { role: string }) {

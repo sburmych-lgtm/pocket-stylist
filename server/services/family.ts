@@ -1,5 +1,14 @@
 import { prisma } from "./prisma.js";
 
+export function wardrobeVisibilityWhere(
+  requestorId: string,
+  targetUserId: string,
+): { userId: string; sharedWithFamily?: boolean } {
+  return targetUserId === requestorId
+    ? { userId: targetUserId }
+    : { userId: targetUserId, sharedWithFamily: true };
+}
+
 /** Check if userId is a member of familyId */
 export async function isFamilyMember(
   userId: string,

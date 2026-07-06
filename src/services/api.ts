@@ -161,6 +161,17 @@ export const authApi = {
     const res = await apiFetch<{ user: AuthUser }>("/auth/me", { timeoutMs: 4_000 });
     return res.user;
   },
+
+  driveConsent(returnTo: string): Promise<{ url: string }> {
+    return apiFetch<{ url: string }>("/auth/google/drive-consent", {
+      method: "POST",
+      body: JSON.stringify({ returnTo }),
+    });
+  },
+
+  refreshSession(): Promise<{ token: string }> {
+    return apiFetch<{ token: string }>("/auth/refresh", { method: "POST" });
+  },
 };
 
 /* ---------- Drive types & API ---------- */
@@ -412,6 +423,12 @@ export const profileApi = {
       };
     });
   },
+
+  deleteAccount(): Promise<{ ok: boolean }> {
+    return apiFetch<{ ok: boolean }>("/profile/account", {
+      method: "DELETE",
+    });
+  },
 };
 
 /* ---------- Lookbook types ---------- */
@@ -422,6 +439,7 @@ export interface LookbookDayWeather {
   condition: string;
   icon: string;
   location: string;
+  source?: "live" | "mock";
 }
 
 export interface LookbookOutfit {
@@ -447,6 +465,8 @@ export interface LookbookDay {
 export interface LookbookResponse {
   days: LookbookDay[];
   weekStart: string;
+  persona?: StylistPersona;
+  messageCode?: "empty_wardrobe" | "location_required";
   message?: string;
 }
 
@@ -525,6 +545,7 @@ export interface WardrobeItem {
   confidence: number;
   timesWorn: number;
   lastWornAt: string | null;
+  sharedWithFamily?: boolean;
   createdAt: string;
 }
 
@@ -590,6 +611,7 @@ export interface WardrobeItemPatch {
   formalityLevel?: number;
   season?: "spring" | "summer" | "fall" | "winter" | "all";
   brand?: string | null;
+  sharedWithFamily?: boolean;
 }
 
 export const wardrobeApi = {
@@ -629,9 +651,12 @@ export interface StylingWeather {
   feelsLike: number;
   condition: string;
   location: string;
+  source?: "live" | "mock";
 }
 
 export interface OutfitSuggestion {
+  /** Persisted outfit id (null for demo users — feedback is a no-op). */
+  id?: string | null;
   name: string;
   items: WardrobeItem[];
   stylingTip: string;
@@ -641,7 +666,17 @@ export interface OutfitSuggestion {
 export interface StylingResponse {
   outfits: OutfitSuggestion[];
   weather: StylingWeather;
+  /** The persona that voiced the styling tips — drives SpeakButton prosody. */
+  persona?: StylistPersona;
+  /** False when neither the request nor the profile had coordinates. */
+  locationSet?: boolean;
   candidateCount?: number;
+  messageCode?:
+    | "empty_wardrobe"
+    | "no_candidates"
+    | "location_required"
+    | "wardrobe_too_small"
+    | "recent_items_reused";
   message?: string;
   avgCostPerWear?: number;
 }
@@ -674,6 +709,20 @@ export const stylingApi = {
       timeoutMs: 60_000,
     });
   },
+
+  feedback(outfitId: string, liked: boolean): Promise<{ ok: boolean }> {
+    return apiFetch<{ ok: boolean }>("/styling/feedback", {
+      method: "POST",
+      body: JSON.stringify({ outfitId, liked }),
+    });
+  },
+
+  wear(outfitId: string): Promise<{ ok: boolean }> {
+    return apiFetch<{ ok: boolean }>("/styling/wear", {
+      method: "POST",
+      body: JSON.stringify({ outfitId }),
+    });
+  },
 };
 
 /* ---------- Scanner API ---------- */
@@ -691,6 +740,8 @@ export interface ScanResult {
   };
   verdict: "BUY" | "SKIP" | "CONSIDER";
   reasons: string[];
+  /** False when Gemini was unavailable and the verdict is a rough estimate. */
+  analysisReliable?: boolean;
   stats: {
     sameCategoryCount: number;
     sameColorCount: number;

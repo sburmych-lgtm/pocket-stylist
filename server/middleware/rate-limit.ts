@@ -19,6 +19,7 @@ import type { Request, Response, NextFunction } from "express";
  * an oracle.
  */
 const buckets = new Map<string, number[]>();
+const MAX_BUCKETS = 10_000;
 
 const DEFAULT_LIMIT = 60;
 const DEFAULT_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -37,6 +38,21 @@ function pruneBucket(timestamps: number[], cutoff: number): number[] {
   let i = 0;
   while (i < timestamps.length && timestamps[i] < cutoff) i++;
   return i === 0 ? timestamps : timestamps.slice(i);
+}
+
+function setBoundedBucket(key: string, timestamps: number[]): void {
+  if (!buckets.has(key) && buckets.size >= MAX_BUCKETS) {
+    const oldestKey = buckets.keys().next().value;
+    if (oldestKey !== undefined) buckets.delete(oldestKey);
+  }
+  buckets.set(key, timestamps);
+}
+
+export function resolveClientIp(req: Request): string {
+  const xff = req.headers["x-forwarded-for"];
+  const forwarded = typeof xff === "string" ? xff.split(",") : xff;
+  const proxyObservedIp = forwarded?.at(-1)?.trim();
+  return proxyObservedIp || req.socket?.remoteAddress || "unknown";
 }
 
 export function rateLimitPerUser(options: RateLimitOptions = {}) {
@@ -69,12 +85,12 @@ export function rateLimitPerUser(options: RateLimitOptions = {}) {
         limit,
       });
       // Keep the pruned bucket so memory stays bounded.
-      buckets.set(key, pruned);
+      setBoundedBucket(key, pruned);
       return;
     }
 
     pruned.push(now);
-    buckets.set(key, pruned);
+    setBoundedBucket(key, pruned);
 
     res.setHeader("X-RateLimit-Limit", String(limit));
     res.setHeader("X-RateLimit-Remaining", String(limit - pruned.length));
@@ -120,11 +136,7 @@ export function rateLimitByIp(options: IpRateLimitOptions = {}) {
   ): void => {
     // Trust Railway's X-Forwarded-For (one hop). Same logic Express's
     // `trust proxy` would do, but we don't rely on the global setting.
-    const xff = req.headers["x-forwarded-for"];
-    const ip =
-      (typeof xff === "string" ? xff.split(",")[0]?.trim() : Array.isArray(xff) ? xff[0] : null) ||
-      req.socket?.remoteAddress ||
-      "unknown";
+    const ip = resolveClientIp(req);
     const key = `${tag}:${ip}`;
     const now = Date.now();
     const cutoff = now - windowMs;
@@ -140,12 +152,12 @@ export function rateLimitByIp(options: IpRateLimitOptions = {}) {
         retryAfter: retryAfterSec,
         scope: tag,
       });
-      buckets.set(key, pruned);
+      setBoundedBucket(key, pruned);
       return;
     }
 
     pruned.push(now);
-    buckets.set(key, pruned);
+    setBoundedBucket(key, pruned);
     next();
   };
 }

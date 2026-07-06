@@ -8,6 +8,7 @@ interface DriveModalProps {
   open: boolean;
   onClose: () => void;
   onPicked: (files: File[]) => void;
+  onAuthorizationRequired?: () => void;
 }
 
 const FOLDER_MIME = "application/vnd.google-apps.folder";
@@ -17,7 +18,12 @@ interface CrumbEntry {
   name: string;
 }
 
-export function DriveModal({ open, onClose, onPicked }: DriveModalProps) {
+export function DriveModal({
+  open,
+  onClose,
+  onPicked,
+  onAuthorizationRequired,
+}: DriveModalProps) {
   const { t } = useI18n();
   const [crumbs, setCrumbs] = useState<CrumbEntry[]>([{ id: "", name: t("import.drive.myDrive") }]);
   const [files, setFiles] = useState<DriveFile[]>([]);
@@ -47,13 +53,15 @@ export function DriveModal({ open, onClose, onPicked }: DriveModalProps) {
         setFiles((prev) => (isPagination ? [...prev, ...res.files] : res.files));
         setNextPageToken(res.nextPageToken);
       } catch (err) {
-        setError(err instanceof Error ? err.message : t("import.drive.loadError"));
+        const message = err instanceof Error ? err.message : t("import.drive.loadError");
+        if (message.startsWith("drive_access_")) onAuthorizationRequired?.();
+        setError(message);
       } finally {
         setLoading(false);
         setLoadingMore(false);
       }
     },
-    [t],
+    [onAuthorizationRequired, t],
   );
 
   useEffect(() => {
@@ -101,6 +109,8 @@ export function DriveModal({ open, onClose, onPicked }: DriveModalProps) {
         for (let i = 0; i < byteStr.length; i++) bytes[i] = byteStr.charCodeAt(i);
         imported.push(new File([bytes], fileName, { type: mimeType }));
       } catch (err) {
+        const message = err instanceof Error ? err.message : "";
+        if (message.startsWith("drive_access_")) onAuthorizationRequired?.();
         console.error("[DRIVE] download failed for", file.name, err);
       }
       done += 1;
@@ -118,7 +128,7 @@ export function DriveModal({ open, onClose, onPicked }: DriveModalProps) {
     onPicked(imported);
     setSelected(new Set());
     onClose();
-  }, [selected, files, onPicked, onClose, t]);
+  }, [selected, files, onPicked, onClose, onAuthorizationRequired, t]);
 
   if (!open) return null;
 

@@ -16,6 +16,7 @@ model User {
   avatarUrl          String?
   googleAccessToken  String?   @db.Text
   googleRefreshToken String?   @db.Text
+  googleDriveGrantedAt DateTime?
   colorSeason   String?
   colorPalette  Json?
   avoidColors   Json?
@@ -38,6 +39,8 @@ model User {
   outfitLogs    OutfitLog[]
   families      FamilyMember[]
   subscription  Subscription?
+  outfitRenders OutfitRender[]
+  feedback      Feedback[]
 
   @@map("users")
 }
@@ -84,6 +87,7 @@ model WardrobeItem {
   timesWorn      Int      @default(0)
   lastWornAt     DateTime?
   purchasedAt    DateTime?
+  sharedWithFamily Boolean @default(false)
   tags           Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -93,6 +97,9 @@ model WardrobeItem {
 
   @@index([userId])
   @@index([category])
+  @@index([userId, category])
+  @@index([userId, createdAt])
+  @@index([userId, sharedWithFamily])
   @@map("wardrobe_items")
 }
 
@@ -124,6 +131,7 @@ model OutfitItem {
   wardrobeItem WardrobeItem @relation(fields: [wardrobeItemId], references: [id], onDelete: Cascade)
 
   @@unique([outfitId, wardrobeItemId])
+  @@index([wardrobeItemId])
   @@map("outfit_items")
 }
 
@@ -160,6 +168,7 @@ model FamilyMember {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([familyId, userId])
+  @@index([userId])
   @@map("family_members")
 }
 
@@ -171,6 +180,8 @@ model OutfitRender {
   resultImageUrl  String   @db.Text
   durationMs      Int
   createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@map("outfit_renders")
@@ -185,7 +196,10 @@ model Feedback {
   source    String?  // page / context (e.g. "import", "wardrobe")
   createdAt DateTime @default(now())
 
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
   @@index([createdAt])
+  @@index([userId])
   @@map("feedback")
 }
 

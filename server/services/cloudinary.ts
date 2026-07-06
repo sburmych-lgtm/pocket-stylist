@@ -1,5 +1,9 @@
 import { v2 as cloudinary } from "cloudinary";
 import { isConfiguredSecret } from "./app-status.js";
+import { withTimeout } from "./gemini-utils.js";
+
+/** Hard ceiling for a Cloudinary upload — a hung CDN must not stall /ingest. */
+const UPLOAD_TIMEOUT_MS = 30_000;
 
 const isConfigured =
   isConfiguredSecret(process.env.CLOUDINARY_CLOUD_NAME) &&
@@ -32,12 +36,14 @@ export async function uploadImage(
     };
   }
 
-  const result = await cloudinary.uploader.upload(
-    `data:${mimeType};base64,${base64Data}`,
-    {
+  const result = await withTimeout(
+    cloudinary.uploader.upload(`data:${mimeType};base64,${base64Data}`, {
       folder: "pocket-stylist",
       transformation: [{ width: 1200, height: 1600, crop: "limit" }],
-    },
+      timeout: UPLOAD_TIMEOUT_MS,
+    }),
+    UPLOAD_TIMEOUT_MS + 5_000,
+    "cloudinary_upload_timed_out",
   );
 
   const thumbnailUrl = cloudinary.url(result.public_id, {
@@ -51,6 +57,44 @@ export async function uploadImage(
     imageUrl: result.secure_url,
     thumbnailUrl,
   };
+}
+
+function publicIdFromUrl(imageUrl: string): string | null {
+  try {
+    const url = new URL(imageUrl);
+    if (url.hostname !== "res.cloudinary.com") return null;
+    const marker = "/upload/";
+    const markerIndex = url.pathname.indexOf(marker);
+    if (markerIndex < 0) return null;
+    const afterUpload = url.pathname.slice(markerIndex + marker.length);
+    const withoutVersion = afterUpload.replace(/^v\d+\//, "");
+    return decodeURIComponent(withoutVersion.replace(/\.[a-z0-9]+$/i, ""));
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteImage(imageUrl: string): Promise<boolean> {
+  if (!isConfigured) return false;
+  const publicId = publicIdFromUrl(imageUrl);
+  if (!publicId) return false;
+  try {
+    await withTimeout(
+      cloudinary.uploader.destroy(publicId, {
+        resource_type: "image",
+        invalidate: true,
+      }),
+      15_000,
+      "cloudinary_delete_timed_out",
+    );
+    return true;
+  } catch (error) {
+    console.warn("[cloudinary] image cleanup failed", {
+      publicId,
+      error: error instanceof Error ? error.name : "unknown",
+    });
+    return false;
+  }
 }
 
 export { isConfigured as cloudinaryConfigured };

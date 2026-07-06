@@ -38,6 +38,9 @@ export const uk: Translations = {
     times: "раз",
     items: "речей",
   },
+  pwa: {
+    offline: "Ви офлайн. Доступні раніше завантажені екрани; AI-функції потребують мережі.",
+  },
 
   /* ---- Login ---- */
   login: {
@@ -215,6 +218,8 @@ export const uk: Translations = {
     formality: "Формальність",
     timesWorn: "Носили",
     editCategory: "Змінити категорію",
+    shareWithFamily: "Поділитися з родиною",
+    stopFamilySharing: "Припинити сімейний доступ",
   },
 
   /* ---- Categories ---- */
@@ -395,6 +400,12 @@ export const uk: Translations = {
     itemsInPlay: "{count} речей у грі",
     noOutfit: "Поки не вдалося скласти сильний образ.",
     noOutfitHint: "Спробуйте інший настрій, змініть контекст або поповніть гардероб новими речами.",
+    emptyWardrobe: "Гардероб порожній. Спочатку додайте кілька речей.",
+    noCandidates: "Немає речей, що відповідають погоді та вибраній нагоді.",
+    locationNotSet: "Додайте місто або геолокацію, щоб отримати точну пораду.",
+    weatherEstimated: "Погода тимчасово оцінена — перевірте прогноз перед виходом.",
+    wardrobeTooSmall: "Поки не вистачає речей для повного й безпечного за погодою образу.",
+    recentItemsReused: "Деякі нещодавно вдягнені речі використано повторно, бо гардероб ще невеликий.",
     studioPrompt: "Студія стилю",
     promptTitle: "Сформуйте запит і ми покажемо три образи",
     promptDesc: "Почніть із настрою або пресету контексту. Далі система збере комбінації, які виглядають цілісно й працюють у реальному гардеробі.",
@@ -410,8 +421,10 @@ export const uk: Translations = {
     point2: "Кольори читаються як єдина капсула, а не випадковий набір.",
     point3: "Образ легко адаптувати аксесуарами без втрати настрою.",
     like: "Подобається",
+    liked: "Сподобалось",
     alternative: "Інший варіант",
     willWear: "Вдягну цей образ",
+    wearLogged: "Записано",
   },
 
   /* ---- Profile ---- */
@@ -448,6 +461,9 @@ export const uk: Translations = {
     contrastHigh: "високий",
     contrastMedium: "середній",
     contrastLow: "низький",
+    deleteAccount: "Видалити акаунт",
+    deleteAccountDesc: "Акаунт, гардероб, образи й сімейні дані буде видалено безповоротно.",
+    deleteAccountConfirm: "Назавжди видалити акаунт і всі дані?",
 
     /* Stylist persona — bot voice/tone selector */
     personaSection: "Стиль спілкування з ботом",

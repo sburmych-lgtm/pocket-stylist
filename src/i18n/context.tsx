@@ -1,7 +1,6 @@
 import {
-  createContext,
   useCallback,
-  useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -10,20 +9,13 @@ import type { Language } from "./types";
 import { flattenTranslations } from "./types";
 import { uk } from "./uk";
 import { en } from "./en";
+import { I18nContext } from "./i18n-context";
 
 const STORAGE_KEY = "pocket_stylist_lang";
 
 const flatUk = flattenTranslations(uk);
 const flatEn = flattenTranslations(en);
 const dictionaries: Record<Language, Record<string, string>> = { uk: flatUk, en: flatEn };
-
-interface I18nContextType {
-  lang: Language;
-  setLang: (lang: Language) => void;
-  t: (key: string, params?: Record<string, string | number>) => string;
-}
-
-const I18nContext = createContext<I18nContextType | null>(null);
 
 function getSavedLang(): Language {
   try {
@@ -35,6 +27,10 @@ function getSavedLang(): Language {
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Language>(getSavedLang);
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   const setLang = useCallback((l: Language) => {
     setLangState(l);
@@ -57,10 +53,4 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
-}
-
-export function useI18n(): I18nContextType {
-  const ctx = useContext(I18nContext);
-  if (!ctx) throw new Error("useI18n must be used within LanguageProvider");
-  return ctx;
 }
