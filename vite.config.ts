@@ -42,19 +42,7 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/res\.cloudinary\.com\/.*/i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "cloudinary-images",
-              expiration: {
-                maxEntries: 500,
-                maxAgeSeconds: 30 * 24 * 60 * 60,
-              },
-            },
-          },
-        ],
+        navigateFallback: "/index.html",
       },
     }),
   ],

@@ -42,6 +42,8 @@ const PERSONA_PROSODY: Record<StylistPersona, PersonaProsody> = {
 
 const BROWSER_LANG = "uk-UA";
 const BLOB_CACHE_LIMIT = 5;
+export const SPEECH_TEXT_MAX_LENGTH = 800;
+let activeAudio: HTMLAudioElement | null = null;
 
 interface BlobCacheEntry {
   key: string;
@@ -93,6 +95,7 @@ export function useTTS(): UseTtsResult {
       // Tear down any in-flight playback so navigation cancels audio.
       if (audioElRef.current) {
         audioElRef.current.pause();
+        if (activeAudio === audioElRef.current) activeAudio = null;
         audioElRef.current = null;
       }
       if (utteranceRef.current && hasBrowserSpeech()) {
@@ -119,6 +122,11 @@ export function useTTS(): UseTtsResult {
       audioElRef.current.pause();
       audioElRef.current.currentTime = 0;
       audioElRef.current = null;
+    }
+    if (activeAudio) {
+      activeAudio.pause();
+      activeAudio.currentTime = 0;
+      activeAudio = null;
     }
     if (hasBrowserSpeech()) {
       window.speechSynthesis.cancel();
@@ -159,14 +167,21 @@ export function useTTS(): UseTtsResult {
     (blobUrl: string): Promise<void> =>
       new Promise((resolve, reject) => {
         const audio = new Audio(blobUrl);
+        if (activeAudio && activeAudio !== audio) {
+          activeAudio.pause();
+          activeAudio.currentTime = 0;
+        }
+        activeAudio = audio;
         audioElRef.current = audio;
         audio.onended = () => {
           if (audioElRef.current === audio) audioElRef.current = null;
+          if (activeAudio === audio) activeAudio = null;
           if (mountedRef.current) setStatus({ status: "idle" });
           resolve();
         };
         audio.onerror = () => {
           if (audioElRef.current === audio) audioElRef.current = null;
+          if (activeAudio === audio) activeAudio = null;
           reject(new Error("audio_playback_failed"));
         };
         audio
@@ -217,7 +232,7 @@ export function useTTS(): UseTtsResult {
 
   const speak = useCallback(
     async (text: string, persona: StylistPersona = "classic"): Promise<void> => {
-      const trimmed = text.trim();
+      const trimmed = text.trim().slice(0, SPEECH_TEXT_MAX_LENGTH);
       if (!trimmed) return;
 
       // Cancel any current playback FIRST — we never overlap.

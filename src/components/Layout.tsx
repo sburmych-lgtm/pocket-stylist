@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/auth-context";
 import { useI18n } from "../i18n";
 import type { Language } from "../i18n";
 import { FeedbackWidget } from "./common/FeedbackWidget";
@@ -18,6 +18,7 @@ import {
   LogOut,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface NavItem {
   to: string;
@@ -77,6 +78,30 @@ function BrandBlock() {
   );
 }
 
+function OfflineBanner() {
+  const { t } = useI18n();
+  const [offline, setOffline] = useState(
+    typeof navigator !== "undefined" ? !navigator.onLine : false,
+  );
+
+  useEffect(() => {
+    const update = () => setOffline(!navigator.onLine);
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
+
+  if (!offline) return null;
+  return (
+    <div role="status" className="fixed inset-x-0 top-0 z-[70] bg-amber-500 px-3 py-1.5 text-center text-xs font-semibold text-black">
+      {t("pwa.offline")}
+    </div>
+  );
+}
+
 export function Layout() {
   const { user, logout } = useAuth();
   const { t, lang, setLang } = useI18n();
@@ -84,6 +109,7 @@ export function Layout() {
 
   return (
     <div className="min-h-screen text-[var(--text-primary)]">
+      <OfflineBanner />
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute left-[6%] top-[12%] h-56 w-56 rounded-full bg-[rgba(201,165,90,0.12)] blur-[110px]" />
         <div className="absolute right-[4%] top-[18%] h-72 w-72 rounded-full bg-[rgba(136,198,189,0.09)] blur-[130px]" />

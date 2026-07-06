@@ -17,7 +17,10 @@ import { isDemoUser } from "./demo-store.js";
 const TRIAL_DAYS = 7;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-export const STRIPE_ENABLED = isConfiguredSecret(process.env.STRIPE_SECRET_KEY);
+export const STRIPE_ENABLED =
+  isConfiguredSecret(process.env.STRIPE_SECRET_KEY) &&
+  isConfiguredSecret(process.env.STRIPE_PRICE_ID) &&
+  isConfiguredSecret(process.env.STRIPE_WEBHOOK_SECRET);
 
 let _stripe: Stripe | null = null;
 
@@ -30,6 +33,10 @@ export function getStripeClient(): Stripe | null {
       // can't silently shift webhook payload shape.
       apiVersion: "2024-12-18.acacia" as Stripe.LatestApiVersion,
       typescript: true,
+      // SDK default is 80 s — a degraded Stripe API would pin /api/billing/*
+      // requests for over a minute. 20 s + 1 retry is plenty.
+      timeout: 20_000,
+      maxNetworkRetries: 1,
     });
   }
   return _stripe;
@@ -109,15 +116,11 @@ export function computeEffective(
 export async function createTrialSubscription(userId: string): Promise<void> {
   if (!userId || isDemoUser(userId)) return;
 
-  const existing = await prisma.subscription.findUnique({
-    where: { userId },
-    select: { id: true },
-  });
-  if (existing) return;
-
   const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * MS_PER_DAY);
-  await prisma.subscription.create({
-    data: {
+  await prisma.subscription.upsert({
+    where: { userId },
+    update: {},
+    create: {
       userId,
       status: "trialing",
       trialEndsAt,
@@ -150,7 +153,11 @@ export async function getEffectiveSubscription(
     };
   }
 
-  const sub = await prisma.subscription.findUnique({ where: { userId } });
+  let sub = await prisma.subscription.findUnique({ where: { userId } });
+  if (!sub) {
+    await createTrialSubscription(userId);
+    sub = await prisma.subscription.findUnique({ where: { userId } });
+  }
   return computeEffective(sub, STRIPE_ENABLED);
 }
 

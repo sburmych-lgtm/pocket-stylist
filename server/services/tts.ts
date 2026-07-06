@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { v2 as cloudinary } from "cloudinary";
 import { isConfiguredSecret, type AppStatus } from "./app-status.js";
+import { fetchWithTimeout } from "./http.js";
 
 /**
  * Persona-aware ElevenLabs Text-to-Speech with two-tier fallback.
@@ -146,7 +147,7 @@ async function fetchCloudinaryCached(
       sign_url: true,
       type: "upload",
     });
-    const res = await fetch(url, { method: "GET" });
+    const res = await fetchWithTimeout(url, { method: "GET" }, 8_000);
     if (!res.ok) return null;
     const buf = Buffer.from(await res.arrayBuffer());
     return buf.byteLength > 0 ? buf : null;
@@ -167,6 +168,7 @@ async function storeCloudinary(
       resource_type: "raw",
       public_id: publicId(key),
       overwrite: true,
+      timeout: 10_000,
     });
   } catch {
     // Caching failure must NOT break the playback path.

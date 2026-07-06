@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { billingApi } from "../services/api";
 import type { BillingMe } from "../services/api";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/auth-context";
 
 /**
  * Lightweight polling hook for the user's effective subscription state.
