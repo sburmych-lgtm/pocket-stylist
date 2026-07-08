@@ -230,7 +230,12 @@ export function analyzeImage(image: string, mimeType: string, fileName: string) 
       season: string;
       brand: string | null;
       confidence: number;
+      needsReview?: boolean;
+      reviewReasons?: string[];
     };
+    analysisReliable?: boolean;
+    needsReview?: boolean;
+    reviewReasons?: string[];
     fileName: string;
   }>("/import/analyze", {
     method: "POST",
@@ -253,7 +258,12 @@ export interface IngestResponse {
     season: string;
     brand: string | null;
     confidence: number;
+    needsReview?: boolean;
+    reviewReasons?: string[];
   };
+  analysisReliable?: boolean;
+  needsReview?: boolean;
+  reviewReasons?: string[];
   fileName: string;
   createdAt: string;
   timings?: { uploadMs: number; geminiMs: number; dbMs: number; totalMs: number };
@@ -546,6 +556,9 @@ export interface WardrobeItem {
   timesWorn: number;
   lastWornAt: string | null;
   sharedWithFamily?: boolean;
+  needsReview?: boolean;
+  reviewReasons?: string[];
+  analysisReliable?: boolean;
   createdAt: string;
 }
 

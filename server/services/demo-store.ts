@@ -109,6 +109,7 @@ export function addDemoWardrobeItems(
     season?: string | null;
     brand?: string | null;
     confidence?: number | null;
+    tags?: WardrobeItem["tags"];
   }>,
 ): number {
   const existing = wardrobeItems.get(userId) ?? [];
@@ -134,7 +135,7 @@ export function addDemoWardrobeItems(
     lastWornAt: null,
     purchasedAt: null,
     sharedWithFamily: false,
-    tags: null,
+    tags: item.tags ?? null,
     createdAt: now,
     updatedAt: now,
   }));
@@ -163,6 +164,8 @@ export function updateDemoWardrobeItem(
     formalityLevel: number;
     season: string;
     brand: string | null;
+    sharedWithFamily: boolean;
+    tags: WardrobeItem["tags"];
   }>,
 ): WardrobeItem | null {
   const existing = wardrobeItems.get(userId) ?? [];
@@ -180,6 +183,8 @@ export function updateDemoWardrobeItem(
     formalityLevel: patch.formalityLevel ?? before.formalityLevel,
     season: patch.season ?? before.season,
     brand: patch.brand === undefined ? before.brand : patch.brand,
+    sharedWithFamily: patch.sharedWithFamily ?? before.sharedWithFamily,
+    tags: patch.tags === undefined ? before.tags : patch.tags,
     updatedAt: new Date(),
   };
   const next = [...existing];

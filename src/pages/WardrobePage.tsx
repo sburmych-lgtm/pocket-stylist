@@ -43,6 +43,7 @@ function ItemCard({
   const [editing, setEditing] = useState(false);
   const [draftCategory, setDraftCategory] = useState(item.category);
   const [saving, setSaving] = useState(false);
+  const needsReview = item.needsReview === true;
 
   // Close the confirm modal on Escape — standard modal UX.
   useEffect(() => {
@@ -79,7 +80,14 @@ function ItemCard({
   };
 
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-white/[0.06] bg-[#1a1a2e] shadow-lg shadow-black/20 transition-[border-color,box-shadow] duration-300 hover:border-white/[0.12] hover:shadow-xl hover:shadow-black/30">
+    <div
+      className={[
+        "group relative overflow-hidden rounded-xl border bg-[#1a1a2e] shadow-lg shadow-black/20 transition-[border-color,box-shadow] duration-300 hover:shadow-xl hover:shadow-black/30",
+        needsReview
+          ? "border-amber-300/55 shadow-amber-950/20 hover:border-amber-300/75"
+          : "border-white/[0.06] hover:border-white/[0.12]",
+      ].join(" ")}
+    >
       <button
         type="button"
         onClick={() => setShowDetails(!showDetails)}
@@ -118,6 +126,16 @@ function ItemCard({
       >
         <Users size={17} />
       </button>
+
+      {needsReview && (
+        <div
+          className="absolute left-11 top-1.5 z-10 flex max-w-[calc(100%-5.8rem)] items-center gap-1 rounded-full border border-amber-300/35 bg-amber-400/90 px-2 py-1 text-[10px] font-semibold text-[#1b1304] shadow-lg"
+          title={t("tagEditor.lowConfidenceHint")}
+        >
+          <AlertTriangle size={12} />
+          <span className="truncate">{t("tagEditor.needsReview")}</span>
+        </div>
+      )}
 
       <div className="p-2">
         {editing ? (
@@ -285,6 +303,12 @@ function ItemCard({
             ✕
           </button>
           <div className="space-y-1 text-xs text-white/90">
+            {needsReview && (
+              <p className="mb-2 rounded-xl border border-amber-300/30 bg-amber-300/12 p-2 text-amber-100">
+                <span className="font-semibold">{t("tagEditor.needsReview")}:</span>{" "}
+                {t("tagEditor.lowConfidenceHint")}
+              </p>
+            )}
             <p>
               <span className="font-semibold text-[var(--accent)]">{t("wardrobe.category")}:</span>{" "}
               {t(`categories.${item.category}`)}

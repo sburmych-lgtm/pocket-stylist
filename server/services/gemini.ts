@@ -27,6 +27,16 @@ const FABRICS = [
 ] as const;
 
 const SEASONS = ["spring", "summer", "fall", "winter", "all"] as const;
+const LOW_CONFIDENCE_THRESHOLD = 0.7;
+const REVIEW_CONFIDENCE_CAP = 0.69;
+const HEAVY_OUTERWEAR_RE =
+  /puffer|parka|down|winter|ski|snow|coat|overcoat|anorak|duffle|пухов|парка|пальт|дублян|шуб|зимов/i;
+const LIGHT_OUTERWEAR_RE =
+  /trench|rain|windbreaker|shell|bomber|denim jacket|leather jacket|blazer|тренч|дощов|вітрів|бомбер|блейзер/i;
+const OPEN_FOOTWEAR_RE =
+  /sandal|flip[- ]?flop|slide|slipper|espadrille|mule|сандал|шльоп|в'?єтнам|капц/i;
+const COLD_WEATHER_FABRICS = new Set(["wool", "cashmere", "fleece", "velvet", "suede"]);
+const HOT_WEATHER_FABRICS = new Set(["linen", "chiffon"]);
 
 export interface ClothingAnalysis {
   category: string;
@@ -39,7 +49,12 @@ export interface ClothingAnalysis {
   season: string;
   brand: string | null;
   confidence: number;
+  needsReview: boolean;
+  reviewReasons: string[];
 }
+
+type ReviewableClothingAnalysis = Omit<ClothingAnalysis, "needsReview" | "reviewReasons"> &
+  Partial<Pick<ClothingAnalysis, "needsReview" | "reviewReasons">>;
 
 export const FALLBACK_CLOTHING_ANALYSIS = {
   category: "tops",
@@ -52,6 +67,8 @@ export const FALLBACK_CLOTHING_ANALYSIS = {
   season: "all",
   brand: null,
   confidence: 0,
+  needsReview: true,
+  reviewReasons: ["analysis_unavailable"],
 } as const satisfies ClothingAnalysis;
 
 const ClothingAnalysisSchema = z.object({
@@ -102,10 +119,95 @@ Category routing rules — pick the MOST SPECIFIC section:
 - "tops" for non-athletic shirts/blouses/t-shirts
 - "bottoms" ONLY as a last resort if none of the above applies
 
+Season/fabric disambiguation rules:
+- Treat "season" as when the item is comfortable to wear outdoors, not as a fashion collection label.
+- Outerwear (coat, jacket, parka, puffer, trench, raincoat, bomber, blazer) must NOT be "summer". Use "winter" for puffer/down/parka/heavy coat, "fall" for trench/raincoat/bomber/leather/denim jacket, or "all" only if genuinely season-neutral.
+- Wool, cashmere, fleece, velvet and suede must NOT be "summer". Prefer "winter" or "fall".
+- Linen, chiffon, swimwear and open footwear usually belong to "summer"; they must NOT be "winter" unless the photo clearly shows insulated winter construction.
+- Sandals, slides, flip-flops, espadrilles and open mules must NOT be "winter".
+- If category/fabric/season conflict or the item is ambiguous, lower "confidence" below 0.70 instead of forcing a confident guess.
+
 Rules:
 - Respond with ONLY the JSON object, no markdown fences
 - If unsure about a field, use the most likely value but lower confidence
 - colorHex must be a valid hex like #FF5733`;
+
+function withReason(reasons: string[], reason: string): string[] {
+  return reasons.includes(reason) ? reasons : [...reasons, reason];
+}
+
+function loweredConfidence(confidence: number): number {
+  return Math.min(confidence, REVIEW_CONFIDENCE_CAP);
+}
+
+function outerwearSeason(subcategory: string): "fall" | "winter" {
+  if (HEAVY_OUTERWEAR_RE.test(subcategory)) return "winter";
+  if (LIGHT_OUTERWEAR_RE.test(subcategory)) return "fall";
+  return "fall";
+}
+
+export function reviewClothingAnalysis(
+  input: ReviewableClothingAnalysis,
+  options: { trustManualReview?: boolean } = {},
+): {
+  item: ClothingAnalysis;
+  needsReview: boolean;
+  reviewReasons: string[];
+} {
+  const category = normalizeCategory(input.category);
+  const subcategory = input.subcategory.toLowerCase();
+  const fabric = input.fabric.toLowerCase();
+
+  let season = input.season;
+  let confidence = input.confidence;
+  let reasons = [...(input.reviewReasons ?? [])];
+
+  if (category === "outerwear" && season === "summer") {
+    season = outerwearSeason(subcategory);
+    confidence = loweredConfidence(confidence);
+    reasons = withReason(reasons, "outerwear_summer_conflict");
+  }
+
+  if (COLD_WEATHER_FABRICS.has(fabric) && season === "summer") {
+    season = "winter";
+    confidence = loweredConfidence(confidence);
+    reasons = withReason(reasons, "cold_fabric_summer_conflict");
+  }
+
+  if (HOT_WEATHER_FABRICS.has(fabric) && season === "winter") {
+    season = "summer";
+    confidence = loweredConfidence(confidence);
+    reasons = withReason(reasons, "light_fabric_winter_conflict");
+  }
+
+  if (category === "footwear" && OPEN_FOOTWEAR_RE.test(subcategory) && season === "winter") {
+    season = "summer";
+    confidence = loweredConfidence(confidence);
+    reasons = withReason(reasons, "open_footwear_winter_conflict");
+  }
+
+  if (category === "swimwear" && season === "winter") {
+    season = "summer";
+    confidence = loweredConfidence(confidence);
+    reasons = withReason(reasons, "swimwear_winter_conflict");
+  }
+
+  if (!options.trustManualReview && confidence < LOW_CONFIDENCE_THRESHOLD) {
+    reasons = withReason(reasons, "low_confidence");
+  }
+
+  const needsReview = reasons.length > 0;
+  const item = {
+    ...input,
+    category,
+    season,
+    confidence,
+    needsReview,
+    reviewReasons: reasons,
+  };
+
+  return { item, needsReview, reviewReasons: reasons };
+}
 
 export async function analyzeClothingImage(
   imageBase64: string,
@@ -136,7 +238,7 @@ export async function analyzeClothingImage(
   );
 
   const text = result.response.text().trim();
-  return ClothingAnalysisSchema.parse(parseGeminiJson(text));
+  return reviewClothingAnalysis(ClothingAnalysisSchema.parse(parseGeminiJson(text))).item;
 }
 
 export { CLOTHING_CATEGORIES, COLORS, PATTERNS, FABRICS, SEASONS };

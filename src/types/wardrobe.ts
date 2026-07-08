@@ -9,6 +9,8 @@ export interface WardrobeItemTag {
   season: string;
   brand: string | null;
   confidence: number;
+  needsReview?: boolean;
+  reviewReasons?: string[];
 }
 
 export interface ImportItem {
@@ -39,5 +41,8 @@ export interface WardrobeItem {
   timesWorn: number;
   lastWornAt: string | null;
   sharedWithFamily?: boolean;
+  needsReview?: boolean;
+  reviewReasons?: string[];
+  analysisReliable?: boolean;
   createdAt: string;
 }

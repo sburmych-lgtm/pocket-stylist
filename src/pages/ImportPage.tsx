@@ -31,6 +31,8 @@ type Stage =
       category: string;
       colorPrimary: string;
       confidence: number;
+      needsReview: boolean;
+      reviewReasons: string[];
     }
   | {
       status: "error";
@@ -79,6 +81,8 @@ export function ImportPage() {
                   category: result.tags.category,
                   colorPrimary: result.tags.colorPrimary,
                   confidence: result.tags.confidence,
+                  needsReview: result.needsReview === true || result.tags.needsReview === true,
+                  reviewReasons: result.reviewReasons ?? result.tags.reviewReasons ?? [],
                 }
               : it,
           ),
@@ -230,7 +234,8 @@ export function ImportPage() {
                 className={[
                   "luxe-card flex items-center gap-3 p-3",
                   item.status === "error" ? "border-[rgba(239,138,128,0.24)]" : "",
-                  item.status === "done" ? "border-[rgba(111,212,171,0.22)]" : "",
+                  item.status === "done" && item.needsReview ? "border-amber-300/45" : "",
+                  item.status === "done" && !item.needsReview ? "border-[rgba(111,212,171,0.22)]" : "",
                 ].join(" ")}
               >
                 <div className="h-20 w-16 shrink-0 overflow-hidden rounded-xl bg-white/[0.04]">
@@ -263,13 +268,22 @@ export function ImportPage() {
                   )}
                   {item.status === "done" && (
                     <>
-                      <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--success)]">
-                        <BadgeCheck size={11} />
-                        {t("import.savedInline")}
+                      <p
+                        className={`mt-1 flex items-center gap-1.5 text-xs ${
+                          item.needsReview ? "text-amber-300" : "text-[var(--success)]"
+                        }`}
+                      >
+                        {item.needsReview ? <AlertTriangle size={11} /> : <BadgeCheck size={11} />}
+                        {item.needsReview ? t("tagEditor.needsReview") : t("import.savedInline")}
                       </p>
                       <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
                         {t(`categories.${item.category}`)} · {item.colorPrimary}
                       </p>
+                      {item.needsReview && (
+                        <p className="mt-0.5 line-clamp-2 text-[11px] text-[var(--text-muted)]">
+                          {t("tagEditor.lowConfidenceHint")}
+                        </p>
+                      )}
                       <button
                         type="button"
                         onClick={() => navigate("/wardrobe")}

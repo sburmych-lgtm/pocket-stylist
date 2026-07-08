@@ -2,7 +2,12 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { prisma } from "../services/prisma.js";
-import { analyzeClothingImage, FALLBACK_CLOTHING_ANALYSIS } from "../services/gemini.js";
+import {
+  analyzeClothingImage,
+  FALLBACK_CLOTHING_ANALYSIS,
+  reviewClothingAnalysis,
+  type ClothingAnalysis,
+} from "../services/gemini.js";
 import { deleteImage, uploadImage } from "../services/cloudinary.js";
 import { resolveTargetUser, wardrobeVisibilityWhere } from "../services/family.js";
 import {
@@ -24,6 +29,91 @@ import { ImageAnalyzeBodySchema } from "../services/request-schemas.js";
 /** Drive files larger than this are rejected instead of buffered into RAM. */
 const DRIVE_MAX_FILE_BYTES = 20 * 1024 * 1024; // 20 MB
 const DRIVE_FETCH_TIMEOUT_MS = 20_000;
+const ANALYSIS_VERSION = "clothing-v2";
+const METADATA_REVIEW_FIELDS = new Set([
+  "category",
+  "subcategory",
+  "colorPrimary",
+  "colorHex",
+  "pattern",
+  "fabric",
+  "formalityLevel",
+  "season",
+  "brand",
+]);
+
+type ReviewTags = {
+  analysisReliable?: boolean;
+  needsReview?: boolean;
+  reviewReasons?: string[];
+  analysisVersion?: string;
+  humanReviewed?: boolean;
+};
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function reviewTagsFor(
+  analysis: ClothingAnalysis,
+  analysisAvailable: boolean,
+): ReviewTags {
+  const reviewReasons = uniqueStrings([
+    ...(analysisAvailable ? [] : ["analysis_unavailable"]),
+    ...analysis.reviewReasons,
+  ]);
+  const needsReview = !analysisAvailable || analysis.needsReview || reviewReasons.length > 0;
+  return {
+    analysisReliable: analysisAvailable && !needsReview,
+    needsReview,
+    reviewReasons,
+    analysisVersion: ANALYSIS_VERSION,
+  };
+}
+
+function tagsRecord(tags: unknown): ReviewTags {
+  if (!tags || typeof tags !== "object" || Array.isArray(tags)) return {};
+  return tags as ReviewTags;
+}
+
+function decorateWardrobeItem<T extends { category: string; confidence: number; tags: unknown }>(
+  item: T,
+) {
+  const tags = tagsRecord(item.tags);
+  const reviewReasons = uniqueStrings([
+    ...(Array.isArray(tags.reviewReasons) ? tags.reviewReasons : []),
+    ...(item.confidence < 0.7 && tags.humanReviewed !== true ? ["low_confidence"] : []),
+  ]);
+  const needsReview = tags.needsReview === true || reviewReasons.length > 0;
+  return {
+    ...item,
+    category: normalizeCategory(item.category),
+    needsReview,
+    reviewReasons,
+    analysisReliable: tags.analysisReliable === true && !needsReview,
+  };
+}
+
+function clothingAnalysisFromItem(
+  item: Partial<ClothingAnalysis> & { category: string; colorPrimary: string },
+): ClothingAnalysis {
+  return {
+    ...FALLBACK_CLOTHING_ANALYSIS,
+    ...item,
+    category: normalizeCategory(item.category),
+    subcategory: item.subcategory ?? FALLBACK_CLOTHING_ANALYSIS.subcategory,
+    colorPrimary: item.colorPrimary,
+    colorHex: item.colorHex ?? FALLBACK_CLOTHING_ANALYSIS.colorHex,
+    pattern: item.pattern ?? FALLBACK_CLOTHING_ANALYSIS.pattern,
+    fabric: item.fabric ?? FALLBACK_CLOTHING_ANALYSIS.fabric,
+    formalityLevel: item.formalityLevel ?? FALLBACK_CLOTHING_ANALYSIS.formalityLevel,
+    season: item.season ?? FALLBACK_CLOTHING_ANALYSIS.season,
+    brand: item.brand ?? FALLBACK_CLOTHING_ANALYSIS.brand,
+    confidence: item.confidence ?? FALLBACK_CLOTHING_ANALYSIS.confidence,
+    needsReview: item.needsReview ?? false,
+    reviewReasons: item.reviewReasons ?? [],
+  };
+}
 
 const SaveItemsSchema = z.object({
   items: z
@@ -111,7 +201,11 @@ importRouter.post("/ingest", requirePaidOrTrial, geminiLimiter, async (req: Requ
     }
     const geminiMs = Date.now() - tGemini0;
 
-    const normalizedTags = { ...tags, category: normalizeCategory(tags.category) };
+    const normalizedTags = reviewClothingAnalysis({
+      ...tags,
+      category: normalizeCategory(tags.category),
+    }).item;
+    const reviewTags = reviewTagsFor(normalizedTags, analysisReliable);
 
     // 3. Persist immediately — no manual confirmation step
     let savedId: string;
@@ -132,6 +226,7 @@ importRouter.post("/ingest", requirePaidOrTrial, geminiLimiter, async (req: Requ
           season: normalizedTags.season,
           brand: normalizedTags.brand ?? undefined,
           confidence: normalizedTags.confidence,
+          tags: reviewTags,
         },
       ]);
       // demo store returns count only — fetch the most recent item id from the head
@@ -155,9 +250,7 @@ importRouter.post("/ingest", requirePaidOrTrial, geminiLimiter, async (req: Requ
             season: normalizedTags.season ?? "all",
             brand: normalizedTags.brand ?? null,
             confidence: normalizedTags.confidence ?? 0,
-            tags: analysisReliable
-              ? undefined
-              : { analysisReliable: false, needsReview: true },
+            tags: reviewTags,
           },
         }),
         7_000,
@@ -180,7 +273,9 @@ importRouter.post("/ingest", requirePaidOrTrial, geminiLimiter, async (req: Requ
       imageUrl,
       thumbnailUrl,
       tags: normalizedTags,
-      analysisReliable,
+      analysisReliable: reviewTags.analysisReliable === true,
+      needsReview: reviewTags.needsReview === true,
+      reviewReasons: reviewTags.reviewReasons ?? [],
       fileName,
       createdAt,
       timings: { uploadMs, geminiMs, dbMs, totalMs },
@@ -206,19 +301,29 @@ importRouter.post("/analyze", requirePaidOrTrial, geminiLimiter, async (req: Req
     const { imageUrl, thumbnailUrl } = await uploadImage(image, mimeType);
 
     let tags;
+    let analysisReliable = true;
     try {
       tags = await analyzeClothingImage(image, mimeType);
     } catch (err) {
       console.error("Gemini analysis failed:", err);
+      analysisReliable = false;
       tags = FALLBACK_CLOTHING_ANALYSIS;
     }
+    const normalizedTags = reviewClothingAnalysis({
+      ...tags,
+      category: normalizeCategory(tags.category),
+    }).item;
+    const reviewTags = reviewTagsFor(normalizedTags, analysisReliable);
 
     res.setHeader("Deprecation", "true");
     res.setHeader("Link", '</api/import/ingest>; rel="successor-version"');
     res.json({
       imageUrl,
       thumbnailUrl,
-      tags: { ...tags, category: normalizeCategory(tags.category) },
+      tags: normalizedTags,
+      analysisReliable: reviewTags.analysisReliable === true,
+      needsReview: reviewTags.needsReview === true,
+      reviewReasons: reviewTags.reviewReasons ?? [],
       fileName,
     });
   } catch (err) {
@@ -238,19 +343,36 @@ importRouter.post("/save", async (req: Request, res: Response) => {
     const { items } = parsedBody.data;
 
     const userId = req.userId!;
+    const reviewedItems = items.map((item) => {
+      const reviewed = reviewClothingAnalysis(clothingAnalysisFromItem({
+        ...item,
+        category: normalizeCategory(item.category),
+        colorPrimary: item.colorPrimary,
+      })).item;
+      return { item: reviewed, reviewTags: reviewTagsFor(reviewed, true), imageUrl: item.imageUrl, thumbnailUrl: item.thumbnailUrl };
+    });
+
     if (isDemoUser(userId)) {
-      const saved = addDemoWardrobeItems(userId, items);
+      const saved = addDemoWardrobeItems(
+        userId,
+        reviewedItems.map(({ item, imageUrl, thumbnailUrl, reviewTags }) => ({
+          ...item,
+          imageUrl,
+          thumbnailUrl,
+          tags: reviewTags,
+        })),
+      );
       res.json({ saved });
       return;
     }
 
 
     const created = await prisma.wardrobeItem.createMany({
-      data: items.map((item) => ({
+      data: reviewedItems.map(({ item, imageUrl, thumbnailUrl, reviewTags }) => ({
         userId,
-        imageUrl: item.imageUrl,
-        thumbnailUrl: item.thumbnailUrl,
-        category: normalizeCategory(item.category),
+        imageUrl,
+        thumbnailUrl,
+        category: item.category,
         subcategory: item.subcategory ?? null,
         colorPrimary: item.colorPrimary,
         colorHex: item.colorHex ?? null,
@@ -260,6 +382,7 @@ importRouter.post("/save", async (req: Request, res: Response) => {
         season: item.season ?? "all",
         brand: item.brand ?? null,
         confidence: item.confidence ?? 0,
+        tags: reviewTags,
       })),
     });
 
@@ -275,7 +398,7 @@ importRouter.get("/wardrobe", async (req: Request, res: Response) => {
   try {
     const userId = req.userId!;
     if (isDemoUser(userId)) {
-      res.json(getDemoWardrobe(userId));
+      res.json(getDemoWardrobe(userId).map(decorateWardrobeItem));
       return;
     }
 
@@ -292,10 +415,7 @@ importRouter.get("/wardrobe", async (req: Request, res: Response) => {
     });
     // Normalize legacy category strings ("shoes" -> "footwear" etc.) at read
     // time so the UI never sees deprecated labels even before rows are edited.
-    const items = rawItems.map((item) => ({
-      ...item,
-      category: normalizeCategory(item.category),
-    }));
+    const items = rawItems.map(decorateWardrobeItem);
     res.json(items);
   } catch (err) {
     console.error("Wardrobe fetch error:", err);
@@ -489,14 +609,18 @@ importRouter.patch("/wardrobe/:itemId", async (req: Request, res: Response) => {
       res.status(400).json({ error: "empty_payload" });
       return;
     }
+    const metadataChanged = Object.keys(patch).some((key) => METADATA_REVIEW_FIELDS.has(key));
 
     if (isDemoUser(userId)) {
-      const updated = updateDemoWardrobeItem(userId, itemId, patch);
+      const updated = updateDemoWardrobeItem(userId, itemId, {
+        ...patch,
+        ...(metadataChanged ? { tags: { humanReviewed: true, needsReview: false } } : {}),
+      });
       if (!updated) {
         res.status(404).json({ error: "Item not found" });
         return;
       }
-      res.json({ item: updated });
+      res.json({ item: decorateWardrobeItem(updated) });
       return;
     }
 
@@ -506,16 +630,45 @@ importRouter.patch("/wardrobe/:itemId", async (req: Request, res: Response) => {
       return;
     }
 
+    const reviewData = metadataChanged
+      ? (() => {
+          const merged = clothingAnalysisFromItem({
+            category: patch.category ?? existing.category,
+            subcategory: patch.subcategory === undefined ? existing.subcategory ?? undefined : patch.subcategory ?? undefined,
+            colorPrimary: patch.colorPrimary ?? existing.colorPrimary,
+            colorHex: patch.colorHex === undefined ? existing.colorHex ?? undefined : patch.colorHex ?? undefined,
+            pattern: patch.pattern ?? existing.pattern,
+            fabric: patch.fabric === undefined ? existing.fabric ?? undefined : patch.fabric ?? undefined,
+            formalityLevel: patch.formalityLevel ?? existing.formalityLevel,
+            season: patch.season ?? existing.season,
+            brand: patch.brand === undefined ? existing.brand : patch.brand,
+            confidence: existing.confidence,
+            needsReview: false,
+            reviewReasons: [],
+          });
+          const reviewed = reviewClothingAnalysis(merged, { trustManualReview: true }).item;
+          return {
+            category: reviewed.category,
+            season: reviewed.season,
+            confidence: reviewed.confidence,
+            tags: {
+              ...reviewTagsFor(reviewed, true),
+              humanReviewed: true,
+            },
+          };
+        })()
+      : {};
+
     const item = await withTimeout(
       prisma.wardrobeItem.update({
         where: { id: itemId },
-        data: patch,
+        data: { ...patch, ...reviewData },
       }),
       5_000,
       "Database update timed out",
     );
 
-    res.json({ item });
+    res.json({ item: decorateWardrobeItem(item) });
   } catch (err) {
     console.error("Wardrobe patch error:", err);
     res.status(500).json({ error: "patch_failed" });
