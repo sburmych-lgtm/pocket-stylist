@@ -1,11 +1,10 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
 import { isConfiguredSecret } from "./app-status.js";
-import { parseGeminiJson, withTimeout } from "./gemini-utils.js";
+import { generateGeminiText, geminiJsonConfig, geminiTextAndImageContent } from "./gemini-client.js";
+import { parseGeminiJson } from "./gemini-utils.js";
 import { recordGeminiUsage } from "./gemini-usage.js";
 import { WARDROBE_CATEGORIES, normalizeCategory } from "../../src/shared/wardrobe-categories.js";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
 const GEMINI_TIMEOUT_MS = 10_000;
 
 const CLOTHING_CATEGORIES = WARDROBE_CATEGORIES;
@@ -217,27 +216,16 @@ export async function analyzeClothingImage(
     throw new Error("Gemini API key is not configured");
   }
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
   recordGeminiUsage("clothing-analysis");
-  const result = await withTimeout(
-    model.generateContent(
-      [
-        ANALYSIS_PROMPT,
-        {
-          inlineData: {
-            mimeType,
-            data: imageBase64,
-          },
-        },
-      ],
-      { timeout: GEMINI_TIMEOUT_MS },
-    ),
-    GEMINI_TIMEOUT_MS,
-    "Gemini clothing analysis timed out",
-  );
+  const text = await generateGeminiText({
+    contents: geminiTextAndImageContent(ANALYSIS_PROMPT, imageBase64, mimeType),
+    config: geminiJsonConfig({
+      temperature: 0.1,
+    }),
+    timeoutMs: GEMINI_TIMEOUT_MS,
+    timeoutMessage: "Gemini clothing analysis timed out",
+  });
 
-  const text = result.response.text().trim();
   return reviewClothingAnalysis(ClothingAnalysisSchema.parse(parseGeminiJson(text))).item;
 }
 

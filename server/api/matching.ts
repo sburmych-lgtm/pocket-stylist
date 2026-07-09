@@ -1,11 +1,15 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
 import { prisma } from "../services/prisma.js";
 import { isConfiguredSecret } from "../services/app-status.js";
 import { getDemoWardrobe, isDemoUser } from "../services/demo-store.js";
-import { parseGeminiJson, withTimeout } from "../services/gemini-utils.js";
+import {
+  generateGeminiText,
+  geminiJsonConfig,
+  geminiTextAndImageContent,
+} from "../services/gemini-client.js";
+import { parseGeminiJson } from "../services/gemini-utils.js";
 import { colorsHarmonize } from "../services/styling/rules-engine.js";
 import { rateLimitPerUser } from "../middleware/rate-limit.js";
 import { recordGeminiUsage } from "../services/gemini-usage.js";
@@ -16,7 +20,6 @@ const geminiLimiter = rateLimitPerUser({ tag: "gemini" });
 
 export const matchingRouter = Router();
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
 const GEMINI_TIMEOUT_MS = 10_000;
 
 interface GarmentBreakdown {
@@ -92,13 +95,10 @@ matchingRouter.post("/analyze", geminiLimiter, async (req: Request, res: Respons
       return;
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
     recordGeminiUsage("reference-matching");
-    const result = await withTimeout(
-      model.generateContent(
-        [
-          `Analyze this outfit photo and break it down into individual garments.
+    const text = await generateGeminiText({
+      contents: geminiTextAndImageContent(
+        `Analyze this outfit photo and break it down into individual garments.
 Return ONLY valid JSON (no markdown fences):
 {
   "garments": [
@@ -111,15 +111,16 @@ Return ONLY valid JSON (no markdown fences):
     }
   ]
 }`,
-          { inlineData: { mimeType, data: image } },
-        ],
-        { timeout: GEMINI_TIMEOUT_MS },
+        image,
+        mimeType,
       ),
-      GEMINI_TIMEOUT_MS,
-      "Gemini reference matching timed out",
-    );
+      config: geminiJsonConfig({
+        temperature: 0.1,
+      }),
+      timeoutMs: GEMINI_TIMEOUT_MS,
+      timeoutMessage: "Gemini reference matching timed out",
+    });
 
-    const text = result.response.text().trim();
     const breakdown = GarmentBreakdownSchema.parse(parseGeminiJson(text)) as GarmentBreakdown;
 
     // Find matches from user's wardrobe

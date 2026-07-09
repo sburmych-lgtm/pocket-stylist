@@ -1,8 +1,8 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
 import type { WardrobeItem } from "../../../src/generated/prisma/client.js";
 import { isConfiguredSecret } from "../app-status.js";
-import { parseGeminiJson, withTimeout } from "../gemini-utils.js";
+import { generateGeminiText, geminiJsonConfig } from "../gemini-client.js";
+import { parseGeminiJson } from "../gemini-utils.js";
 import { recordGeminiUsage } from "../gemini-usage.js";
 import {
   scoreItem,
@@ -15,7 +15,6 @@ import {
 } from "./rules-engine.js";
 import { applyPersona, type StylistPersona } from "./personas.js";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
 const GEMINI_TIMEOUT_MS = 10_000;
 
 interface ColorEntry {
@@ -366,8 +365,6 @@ async function geminiGenerateOutfits(
     throw new Error("Gemini API key is not configured");
   }
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
   // Gemini sees the full rules-filtered wardrobe, not an arbitrary prefix.
   const pool = candidates;
 
@@ -436,12 +433,14 @@ Reply ONLY valid JSON. No markdown, no explanation.`;
   const finalPrompt = applyPersona(prompt, ctx.persona ?? "classic");
 
   recordGeminiUsage("outfit-generation");
-  const result = await withTimeout(
-    model.generateContent(finalPrompt, { timeout: GEMINI_TIMEOUT_MS }),
-    GEMINI_TIMEOUT_MS,
-    "Gemini outfit generation timed out",
-  );
-  const text = result.response.text().trim();
+  const text = await generateGeminiText({
+    contents: finalPrompt,
+    config: geminiJsonConfig({
+      temperature: 0.4,
+    }),
+    timeoutMs: GEMINI_TIMEOUT_MS,
+    timeoutMessage: "Gemini outfit generation timed out",
+  });
   const parsed = z
     .array(
       z.object({

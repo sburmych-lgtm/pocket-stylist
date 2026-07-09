@@ -1,10 +1,9 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
 import { isConfiguredSecret } from "./app-status.js";
-import { parseGeminiJson, withTimeout } from "./gemini-utils.js";
+import { generateGeminiText, geminiJsonConfig, geminiTextAndImageContent } from "./gemini-client.js";
+import { parseGeminiJson } from "./gemini-utils.js";
 import { recordGeminiUsage } from "./gemini-usage.js";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "");
 const GEMINI_TIMEOUT_MS = 10_000;
 
 export interface ColorAnalysisResult {
@@ -117,25 +116,14 @@ export async function analyzeColorType(
     throw new Error("Gemini API key is not configured");
   }
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
   recordGeminiUsage("color-season");
-  const result = await withTimeout(
-    model.generateContent(
-      [
-        COLOR_ANALYSIS_PROMPT,
-        {
-          inlineData: {
-            mimeType: "image/jpeg",
-            data: imageBase64,
-          },
-        },
-      ],
-      { timeout: GEMINI_TIMEOUT_MS },
-    ),
-    GEMINI_TIMEOUT_MS,
-    "Color analysis timed out",
-  );
-  const text = result.response.text().trim();
+  const text = await generateGeminiText({
+    contents: geminiTextAndImageContent(COLOR_ANALYSIS_PROMPT, imageBase64, "image/jpeg"),
+    config: geminiJsonConfig({
+      temperature: 0.2,
+    }),
+    timeoutMs: GEMINI_TIMEOUT_MS,
+    timeoutMessage: "Color analysis timed out",
+  });
   return ColorAnalysisSchema.parse(parseGeminiJson(text));
 }
