@@ -476,6 +476,7 @@ export interface LookbookResponse {
   days: LookbookDay[];
   weekStart: string;
   persona?: StylistPersona;
+  stylistVersion?: "v1" | "v2";
   messageCode?: "empty_wardrobe" | "location_required";
   message?: string;
 }
@@ -728,10 +729,10 @@ export const stylingApi = {
     });
   },
 
-  feedback(outfitId: string, liked: boolean): Promise<{ ok: boolean }> {
+  feedback(outfitId: string, liked: boolean, reason?: string): Promise<{ ok: boolean }> {
     return apiFetch<{ ok: boolean }>("/styling/feedback", {
       method: "POST",
-      body: JSON.stringify({ outfitId, liked }),
+      body: JSON.stringify({ outfitId, liked, reason }),
     });
   },
 

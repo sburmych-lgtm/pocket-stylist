@@ -3,7 +3,10 @@ import type { Request, Response } from "express";
 import { prisma } from "../services/prisma.js";
 import { fetchWeather, getWeather, weatherToSeason } from "../services/styling/weather.js";
 import { filterWardrobe } from "../services/styling/rules-engine.js";
-import { generateOutfits } from "../services/styling/outfit-generator.js";
+import {
+  generateOutfits,
+  shouldUseStylistV2ForUser,
+} from "../services/styling/outfit-generator.js";
 import { resolveTargetUser, wardrobeVisibilityWhere } from "../services/family.js";
 import { getDemoWardrobe, getDemoPersona, isDemoUser } from "../services/demo-store.js";
 import { rateLimitPerUser } from "../middleware/rate-limit.js";
@@ -58,6 +61,7 @@ export const SuggestBodySchema = z
 export const OutfitFeedbackSchema = z.object({
   outfitId: z.string().min(1).max(64),
   liked: z.boolean(),
+  reason: z.string().trim().min(1).max(80).optional(),
 });
 
 export const OutfitWearSchema = z.object({
@@ -214,6 +218,7 @@ stylingRouter.post(["/suggest", "/generate"], geminiLimiter, async (req: Request
       return;
     }
 
+    const stylistVersion = shouldUseStylistV2ForUser(userId) ? "v2" : "v1";
     const generated = await generateOutfits(candidates, {
       mood,
       weatherSeason,
@@ -226,7 +231,7 @@ stylingRouter.post(["/suggest", "/generate"], geminiLimiter, async (req: Request
       colorPalette,
       avoidColors,
       genderMode: userProfile?.genderMode,
-    });
+    }, 3, { stylistVersion });
 
     if (generated.length === 0) {
       res.json({
@@ -256,6 +261,11 @@ stylingRouter.post(["/suggest", "/generate"], geminiLimiter, async (req: Request
                 name: o.name,
                 stylingTip: o.stylingTip,
                 confidence: o.confidence,
+                stylistVersion: o.stylistVersion ?? stylistVersion,
+                variant: o.variant,
+                whyItWorks: o.whyItWorks,
+                weatherFit: o.weatherFit,
+                risks: o.risks,
                 items: {
                   create: o.items.map((it) => ({ wardrobeItemId: it.id })),
                 },
@@ -277,6 +287,7 @@ stylingRouter.post(["/suggest", "/generate"], geminiLimiter, async (req: Request
       outfits,
       weather,
       persona,
+      stylistVersion,
       locationSet,
       candidateCount: candidates.length,
       ...(reusedRecentItems
@@ -306,14 +317,31 @@ stylingRouter.post("/feedback", async (req: Request, res: Response) => {
       return;
     }
 
-    const { count } = await prisma.outfit.updateMany({
+    const outfit = await prisma.outfit.findFirst({
       where: { id: parsed.data.outfitId, userId },
-      data: { liked: parsed.data.liked },
+      select: { id: true, stylistVersion: true, variant: true },
     });
-    if (count === 0) {
+    if (!outfit) {
       res.status(404).json({ error: "outfit_not_found" });
       return;
     }
+
+    await prisma.$transaction([
+      prisma.outfit.update({
+        where: { id: outfit.id },
+        data: { liked: parsed.data.liked },
+      }),
+      prisma.outfitFeedbackMetric.create({
+        data: {
+          userId,
+          outfitId: outfit.id,
+          liked: parsed.data.liked,
+          reason: parsed.data.reason,
+          stylistVersion: outfit.stylistVersion,
+          variant: outfit.variant,
+        },
+      }),
+    ]);
 
     res.json({ ok: true });
   } catch (err) {

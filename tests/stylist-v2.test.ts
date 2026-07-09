@@ -4,7 +4,9 @@ import {
   buildStylistV2Prompt,
   isStylistV2Enabled,
   parseStylistV2Outfits,
+  shouldUseStylistV2ForUser,
   STYLIST_V2_STYLE_DOCTRINE,
+  stylistV2RolloutPercent,
 } from "../server/services/styling/outfit-generator.js";
 import { wardrobeItem } from "./fixtures/stylist-scenarios.js";
 
@@ -27,6 +29,18 @@ test("Stylist v2 feature flag is explicit and off by default", () => {
   assert.equal(isStylistV2Enabled({ STYLIST_V2_ENABLED: "true" }), true);
   assert.equal(isStylistV2Enabled({ STYLIST_V2_ENABLED: "1" }), true);
   assert.equal(isStylistV2Enabled({ STYLIST_V2_ENABLED: "false" }), false);
+});
+
+test("Stylist v2 rollout is clamped and stable per user", () => {
+  assert.equal(stylistV2RolloutPercent({ STYLIST_V2_ROLLOUT: "-5" }), 0);
+  assert.equal(stylistV2RolloutPercent({ STYLIST_V2_ROLLOUT_PERCENT: "140" }), 100);
+  assert.equal(shouldUseStylistV2ForUser("user-a", { STYLIST_V2_ROLLOUT: "0" }), false);
+  assert.equal(shouldUseStylistV2ForUser("user-a", { STYLIST_V2_ROLLOUT: "100" }), true);
+  assert.equal(shouldUseStylistV2ForUser("user-a", { STYLIST_V2_ENABLED: "true" }), true);
+  assert.equal(
+    shouldUseStylistV2ForUser("user-a", { STYLIST_V2_ROLLOUT: "25" }),
+    shouldUseStylistV2ForUser("user-a", { STYLIST_V2_ROLLOUT: "25" }),
+  );
 });
 
 test("Stylist v2 prompt includes doctrine, persona selection strategy and item review signals", () => {

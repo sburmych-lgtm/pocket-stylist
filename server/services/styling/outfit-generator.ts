@@ -99,6 +99,30 @@ export function isStylistV2Enabled(env: NodeJS.ProcessEnv = process.env): boolea
   return STYLIST_V2_ENABLED_VALUES.has((env.STYLIST_V2_ENABLED ?? "").toLowerCase());
 }
 
+export function stylistV2RolloutPercent(env: NodeJS.ProcessEnv = process.env): number {
+  const raw = Number(env.STYLIST_V2_ROLLOUT_PERCENT ?? env.STYLIST_V2_ROLLOUT ?? 0);
+  if (!Number.isFinite(raw)) return 0;
+  return Math.max(0, Math.min(100, raw));
+}
+
+function stableBucket(input: string): number {
+  let hash = 2166136261;
+  for (const char of input) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash >>> 0) % 100;
+}
+
+export function shouldUseStylistV2ForUser(
+  userId: string,
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  if (isStylistV2Enabled(env)) return true;
+  const rollout = stylistV2RolloutPercent(env);
+  return rollout > 0 && stableBucket(userId) < rollout;
+}
+
 function resolveStylistVersion(options: { stylistVersion?: "v1" | "v2" }): "v1" | "v2" {
   return options.stylistVersion ?? (isStylistV2Enabled() ? "v2" : "v1");
 }

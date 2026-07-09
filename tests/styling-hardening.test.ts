@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { WardrobeItem } from "../src/generated/prisma/client.js";
-import { SuggestBodySchema } from "../server/api/styling.js";
+import { OutfitFeedbackSchema, SuggestBodySchema } from "../server/api/styling.js";
 import {
   generateOutfits,
   mapIndexesToItems,
@@ -85,6 +85,25 @@ test("SuggestBodySchema rejects an inverted formality range", () => {
   );
 
   assert.equal(result.success, false);
+});
+
+test("OutfitFeedbackSchema accepts a short metric reason but rejects noisy payloads", () => {
+  assert.equal(
+    OutfitFeedbackSchema.safeParse({
+      outfitId: "outfit-1",
+      liked: false,
+      reason: "too_formal",
+    }).success,
+    true,
+  );
+  assert.equal(
+    OutfitFeedbackSchema.safeParse({
+      outfitId: "outfit-1",
+      liked: false,
+      reason: "x".repeat(120),
+    }).success,
+    false,
+  );
 });
 
 test("mapIndexesToItems drops invalid indexes and deduplicates model output", () => {
