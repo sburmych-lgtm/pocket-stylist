@@ -221,6 +221,9 @@ export function StylingPage() {
                       items={outfit.items}
                       stylingTip={outfit.stylingTip}
                       confidence={outfit.confidence}
+                      whyItWorks={outfit.whyItWorks}
+                      weatherFit={outfit.weatherFit}
+                      risks={outfit.risks}
                       persona={result.persona}
                       onLike={outfit.id ? () => handleLike(outfit.id!, true) : undefined}
                       onDislike={outfit.id ? () => handleLike(outfit.id!, false) : undefined}

@@ -18,6 +18,7 @@ export function usageDateKey(now: Date = new Date()): Date {
 export type GeminiRequestType =
   | "clothing-analysis"
   | "outfit-generation"
+  | "outfit-generation-v2"
   | "color-season"
   | "reference-matching";
 

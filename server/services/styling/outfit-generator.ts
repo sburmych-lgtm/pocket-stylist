@@ -16,6 +16,10 @@ import {
 import { applyPersona, type StylistPersona } from "./personas.js";
 
 const GEMINI_TIMEOUT_MS = 10_000;
+const STYLIST_V2_ENABLED_VALUES = new Set(["1", "true", "yes", "on"]);
+
+type OutfitVariant = "safe" | "balanced" | "bold";
+type StylistVersion = "rules" | "v1" | "v2";
 
 interface ColorEntry {
   name: string;
@@ -27,6 +31,11 @@ interface OutfitSuggestion {
   items: WardrobeItem[];
   stylingTip: string;
   confidence: number;
+  variant?: OutfitVariant;
+  stylistVersion?: StylistVersion;
+  whyItWorks?: string;
+  weatherFit?: string;
+  risks?: string[];
 }
 
 interface StylingContext {
@@ -86,12 +95,20 @@ export function mapIndexesToItems<T>(indexes: number[], pool: T[]): T[] {
     .map((index) => pool[index]);
 }
 
+export function isStylistV2Enabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return STYLIST_V2_ENABLED_VALUES.has((env.STYLIST_V2_ENABLED ?? "").toLowerCase());
+}
+
+function resolveStylistVersion(options: { stylistVersion?: "v1" | "v2" }): "v1" | "v2" {
+  return options.stylistVersion ?? (isStylistV2Enabled() ? "v2" : "v1");
+}
+
 // Attempt pure-code outfit assembly first, fall back to Gemini
 export async function generateOutfits(
   candidates: WardrobeItem[],
   ctx: StylingContext,
   count: number = 3,
-  options: { useAi?: boolean } = {},
+  options: { useAi?: boolean; stylistVersion?: "v1" | "v2" } = {},
 ): Promise<OutfitSuggestion[]> {
   // Score and sort candidates
   const scored = candidates.map((item) => ({
@@ -122,21 +139,33 @@ export async function generateOutfits(
     const rulesOnly = pureOutfits.length > 0
       ? pureOutfits
       : fallbackOutfit(sortedCandidates, ctx);
-    return rulesOnly.slice(0, count);
+    return rulesOnly.slice(0, count).map((outfit) => ({
+      ...outfit,
+      stylistVersion: "rules",
+    }));
   }
 
+  const stylistVersion = resolveStylistVersion(options);
   try {
-    const geminiOutfits = await geminiGenerateOutfits(sortedCandidates, ctx, count);
+    const geminiOutfits = stylistVersion === "v2"
+      ? await geminiGenerateOutfitsV2(sortedCandidates, ctx, count)
+      : await geminiGenerateOutfits(sortedCandidates, ctx, count);
     const safeOutfits = geminiOutfits.filter((outfit) =>
       isCompleteOutfit(outfit.items, ctx) &&
       outfit.items.every((item) => isWeatherAppropriate(item, ctx)) &&
-      hasCompatibleColors(outfit.items) &&
-      outfit.items.filter((item) => item.pattern !== "solid").length <= 1,
+      isPatternUseSafe(outfit.items, stylistVersion) &&
+      (stylistVersion === "v2" || hasCompatibleColors(outfit.items)),
     );
     const merged = mergeDistinctOutfits(safeOutfits, pureOutfits, count);
     return merged.length > 0
-      ? merged
-      : fallbackOutfit(sortedCandidates, ctx).slice(0, count);
+      ? merged.map((outfit) => ({
+          ...outfit,
+          stylistVersion: outfit.stylistVersion ?? "rules",
+        }))
+      : fallbackOutfit(sortedCandidates, ctx).slice(0, count).map((outfit) => ({
+          ...outfit,
+          stylistVersion: "rules",
+        }));
   } catch (err) {
     if (isConfiguredSecret(process.env.GEMINI_API_KEY)) {
       console.error("Gemini outfit generation failed:", err);
@@ -146,6 +175,7 @@ export async function generateOutfits(
       : fallbackOutfit(sortedCandidates, ctx);
     return fallback.slice(0, count).map((outfit) => ({
       ...outfit,
+      stylistVersion: "rules",
       stylingTip: `${outfit.stylingTip} AI тимчасово недоступний, тому це надійний підбір за правилами.`,
     }));
   }
@@ -174,6 +204,11 @@ function hasCompatibleColors(items: WardrobeItem[]): boolean {
     }
   }
   return true;
+}
+
+function isPatternUseSafe(items: WardrobeItem[], stylistVersion: "v1" | "v2"): boolean {
+  const patternedCount = items.filter((item) => item.pattern !== "solid").length;
+  return patternedCount <= (stylistVersion === "v2" ? 2 : 1);
 }
 
 function mergeDistinctOutfits(
@@ -356,6 +391,241 @@ function describeUserContext(ctx: StylingContext): string {
   return lines.length > 0 ? `\nUser profile:\n${lines.join("\n")}` : "";
 }
 
+function itemNeedsReview(tags: WardrobeItem["tags"]): boolean {
+  if (!tags || typeof tags !== "object" || Array.isArray(tags)) return false;
+  return (tags as Record<string, unknown>).needsReview === true;
+}
+
+function itemReviewReasons(tags: WardrobeItem["tags"]): string[] {
+  if (!tags || typeof tags !== "object" || Array.isArray(tags) || !("reviewReasons" in tags)) {
+    return [];
+  }
+  const reasons = (tags as Record<string, unknown>).reviewReasons;
+  return Array.isArray(reasons)
+    ? reasons.filter((reason): reason is string => typeof reason === "string")
+    : [];
+}
+
+function summarizeWardrobeItems(pool: WardrobeItem[]) {
+  return pool.map((item, index) => ({
+    index,
+    id: item.id,
+    category: item.category,
+    subcategory: item.subcategory,
+    color: item.colorPrimary,
+    colorHex: item.colorHex,
+    pattern: item.pattern,
+    fabric: item.fabric,
+    season: item.season,
+    formality: item.formalityLevel,
+    condition: item.condition,
+    timesWorn: item.timesWorn,
+    lastWornAt: item.lastWornAt?.toISOString() ?? null,
+    brand: item.brand,
+    needsReview: itemNeedsReview(item.tags),
+    reviewReasons: itemReviewReasons(item.tags),
+  }));
+}
+
+export const STYLIST_V2_STYLE_DOCTRINE = `
+You are Pocket Stylist's senior fashion editor: a professional personal stylist,
+color analyst, wardrobe curator and practical weather-aware dresser.
+
+Decision doctrine:
+1. Start from the human: color season, best palette, avoid colors, gender mode,
+   comfort/mood signals and the requested formality.
+2. Then solve the day: temperature, precipitation, footwear safety, layers and
+   fabric behavior. Shoes are part of the outfit, not an afterthought.
+3. Then edit the wardrobe like a real closet: proportions, silhouette, texture,
+   fabric weight, pattern balance, item condition, times worn and last worn.
+4. Build three distinct variants when possible:
+   - safe: polished, wearable, low-risk, capsule-friendly.
+   - balanced: a little more styled, editorial but practical.
+   - bold: one statement choice, still coherent and wearable.
+5. Persona changes both selection and wording:
+   classic favors timeless structure and restrained elegance;
+   sassy favors one confident statement piece or sharper contrast;
+   manly favors direct utility, clean lines, sturdy footwear and no fuss;
+   kind favors comfort, softness, forgiving silhouettes and reassurance.
+
+Style doctrine:
+- Use 60/30/10 color balance when possible: base neutral, secondary support,
+  one controlled accent. Do not build around avoid colors.
+- Respect undertone: cool seasons prefer blue-based, clear or muted cool shades;
+  warm seasons prefer golden, earthy or peach-based shades.
+- Balance silhouette: volume on top likes cleaner bottoms; wide bottoms like a
+  cleaner top; dresses need shoe/formality alignment.
+- Fabric matters: linen/chiffon breathe in heat; wool/cashmere/fleece insulate;
+  suede/velvet are risky in rain; leather/boots are safer in wet cold weather.
+- A complete outfit must include footwear and either a dress or top+bottom.
+- If the safe pool cannot create a valid outfit, return [] instead of inventing.
+- Never mention hidden chain-of-thought. Return concise user-facing rationale.
+`.trim();
+
+const STYLIST_V2_RESPONSE_SCHEMA = {
+  type: "array",
+  maxItems: 3,
+  items: {
+    type: "object",
+    required: [
+      "variant",
+      "name",
+      "itemIndexes",
+      "stylingTip",
+      "whyItWorks",
+      "weatherFit",
+      "risks",
+      "confidence",
+    ],
+    properties: {
+      variant: { type: "string", enum: ["safe", "balanced", "bold"] },
+      name: { type: "string" },
+      itemIndexes: {
+        type: "array",
+        minItems: 2,
+        maxItems: 6,
+        items: { type: "integer" },
+      },
+      stylingTip: { type: "string" },
+      whyItWorks: { type: "string" },
+      weatherFit: { type: "string" },
+      risks: {
+        type: "array",
+        maxItems: 3,
+        items: { type: "string" },
+      },
+      confidence: { type: "number", minimum: 0, maximum: 1 },
+    },
+  },
+} as const;
+
+function describePersonaStrategy(persona: StylistPersona | undefined): string {
+  switch (persona ?? "classic") {
+    case "sassy":
+      return "sassy: choose a bolder accent, print or sharper contrast when safe; wording may be playful but still premium.";
+    case "manly":
+      return "manly: choose practical, clean, sturdy combinations; avoid fussy styling and overly cute phrasing.";
+    case "kind":
+      return "kind: choose comfort-forward pieces, soft textures and forgiving silhouettes; wording should feel supportive.";
+    case "classic":
+    default:
+      return "classic: choose timeless, balanced, polished combinations with restrained wording.";
+  }
+}
+
+export function buildStylistV2Prompt(
+  candidates: WardrobeItem[],
+  ctx: StylingContext,
+  count: number,
+): string {
+  const requestedVariants = (["safe", "balanced", "bold"] as const).slice(0, count);
+  const tempLine =
+    ctx.temp !== undefined
+      ? `- Temperature: ${ctx.temp.toFixed(0)}C (${ctx.condition ?? "n/a"})`
+      : "- Temperature: unknown";
+  const precipLine = isWetWeather(ctx)
+    ? "- Precipitation/wet ground: closed weather-safe footwear is mandatory."
+    : "- Precipitation/wet ground: not expected.";
+
+  return `${STYLIST_V2_STYLE_DOCTRINE}
+
+Current request:
+- Mood: energy ${ctx.mood.energy}/100, boldness ${ctx.mood.boldness}/100
+- Weather season: ${ctx.weatherSeason}
+${tempLine}
+${precipLine}
+- Formality range: ${ctx.formalityRange.min}-${ctx.formalityRange.max}
+- Persona strategy: ${describePersonaStrategy(ctx.persona)}
+${describeUserContext(ctx)}
+
+Hard safety contract:
+1. Use ONLY item indexes from Available items. Never invent, rename or imply a missing garment.
+2. Every outfit must include footwear and either (top + bottom/jeans/pants/skirt) or dress.
+3. At 14C or below, include outerwear.
+4. Keep all items weather-safe: season must be "${ctx.weatherSeason}" or "all"; no hot fabrics in heat; no open/suede/velvet footwear in wet weather.
+5. Respect avoid colors and do not use worn-out items.
+6. If a wardrobe item has needsReview=true, use it only if the outfit would otherwise fail and mention the risk.
+7. Return up to ${count} outfits for variants: ${requestedVariants.join(", ")}. Skip a variant if it cannot be valid.
+
+Available items:
+${JSON.stringify(summarizeWardrobeItems(candidates), null, 2)}
+
+Return ONLY a valid JSON array, no markdown, no prose outside JSON.
+Each object must have:
+{
+  "variant": "safe|balanced|bold",
+  "name": "short outfit name in Ukrainian",
+  "itemIndexes": [0, 2, 5],
+  "stylingTip": "one persona-toned Ukrainian sentence, max 260 chars",
+  "whyItWorks": "Ukrainian rationale: color/silhouette/formality, max 320 chars",
+  "weatherFit": "Ukrainian rationale: temperature/precipitation/layers/shoes, max 240 chars",
+  "risks": ["optional Ukrainian risk or caveat, max 3"],
+  "confidence": 0.0
+}
+
+Reply ONLY valid JSON.`;
+}
+
+const StylistV2OutfitSchema = z.object({
+  variant: z.enum(["safe", "balanced", "bold"]),
+  name: z.string().trim().min(1).max(80),
+  itemIndexes: z.array(z.number().int().nonnegative()).min(2).max(6),
+  stylingTip: z.string().trim().min(1).max(280),
+  whyItWorks: z.string().trim().min(1).max(360),
+  weatherFit: z.string().trim().min(1).max(260),
+  risks: z.array(z.string().trim().min(1).max(180)).max(3).catch([]),
+  confidence: z.coerce.number().min(0).max(1),
+});
+
+export function parseStylistV2Outfits(
+  text: string,
+  pool: WardrobeItem[],
+  count: number,
+): OutfitSuggestion[] {
+  const parsed = z
+    .array(StylistV2OutfitSchema)
+    .max(count)
+    .parse(parseGeminiJson(text));
+
+  return parsed.map((outfit) => ({
+    name: outfit.name,
+    items: mapIndexesToItems(outfit.itemIndexes, pool),
+    stylingTip: outfit.stylingTip,
+    confidence: outfit.confidence,
+    variant: outfit.variant,
+    stylistVersion: "v2",
+    whyItWorks: outfit.whyItWorks,
+    weatherFit: outfit.weatherFit,
+    risks: outfit.risks,
+  }));
+}
+
+async function geminiGenerateOutfitsV2(
+  candidates: WardrobeItem[],
+  ctx: StylingContext,
+  count: number,
+): Promise<OutfitSuggestion[]> {
+  if (!isConfiguredSecret(process.env.GEMINI_API_KEY)) {
+    throw new Error("Gemini API key is not configured");
+  }
+
+  const pool = candidates;
+  const prompt = buildStylistV2Prompt(pool, ctx, count);
+
+  recordGeminiUsage("outfit-generation-v2");
+  const text = await generateGeminiText({
+    contents: prompt,
+    config: geminiJsonConfig({
+      temperature: 0.55,
+      responseJsonSchema: STYLIST_V2_RESPONSE_SCHEMA,
+    }),
+    timeoutMs: GEMINI_TIMEOUT_MS,
+    timeoutMessage: "Gemini outfit generation v2 timed out",
+  });
+
+  return parseStylistV2Outfits(text, pool, count);
+}
+
 async function geminiGenerateOutfits(
   candidates: WardrobeItem[],
   ctx: StylingContext,
@@ -371,20 +641,7 @@ async function geminiGenerateOutfits(
   // CRITICAL: include `season` and `fabric` so the model can reason about
   // weather appropriateness. Previously these were missing and Gemini would
   // happily put a wool coat into a 26 °C outfit.
-  const itemSummaries = pool.map((item, i) => ({
-    index: i,
-    id: item.id,
-    category: item.category,
-    subcategory: item.subcategory,
-    color: item.colorPrimary,
-    pattern: item.pattern,
-    fabric: item.fabric,
-    season: item.season,
-    formality: item.formalityLevel,
-    condition: item.condition,
-    timesWorn: item.timesWorn,
-    lastWornAt: item.lastWornAt?.toISOString() ?? null,
-  }));
+  const itemSummaries = summarizeWardrobeItems(pool);
 
   const tempLine =
     ctx.temp !== undefined
@@ -458,5 +715,6 @@ Reply ONLY valid JSON. No markdown, no explanation.`;
     items: mapIndexesToItems(outfit.itemIndexes, pool),
     stylingTip: outfit.stylingTip,
     confidence: outfit.confidence,
+    stylistVersion: "v1",
   }));
 }

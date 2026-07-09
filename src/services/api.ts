@@ -674,6 +674,11 @@ export interface OutfitSuggestion {
   items: WardrobeItem[];
   stylingTip: string;
   confidence: number;
+  variant?: "safe" | "balanced" | "bold";
+  stylistVersion?: "rules" | "v1" | "v2";
+  whyItWorks?: string;
+  weatherFit?: string;
+  risks?: string[];
 }
 
 export interface StylingResponse {

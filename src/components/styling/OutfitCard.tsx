@@ -12,6 +12,9 @@ interface OutfitCardProps {
   items: WardrobeItem[];
   stylingTip: string;
   confidence: number;
+  whyItWorks?: string;
+  weatherFit?: string;
+  risks?: string[];
   persona?: StylistPersona;
   onLike?: () => void;
   onDislike?: () => void;
@@ -23,6 +26,9 @@ export function OutfitCard({
   items,
   stylingTip,
   confidence,
+  whyItWorks,
+  weatherFit,
+  risks = [],
   persona = "classic",
   onLike,
   onDislike,
@@ -54,6 +60,14 @@ export function OutfitCard({
     confidence >= 0.7
       ? "bg-[rgba(111,212,171,0.12)] text-[var(--success)]"
       : "bg-[rgba(241,195,121,0.12)] text-[var(--warning)]";
+  const rationalePoints = [
+    whyItWorks,
+    weatherFit,
+    ...risks.map((risk) => `⚠ ${risk}`),
+  ].filter((point): point is string => Boolean(point));
+  const displayPoints = rationalePoints.length > 0
+    ? rationalePoints
+    : [t("outfit.point1"), t("outfit.point2"), t("outfit.point3")];
 
   return (
     <article className="luxe-card p-5 sm:p-6">
@@ -116,7 +130,7 @@ export function OutfitCard({
           <div className="rounded-[1.4rem] border border-white/8 bg-white/[0.03] p-5">
             <p className="section-subtitle">{t("outfit.whyItWorks")}</p>
             <div className="mt-4 space-y-3">
-              {[t("outfit.point1"), t("outfit.point2"), t("outfit.point3")].map((point) => (
+              {displayPoints.map((point) => (
                 <div key={point} className="flex items-start gap-3">
                   <span className="mt-2 h-2 w-2 rounded-full bg-[var(--accent)]" />
                   <p className="text-sm leading-6 text-[var(--text-secondary)]">{point}</p>
