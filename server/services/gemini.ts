@@ -8,6 +8,10 @@ import { WARDROBE_CATEGORIES, normalizeCategory } from "../../src/shared/wardrob
 const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_CLOTHING_TIMEOUT_MS ?? 20_000);
 const GEMINI_CLOTHING_MODEL = process.env.GEMINI_CLOTHING_MODEL ?? "gemini-2.5-flash";
 const GEMINI_CLOTHING_ATTEMPTS = Number(process.env.GEMINI_CLOTHING_ATTEMPTS ?? 2);
+const GEMINI_CLOTHING_MIN_INTERVAL_MS = Math.max(
+  0,
+  Number(process.env.GEMINI_CLOTHING_MIN_INTERVAL_MS ?? 13_000),
+);
 
 const CLOTHING_CATEGORIES = WARDROBE_CATEGORIES;
 
@@ -301,6 +305,29 @@ function withReason(reasons: string[], reason: string): string[] {
   return reasons.includes(reason) ? reasons : [...reasons, reason];
 }
 
+export function createMinIntervalScheduler(
+  intervalMs: number,
+  now: () => number = () => Date.now(),
+  sleep: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+): () => Promise<void> {
+  let nextAvailableAt = 0;
+  let tail = Promise.resolve();
+
+  return () => {
+    const run = tail.then(async () => {
+      const waitMs = Math.max(0, nextAvailableAt - now());
+      if (waitMs > 0) {
+        await sleep(waitMs);
+      }
+      nextAvailableAt = Math.max(now(), nextAvailableAt) + intervalMs;
+    });
+    tail = run.catch(() => undefined);
+    return run;
+  };
+}
+
+const waitForClothingAnalysisSlot = createMinIntervalScheduler(GEMINI_CLOTHING_MIN_INTERVAL_MS);
+
 function loweredConfidence(confidence: number): number {
   return Math.min(confidence, REVIEW_CONFIDENCE_CAP);
 }
@@ -411,6 +438,7 @@ export async function analyzeClothingImage(
   const attempts = Math.max(1, GEMINI_CLOTHING_ATTEMPTS);
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
+      await waitForClothingAnalysisSlot();
       recordGeminiUsage("clothing-analysis");
       const text = await generateGeminiText({
         model: GEMINI_CLOTHING_MODEL,

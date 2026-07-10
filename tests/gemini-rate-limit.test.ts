@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { createMinIntervalScheduler } from "../server/services/gemini.js";
 import { rateLimitDelayMs } from "../server/services/gemini-client.js";
 
 test("rateLimitDelayMs parses the structured retryDelay hint from a 429", () => {
@@ -32,4 +33,22 @@ test("rateLimitDelayMs returns null for non-rate-limit errors", () => {
   assert.equal(rateLimitDelayMs(new Error("400 invalid argument")), null);
   assert.equal(rateLimitDelayMs(new Error("timed out")), null);
   assert.equal(rateLimitDelayMs(null), null);
+});
+
+test("createMinIntervalScheduler serializes starts by the configured interval", async () => {
+  let clock = 1_000;
+  const sleeps: number[] = [];
+  const scheduler = createMinIntervalScheduler(
+    13_000,
+    () => clock,
+    async (ms) => {
+      sleeps.push(ms);
+      clock += ms;
+    },
+  );
+
+  await Promise.all([scheduler(), scheduler(), scheduler()]);
+
+  assert.deepEqual(sleeps, [13_000, 13_000]);
+  assert.equal(clock, 27_000);
 });

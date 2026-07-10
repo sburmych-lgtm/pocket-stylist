@@ -14,6 +14,7 @@ import { compressImageToBase64 } from "../utils/imageCompress";
 import { useI18n } from "../i18n";
 
 let nextId = 0;
+const IMPORT_CONCURRENCY = Math.max(1, Number(import.meta.env.VITE_IMPORT_CONCURRENCY ?? 1));
 
 // Direct-ingest item shape — discriminated by status. There is no longer a
 // "needs save" middle state; once status === "done" the item is already
@@ -124,8 +125,8 @@ export function ImportPage() {
 
       setItems((prev) => [...seeds, ...prev]);
 
-      // Concurrency: 2 in-flight at a time. Each call to processFile is a
-      // full direct-ingest round-trip (upload + Gemini + DB).
+      // Concurrency defaults to 1 because Gemini's free tier is 5 requests/min.
+      // Set VITE_IMPORT_CONCURRENCY higher after enabling paid Gemini billing.
       const queue = [...seeds];
       const fileById = new Map(files.map((file, idx) => [seeds[idx].id, file]));
 
@@ -138,7 +139,7 @@ export function ImportPage() {
         }
       };
 
-      void Promise.all([worker(), worker()]);
+      void Promise.all(Array.from({ length: IMPORT_CONCURRENCY }, () => worker()));
     },
     [processFile],
   );
