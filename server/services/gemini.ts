@@ -5,28 +5,35 @@ import { parseGeminiJson } from "./gemini-utils.js";
 import { recordGeminiUsage } from "./gemini-usage.js";
 import { WARDROBE_CATEGORIES, normalizeCategory } from "../../src/shared/wardrobe-categories.js";
 
-const GEMINI_TIMEOUT_MS = 10_000;
+const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_CLOTHING_TIMEOUT_MS ?? 20_000);
+const GEMINI_CLOTHING_MODEL = process.env.GEMINI_CLOTHING_MODEL ?? "gemini-2.5-flash";
+const GEMINI_CLOTHING_ATTEMPTS = Number(process.env.GEMINI_CLOTHING_ATTEMPTS ?? 2);
 
 const CLOTHING_CATEGORIES = WARDROBE_CATEGORIES;
 
 const COLORS = [
   "black", "white", "grey", "navy", "blue", "light-blue", "red", "burgundy",
   "pink", "green", "olive", "beige", "brown", "tan", "cream", "yellow",
-  "orange", "purple", "lavender", "gold", "silver", "multicolor",
+  "orange", "purple", "lavender", "gold", "silver", "multicolor", "camel",
+  "taupe", "khaki", "coffee", "mocha", "stone", "charcoal", "off-white",
+  "denim-blue", "unknown",
 ] as const;
 
 const PATTERNS = [
   "solid", "striped", "plaid", "floral", "polka-dot", "geometric",
   "animal-print", "abstract", "paisley", "camouflage", "graphic",
+  "checkered", "houndstooth", "unknown",
 ] as const;
 
 const FABRICS = [
   "cotton", "polyester", "silk", "wool", "denim", "leather", "linen",
   "cashmere", "nylon", "fleece", "velvet", "suede", "knit", "chiffon",
+  "viscose", "rayon", "spandex", "elastane", "acrylic", "polyamide",
+  "unknown",
 ] as const;
 
 const SEASONS = ["spring", "summer", "fall", "winter", "all"] as const;
-const LOW_CONFIDENCE_THRESHOLD = 0.7;
+const LOW_CONFIDENCE_THRESHOLD = 0.5;
 const REVIEW_CONFIDENCE_CAP = 0.69;
 const HEAVY_OUTERWEAR_RE =
   /puffer|parka|down|winter|ski|snow|coat|overcoat|anorak|duffle|пухов|парка|пальт|дублян|шуб|зимов/i;
@@ -50,6 +57,13 @@ export interface ClothingAnalysis {
   confidence: number;
   needsReview: boolean;
   reviewReasons: string[];
+  reviewSeverity?: "ok" | "suggestion" | "critical";
+  analysisStatus?: "ok" | "partial" | "failed";
+  rawCategory?: string | null;
+  rawColorPrimary?: string | null;
+  rawPattern?: string | null;
+  rawFabric?: string | null;
+  rawSeason?: string | null;
 }
 
 type ReviewableClothingAnalysis = Omit<ClothingAnalysis, "needsReview" | "reviewReasons"> &
@@ -58,35 +72,187 @@ type ReviewableClothingAnalysis = Omit<ClothingAnalysis, "needsReview" | "review
 export const FALLBACK_CLOTHING_ANALYSIS = {
   category: "tops",
   subcategory: "unknown",
-  colorPrimary: "black",
-  colorHex: "#000000",
-  pattern: "solid",
-  fabric: "cotton",
+  colorPrimary: "unknown",
+  colorHex: "#808080",
+  pattern: "unknown",
+  fabric: "unknown",
   formalityLevel: 3,
   season: "all",
   brand: null,
   confidence: 0,
   needsReview: true,
-  reviewReasons: ["analysis_unavailable"],
+  reviewReasons: ["analysis_failed"],
+  reviewSeverity: "critical",
+  analysisStatus: "failed",
 } as const satisfies ClothingAnalysis;
 
-const ClothingAnalysisSchema = z.object({
-  // Accept anything (string), then normalize through alias map so legacy values
-  // like "shoes"/"activewear" land on the new canonical sections.
-  category: z
-    .string()
-    .transform((v) => normalizeCategory(v))
-    .catch(FALLBACK_CLOTHING_ANALYSIS.category),
-  subcategory: z.string().min(1).catch(FALLBACK_CLOTHING_ANALYSIS.subcategory),
-  colorPrimary: z.enum(COLORS).catch(FALLBACK_CLOTHING_ANALYSIS.colorPrimary),
-  colorHex: z.string().regex(/^#[0-9A-Fa-f]{6}$/).catch(FALLBACK_CLOTHING_ANALYSIS.colorHex),
-  pattern: z.enum(PATTERNS).catch(FALLBACK_CLOTHING_ANALYSIS.pattern),
-  fabric: z.enum(FABRICS).catch(FALLBACK_CLOTHING_ANALYSIS.fabric),
-  formalityLevel: z.coerce.number().min(1).max(5).catch(FALLBACK_CLOTHING_ANALYSIS.formalityLevel),
-  season: z.enum(SEASONS).catch(FALLBACK_CLOTHING_ANALYSIS.season),
-  brand: z.string().nullable().catch(FALLBACK_CLOTHING_ANALYSIS.brand),
-  confidence: z.coerce.number().min(0).max(1).catch(FALLBACK_CLOTHING_ANALYSIS.confidence),
+const RawClothingAnalysisSchema = z.object({
+  category: z.string().optional(),
+  subcategory: z.string().optional(),
+  colorPrimary: z.string().optional(),
+  colorHex: z.string().optional(),
+  pattern: z.string().optional(),
+  fabric: z.string().optional(),
+  formalityLevel: z.coerce.number().optional(),
+  season: z.string().optional(),
+  brand: z.string().nullable().optional(),
+  confidence: z.coerce.number().optional(),
 });
+
+function normalizeToken(value: string | null | undefined): string {
+  return (value ?? "")
+    .toLowerCase()
+    .trim()
+    .replace(/[_\s]+/g, "-");
+}
+
+const COLOR_ALIASES: Record<string, (typeof COLORS)[number]> = {
+  gray: "grey",
+  "light-grey": "grey",
+  "light-gray": "grey",
+  "dark-grey": "charcoal",
+  "dark-gray": "charcoal",
+  graphite: "charcoal",
+  "washed-blue": "denim-blue",
+  denim: "denim-blue",
+  "denim blue": "denim-blue",
+  sky: "light-blue",
+  "sky-blue": "light-blue",
+  azure: "light-blue",
+  "cream-white": "cream",
+  ivory: "off-white",
+  ecru: "off-white",
+  "warm-white": "off-white",
+  sand: "stone",
+  greige: "taupe",
+  mushroom: "taupe",
+  beige: "beige",
+  camel: "camel",
+  caramel: "camel",
+  khaki: "khaki",
+  olive: "olive",
+  coffee: "coffee",
+  "coffee-with-milk": "coffee",
+  latte: "coffee",
+  cappuccino: "coffee",
+  mocha: "mocha",
+  chocolate: "brown",
+  maroon: "burgundy",
+  wine: "burgundy",
+};
+
+const PATTERN_ALIASES: Record<string, (typeof PATTERNS)[number]> = {
+  plain: "solid",
+  none: "solid",
+  check: "checkered",
+  checked: "checkered",
+  checks: "checkered",
+  tartan: "plaid",
+  gingham: "checkered",
+  dots: "polka-dot",
+  "polka-dots": "polka-dot",
+  logo: "graphic",
+  print: "graphic",
+};
+
+const FABRIC_ALIASES: Record<string, (typeof FABRICS)[number]> = {
+  jean: "denim",
+  jeans: "denim",
+  knitwear: "knit",
+  knitted: "knit",
+  jersey: "cotton",
+  viscose: "viscose",
+  rayon: "rayon",
+  elastane: "elastane",
+  lycra: "spandex",
+  acrylic: "acrylic",
+  polyamide: "polyamide",
+  fauxleather: "leather",
+  "faux-leather": "leather",
+};
+
+function enumValue<T extends readonly string[]>(
+  value: string | null | undefined,
+  allowed: T,
+  aliases: Record<string, T[number]>,
+  fallback: T[number],
+): T[number] {
+  const token = normalizeToken(value);
+  if ((allowed as readonly string[]).includes(token)) return token as T[number];
+  return aliases[token] ?? fallback;
+}
+
+function normalizeSeason(value: string | null | undefined): (typeof SEASONS)[number] {
+  const token = normalizeToken(value);
+  if ((SEASONS as readonly string[]).includes(token)) return token as (typeof SEASONS)[number];
+  if (token === "autumn") return "fall";
+  if (token === "year-round" || token === "all-season" || token === "all-seasons") return "all";
+  return "all";
+}
+
+function normalizeHex(value: string | null | undefined, fallback = FALLBACK_CLOTHING_ANALYSIS.colorHex): string {
+  return /^#[0-9A-Fa-f]{6}$/.test(value ?? "") ? value! : fallback;
+}
+
+function normalizeConfidence(value: number | undefined): number {
+  if (typeof value !== "number" || Number.isNaN(value)) return 0.45;
+  return Math.max(0, Math.min(1, value));
+}
+
+function normalizeFormality(value: number | undefined): number {
+  if (typeof value !== "number" || Number.isNaN(value)) return 3;
+  return Math.max(1, Math.min(5, Math.round(value)));
+}
+
+export function normalizeClothingAnalysisPayload(payload: unknown): ClothingAnalysis {
+  const raw = RawClothingAnalysisSchema.parse(payload);
+  const rawCategory = raw.category ?? null;
+  const rawColorPrimary = raw.colorPrimary ?? null;
+  const rawPattern = raw.pattern ?? null;
+  const rawFabric = raw.fabric ?? null;
+  const rawSeason = raw.season ?? null;
+
+  const category = normalizeCategory(raw.category);
+  const colorPrimary = enumValue(raw.colorPrimary, COLORS, COLOR_ALIASES, "unknown");
+  const pattern = enumValue(raw.pattern, PATTERNS, PATTERN_ALIASES, "unknown");
+  const fabric = enumValue(raw.fabric, FABRICS, FABRIC_ALIASES, "unknown");
+  const season = normalizeSeason(raw.season);
+  const reasons: string[] = [];
+
+  if (raw.category && category === "tops" && normalizeToken(raw.category) !== "tops") {
+    reasons.push("category_normalized");
+  }
+  if (raw.colorPrimary && colorPrimary === "unknown") {
+    reasons.push("unknown_color");
+  }
+  if (raw.pattern && pattern === "unknown") {
+    reasons.push("unknown_pattern");
+  }
+  if (raw.fabric && fabric === "unknown") {
+    reasons.push("unknown_fabric");
+  }
+
+  return {
+    category,
+    subcategory: raw.subcategory?.trim() || FALLBACK_CLOTHING_ANALYSIS.subcategory,
+    colorPrimary,
+    colorHex: normalizeHex(raw.colorHex, colorPrimary === "unknown" ? "#808080" : FALLBACK_CLOTHING_ANALYSIS.colorHex),
+    pattern,
+    fabric,
+    formalityLevel: normalizeFormality(raw.formalityLevel),
+    season,
+    brand: raw.brand?.trim() || null,
+    confidence: normalizeConfidence(raw.confidence),
+    needsReview: reasons.length > 0,
+    reviewReasons: reasons,
+    analysisStatus: reasons.length > 0 ? "partial" : "ok",
+    rawCategory,
+    rawColorPrimary,
+    rawPattern,
+    rawFabric,
+    rawSeason,
+  };
+}
 
 const ANALYSIS_PROMPT = `Analyze this clothing item photo. Return ONLY valid JSON with these exact fields:
 {
@@ -145,6 +311,28 @@ function outerwearSeason(subcategory: string): "fall" | "winter" {
   return "fall";
 }
 
+function reviewSeverityFor(reasons: string[]): ClothingAnalysis["reviewSeverity"] {
+  if (reasons.includes("analysis_failed") || reasons.includes("analysis_unavailable")) {
+    return "critical";
+  }
+  if (
+    reasons.some((reason) =>
+      [
+        "outerwear_summer_conflict",
+        "cold_fabric_summer_conflict",
+        "light_fabric_winter_conflict",
+        "open_footwear_winter_conflict",
+        "swimwear_winter_conflict",
+        "unknown_color",
+        "unknown_fabric",
+      ].includes(reason),
+    )
+  ) {
+    return "suggestion";
+  }
+  return reasons.length > 0 ? "suggestion" : "ok";
+}
+
 export function reviewClothingAnalysis(
   input: ReviewableClothingAnalysis,
   options: { trustManualReview?: boolean } = {},
@@ -196,6 +384,7 @@ export function reviewClothingAnalysis(
   }
 
   const needsReview = reasons.length > 0;
+  const reviewSeverity = reviewSeverityFor(reasons);
   const item = {
     ...input,
     category,
@@ -203,6 +392,8 @@ export function reviewClothingAnalysis(
     confidence,
     needsReview,
     reviewReasons: reasons,
+    reviewSeverity,
+    analysisStatus: input.analysisStatus ?? (needsReview ? "partial" : "ok"),
   };
 
   return { item, needsReview, reviewReasons: reasons };
@@ -216,17 +407,30 @@ export async function analyzeClothingImage(
     throw new Error("Gemini API key is not configured");
   }
 
-  recordGeminiUsage("clothing-analysis");
-  const text = await generateGeminiText({
-    contents: geminiTextAndImageContent(ANALYSIS_PROMPT, imageBase64, mimeType),
-    config: geminiJsonConfig({
-      temperature: 0.1,
-    }),
-    timeoutMs: GEMINI_TIMEOUT_MS,
-    timeoutMessage: "Gemini clothing analysis timed out",
-  });
+  let lastError: unknown;
+  const attempts = Math.max(1, GEMINI_CLOTHING_ATTEMPTS);
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      recordGeminiUsage("clothing-analysis");
+      const text = await generateGeminiText({
+        model: GEMINI_CLOTHING_MODEL,
+        contents: geminiTextAndImageContent(ANALYSIS_PROMPT, imageBase64, mimeType),
+        config: geminiJsonConfig({
+          temperature: 0.1,
+        }),
+        timeoutMs: GEMINI_TIMEOUT_MS,
+        timeoutMessage: "Gemini clothing analysis timed out",
+      });
 
-  return reviewClothingAnalysis(ClothingAnalysisSchema.parse(parseGeminiJson(text))).item;
+      return reviewClothingAnalysis(normalizeClothingAnalysisPayload(parseGeminiJson(text))).item;
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) {
+        await new Promise((resolve) => setTimeout(resolve, 350 * attempt));
+      }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Gemini clothing analysis failed");
 }
 
 export { CLOTHING_CATEGORIES, COLORS, PATTERNS, FABRICS, SEASONS };

@@ -46,6 +46,8 @@ type ReviewTags = {
   analysisReliable?: boolean;
   needsReview?: boolean;
   reviewReasons?: string[];
+  reviewSeverity?: "ok" | "suggestion" | "critical";
+  analysisStatus?: "ok" | "partial" | "failed";
   analysisVersion?: string;
   humanReviewed?: boolean;
 };
@@ -67,6 +69,8 @@ function reviewTagsFor(
     analysisReliable: analysisAvailable && !needsReview,
     needsReview,
     reviewReasons,
+    reviewSeverity: analysis.reviewSeverity ?? (analysisAvailable ? "ok" : "critical"),
+    analysisStatus: analysisAvailable ? analysis.analysisStatus ?? (needsReview ? "partial" : "ok") : "failed",
     analysisVersion: ANALYSIS_VERSION,
   };
 }
@@ -82,7 +86,7 @@ function decorateWardrobeItem<T extends { category: string; confidence: number; 
   const tags = tagsRecord(item.tags);
   const reviewReasons = uniqueStrings([
     ...(Array.isArray(tags.reviewReasons) ? tags.reviewReasons : []),
-    ...(item.confidence < 0.7 && tags.humanReviewed !== true ? ["low_confidence"] : []),
+    ...(item.confidence < 0.5 && tags.humanReviewed !== true ? ["low_confidence"] : []),
   ]);
   const needsReview = tags.needsReview === true || reviewReasons.length > 0;
   return {
@@ -90,6 +94,8 @@ function decorateWardrobeItem<T extends { category: string; confidence: number; 
     category: normalizeCategory(item.category),
     needsReview,
     reviewReasons,
+    reviewSeverity: tags.reviewSeverity ?? (needsReview ? "suggestion" : "ok"),
+    analysisStatus: tags.analysisStatus ?? (needsReview ? "partial" : "ok"),
     analysisReliable: tags.analysisReliable === true && !needsReview,
   };
 }
@@ -188,14 +194,14 @@ importRouter.post("/ingest", requirePaidOrTrial, geminiLimiter, async (req: Requ
     const { imageUrl, thumbnailUrl } = await uploadImage(image, mimeType);
     const uploadMs = Date.now() - tUpload0;
 
-    // 2. Analyze (Gemini with safe fallback)
+    // 2. Analyze (Gemini with honest failure state; never invent fake black/tops data)
     const tGemini0 = Date.now();
     let tags;
     let analysisReliable = true;
     try {
       tags = await analyzeClothingImage(image, mimeType);
     } catch (err) {
-      console.error("[ingest] Gemini analysis failed, using fallback:", err);
+      console.error("[ingest] Gemini analysis failed:", err);
       analysisReliable = false;
       tags = FALLBACK_CLOTHING_ANALYSIS;
     }
@@ -276,6 +282,8 @@ importRouter.post("/ingest", requirePaidOrTrial, geminiLimiter, async (req: Requ
       analysisReliable: reviewTags.analysisReliable === true,
       needsReview: reviewTags.needsReview === true,
       reviewReasons: reviewTags.reviewReasons ?? [],
+      reviewSeverity: reviewTags.reviewSeverity ?? "ok",
+      analysisStatus: reviewTags.analysisStatus ?? "ok",
       fileName,
       createdAt,
       timings: { uploadMs, geminiMs, dbMs, totalMs },
@@ -324,6 +332,8 @@ importRouter.post("/analyze", requirePaidOrTrial, geminiLimiter, async (req: Req
       analysisReliable: reviewTags.analysisReliable === true,
       needsReview: reviewTags.needsReview === true,
       reviewReasons: reviewTags.reviewReasons ?? [],
+      reviewSeverity: reviewTags.reviewSeverity ?? "ok",
+      analysisStatus: reviewTags.analysisStatus ?? "ok",
       fileName,
     });
   } catch (err) {
