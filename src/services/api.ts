@@ -232,10 +232,14 @@ export function analyzeImage(image: string, mimeType: string, fileName: string) 
       confidence: number;
       needsReview?: boolean;
       reviewReasons?: string[];
+      reviewSeverity?: "ok" | "suggestion" | "critical";
+      analysisStatus?: "ok" | "partial" | "failed";
     };
     analysisReliable?: boolean;
     needsReview?: boolean;
     reviewReasons?: string[];
+    reviewSeverity?: "ok" | "suggestion" | "critical";
+    analysisStatus?: "ok" | "partial" | "failed";
     fileName: string;
   }>("/import/analyze", {
     method: "POST",
@@ -260,10 +264,14 @@ export interface IngestResponse {
     confidence: number;
     needsReview?: boolean;
     reviewReasons?: string[];
+    reviewSeverity?: "ok" | "suggestion" | "critical";
+    analysisStatus?: "ok" | "partial" | "failed";
   };
   analysisReliable?: boolean;
   needsReview?: boolean;
   reviewReasons?: string[];
+  reviewSeverity?: "ok" | "suggestion" | "critical";
+  analysisStatus?: "ok" | "partial" | "failed";
   fileName: string;
   createdAt: string;
   timings?: { uploadMs: number; geminiMs: number; dbMs: number; totalMs: number };
@@ -559,6 +567,8 @@ export interface WardrobeItem {
   sharedWithFamily?: boolean;
   needsReview?: boolean;
   reviewReasons?: string[];
+  reviewSeverity?: "ok" | "suggestion" | "critical";
+  analysisStatus?: "ok" | "partial" | "failed";
   analysisReliable?: boolean;
   createdAt: string;
 }

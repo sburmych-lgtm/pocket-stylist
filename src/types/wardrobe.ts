@@ -11,6 +11,8 @@ export interface WardrobeItemTag {
   confidence: number;
   needsReview?: boolean;
   reviewReasons?: string[];
+  reviewSeverity?: "ok" | "suggestion" | "critical";
+  analysisStatus?: "ok" | "partial" | "failed";
 }
 
 export interface ImportItem {
@@ -43,6 +45,8 @@ export interface WardrobeItem {
   sharedWithFamily?: boolean;
   needsReview?: boolean;
   reviewReasons?: string[];
+  reviewSeverity?: "ok" | "suggestion" | "critical";
+  analysisStatus?: "ok" | "partial" | "failed";
   analysisReliable?: boolean;
   createdAt: string;
 }

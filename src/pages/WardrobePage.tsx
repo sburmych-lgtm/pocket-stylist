@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { AlertTriangle, Plus, Search, Trash2, X } from "lucide-react";
 import { wardrobeApi, type WardrobeItem } from "../services/api";
-import { useNavigate } from "react-router-dom";
-import { Plus, Search, Pencil, Check, X, Trash2, AlertTriangle, Users } from "lucide-react";
 import { useI18n } from "../i18n";
 import { WARDROBE_CATEGORIES, normalizeCategory } from "../shared/wardrobe-categories";
 
@@ -11,13 +11,13 @@ const CATEGORY_ICONS: Record<string, string> = {
   bottoms: "👖",
   jeans: "👖",
   pants: "👖",
-  skirts: "🩳",
+  skirts: "▱",
   dresses: "👗",
   outerwear: "🧥",
   footwear: "👟",
-  swimwear: "🩱",
-  pajamas: "🛌",
-  underwear: "🩲",
+  swimwear: "▱",
+  pajamas: "🌙",
+  underwear: "▱",
   accessories: "👜",
   sportswear: "🏃",
   suits: "🤵",
@@ -25,179 +25,191 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 const CATEGORY_KEYS = ["all", ...WARDROBE_CATEGORIES] as const;
 
-function ItemCard({
-  item,
-  onDelete,
-  onCategoryChange,
-  onSharingChange,
-}: {
-  item: WardrobeItem;
-  onDelete: (id: string) => Promise<void> | void;
-  onCategoryChange: (id: string, newCategory: string) => Promise<void>;
-  onSharingChange: (id: string, shared: boolean) => Promise<void>;
-}) {
-  const { t } = useI18n();
-  const [showDetails, setShowDetails] = useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [draftCategory, setDraftCategory] = useState(item.category);
-  const [saving, setSaving] = useState(false);
-  const needsReview = item.needsReview === true;
+const COLOR_OPTIONS = [
+  "unknown",
+  "black",
+  "white",
+  "off-white",
+  "cream",
+  "grey",
+  "charcoal",
+  "navy",
+  "blue",
+  "light-blue",
+  "denim-blue",
+  "beige",
+  "camel",
+  "taupe",
+  "coffee",
+  "mocha",
+  "stone",
+  "khaki",
+  "olive",
+  "brown",
+  "tan",
+  "red",
+  "burgundy",
+  "pink",
+  "green",
+  "yellow",
+  "orange",
+  "purple",
+  "lavender",
+  "gold",
+  "silver",
+  "multicolor",
+];
 
-  // Close the confirm modal on Escape — standard modal UX.
-  useEffect(() => {
-    if (!deleteModalOpen) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setDeleteModalOpen(false);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [deleteModalOpen]);
+const PATTERN_OPTIONS = [
+  "unknown",
+  "solid",
+  "striped",
+  "plaid",
+  "checkered",
+  "houndstooth",
+  "floral",
+  "polka-dot",
+  "geometric",
+  "animal-print",
+  "abstract",
+  "paisley",
+  "camouflage",
+  "graphic",
+];
 
-  const handleDeleteConfirm = useCallback(async () => {
-    setDeleting(true);
-    try {
-      await onDelete(item.id);
-      // Parent already removes the item; the card unmounts naturally.
-    } finally {
-      setDeleting(false);
-    }
-  }, [item.id, onDelete]);
+const FABRIC_OPTIONS = [
+  "unknown",
+  "cotton",
+  "polyester",
+  "silk",
+  "wool",
+  "denim",
+  "leather",
+  "linen",
+  "cashmere",
+  "nylon",
+  "fleece",
+  "velvet",
+  "suede",
+  "knit",
+  "chiffon",
+  "viscose",
+  "rayon",
+  "spandex",
+  "elastane",
+  "acrylic",
+  "polyamide",
+];
 
-  const handleSaveCategory = async () => {
-    if (draftCategory === item.category) {
-      setEditing(false);
-      return;
-    }
-    setSaving(true);
-    try {
-      await onCategoryChange(item.id, draftCategory);
-      setEditing(false);
-    } finally {
-      setSaving(false);
-    }
+const SEASON_OPTIONS = ["spring", "summer", "fall", "winter", "all"] as const;
+
+type WardrobeDraft = {
+  category: string;
+  subcategory: string;
+  colorPrimary: string;
+  colorHex: string;
+  pattern: string;
+  fabric: string;
+  formalityLevel: number;
+  season: "spring" | "summer" | "fall" | "winter" | "all";
+  brand: string;
+  sharedWithFamily: boolean;
+};
+
+function draftFromItem(item: WardrobeItem): WardrobeDraft {
+  return {
+    category: item.category,
+    subcategory: item.subcategory ?? "",
+    colorPrimary: item.colorPrimary || "unknown",
+    colorHex: item.colorHex ?? "#808080",
+    pattern: item.pattern || "unknown",
+    fabric: item.fabric ?? "unknown",
+    formalityLevel: item.formalityLevel || 3,
+    season: (item.season as WardrobeDraft["season"]) || "all",
+    brand: item.brand ?? "",
+    sharedWithFamily: item.sharedWithFamily === true,
   };
+}
+
+function statusLabel(item: WardrobeItem): { tone: "ok" | "suggestion" | "critical"; label: string } {
+  if (item.analysisStatus === "failed" || item.reviewSeverity === "critical") {
+    return { tone: "critical", label: "Не розпізнано" };
+  }
+  if (item.needsReview) {
+    return { tone: "suggestion", label: "Уточнити" };
+  }
+  return { tone: "ok", label: "OK" };
+}
+
+function inputClass() {
+  return "w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] px-3 py-3 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--accent)]/45 focus:ring-2 focus:ring-[var(--accent)]/15";
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
+        {label}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function ItemCard({ item, onOpen }: { item: WardrobeItem; onOpen: (item: WardrobeItem) => void }) {
+  const { t } = useI18n();
+  const status = statusLabel(item);
 
   return (
-    <div
+    <button
+      type="button"
+      onClick={() => onOpen(item)}
       className={[
-        "group relative overflow-hidden rounded-xl border bg-[#1a1a2e] shadow-lg shadow-black/20 transition-[border-color,box-shadow] duration-300 hover:shadow-xl hover:shadow-black/30",
-        needsReview
+        "group relative overflow-hidden rounded-2xl border bg-[#1a1a2e] text-left shadow-lg shadow-black/20 transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/30 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40",
+        status.tone !== "ok"
           ? "border-amber-300/55 shadow-amber-950/20 hover:border-amber-300/75"
           : "border-white/[0.06] hover:border-white/[0.12]",
       ].join(" ")}
     >
-      <button
-        type="button"
-        onClick={() => setShowDetails(!showDetails)}
-        className="block aspect-[3/4] w-full overflow-hidden bg-white/[0.03]"
-      >
+      <div className="relative aspect-[3/4] w-full overflow-hidden bg-white/[0.03]">
         <img
           src={item.thumbnailUrl ?? item.imageUrl}
           alt={item.category}
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
         />
-      </button>
-
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          void onSharingChange(item.id, !item.sharedWithFamily);
-        }}
-        aria-pressed={item.sharedWithFamily === true}
-        aria-label={
-          item.sharedWithFamily
-            ? t("wardrobe.stopFamilySharing")
-            : t("wardrobe.shareWithFamily")
-        }
-        title={
-          item.sharedWithFamily
-            ? t("wardrobe.stopFamilySharing")
-            : t("wardrobe.shareWithFamily")
-        }
-        className={`absolute right-1.5 top-1.5 z-10 flex h-9 w-9 items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition-all ${
-          item.sharedWithFamily
-            ? "border-emerald-300/50 bg-emerald-500/90 text-white"
-            : "border-white/30 bg-black/60 text-white"
-        }`}
-      >
-        <Users size={17} />
-      </button>
-
-      {needsReview && (
-        <div
-          className="absolute left-11 top-1.5 z-10 flex max-w-[calc(100%-5.8rem)] items-center gap-1 rounded-full border border-amber-300/35 bg-amber-400/90 px-2 py-1 text-[10px] font-semibold text-[#1b1304] shadow-lg"
-          title={t("tagEditor.lowConfidenceHint")}
-        >
-          <AlertTriangle size={12} />
-          <span className="truncate">{t("tagEditor.needsReview")}</span>
-        </div>
-      )}
-
-      <div className="p-2">
-        {editing ? (
-          <div className="flex items-center gap-1">
-            <select
-              value={draftCategory}
-              onChange={(e) => setDraftCategory(e.target.value)}
-              disabled={saving}
-              className="flex-1 rounded bg-white/[0.08] px-1.5 py-0.5 text-xs text-[#f0ece4] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/40 disabled:opacity-50"
-            >
-              {WARDROBE_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat} className="bg-[#1a1a2e]">
-                  {CATEGORY_ICONS[cat] ?? "·"} {t(`categories.${cat}`)}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={handleSaveCategory}
-              disabled={saving}
-              aria-label={t("common.save")}
-              className="rounded p-1 text-[var(--success)] hover:bg-white/10 disabled:opacity-50"
-            >
-              <Check size={12} />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setDraftCategory(item.category);
-                setEditing(false);
-              }}
-              disabled={saving}
-              aria-label={t("common.cancel")}
-              className="rounded p-1 text-[var(--text-muted)] hover:bg-white/10 disabled:opacity-50"
-            >
-              <X size={12} />
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5">
-            {item.colorHex && (
-              <span
-                className="inline-block h-3 w-3 rounded-full border border-white/10"
-                style={{ backgroundColor: item.colorHex }}
-              />
-            )}
-            <span className="truncate text-xs font-medium text-[#f0ece4]/80">
-              {item.subcategory ?? t(`categories.${item.category}`)}
-            </span>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setEditing(true);
-              }}
-              aria-label={t("wardrobe.editCategory")}
-              className="ml-auto rounded p-1 text-[#f0ece4]/60 opacity-100 transition-all hover:bg-white/10 hover:text-[var(--accent)] sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
-            >
-              <Pencil size={10} />
-            </button>
+        {status.tone !== "ok" && (
+          <div
+            className={[
+              "absolute left-2 top-2 z-10 flex max-w-[calc(100%-1rem)] items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-semibold shadow-lg backdrop-blur-md",
+              status.tone === "critical"
+                ? "border-red-300/45 bg-red-500/90 text-white"
+                : "border-amber-300/45 bg-amber-400/90 text-[#1b1304]",
+            ].join(" ")}
+          >
+            <AlertTriangle size={12} />
+            <span className="truncate">{status.label}</span>
           </div>
         )}
+        {item.sharedWithFamily && (
+          <div className="absolute right-2 top-2 rounded-full border border-emerald-300/35 bg-emerald-500/85 px-2 py-1 text-[10px] font-semibold text-white shadow-lg">
+            Family
+          </div>
+        )}
+      </div>
+
+      <div className="p-2">
+        <div className="flex items-center gap-1.5">
+          {item.colorHex && (
+            <span
+              className="inline-block h-3 w-3 rounded-full border border-white/10"
+              style={{ backgroundColor: item.colorHex }}
+            />
+          )}
+          <span className="truncate text-xs font-medium text-[#f0ece4]/85">
+            {item.subcategory ?? t(`categories.${item.category}`)}
+          </span>
+        </div>
         <div className="mt-0.5 flex items-center gap-1 text-[10px] text-[#f0ece4]/35">
           <span>{item.colorPrimary}</span>
           <span>·</span>
@@ -210,137 +222,309 @@ function ItemCard({
           )}
         </div>
       </div>
+    </button>
+  );
+}
 
-      {/* Always-visible delete affordance. On mobile there's no hover, so the
-          old opacity-0 group-hover:opacity-100 pattern made delete invisible
-          there. Now it's a small but tappable trash icon in the corner. */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          setDeleteModalOpen(true);
-        }}
-        aria-label={t("wardrobe.delete")}
-        className="absolute left-1.5 top-1.5 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/30 bg-red-500/90 text-white shadow-lg backdrop-blur-md transition-all hover:bg-red-600 hover:scale-110 focus-visible:ring-2 focus-visible:ring-red-500/60"
-      >
-        <Trash2 size={18} strokeWidth={2.5} />
-      </button>
+function WardrobeItemEditor({
+  item,
+  onClose,
+  onSave,
+  onDelete,
+}: {
+  item: WardrobeItem;
+  onClose: () => void;
+  onSave: (itemId: string, draft: WardrobeDraft) => Promise<void>;
+  onDelete: (itemId: string) => Promise<void> | void;
+}) {
+  const { t } = useI18n();
+  const [draft, setDraft] = useState(() => draftFromItem(item));
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const status = statusLabel(item);
 
-      {deleteModalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={`delete-title-${item.id}`}
-          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 px-4 py-6 backdrop-blur-sm sm:items-center"
-          onClick={() => !deleting && setDeleteModalOpen(false)}
-        >
-          <div
-            className="w-full max-w-sm rounded-3xl border border-white/[0.06] bg-[var(--bg-surface)] p-5 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--danger)]/12 text-[var(--danger)]">
-                <AlertTriangle size={18} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3
-                  id={`delete-title-${item.id}`}
-                  className="text-sm font-semibold text-[var(--text-primary)]"
-                >
-                  {t("wardrobe.deleteTitle")}
-                </h3>
-                <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
-                  {t("wardrobe.deleteBody")}
-                </p>
-              </div>
-            </div>
+  useEffect(() => setDraft(draftFromItem(item)), [item]);
 
-            <div className="my-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <img
-                src={item.thumbnailUrl ?? item.imageUrl}
-                alt=""
-                className="h-14 w-12 shrink-0 rounded-xl object-cover"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-[var(--text-primary)]">
-                  {item.subcategory ?? t(`categories.${item.category}`)}
-                </p>
-                <p className="text-[11px] text-[var(--text-muted)]">
-                  {item.colorPrimary} · {item.pattern}
-                </p>
-              </div>
-            </div>
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape" && !saving && !deleting) onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [deleting, onClose, saving]);
 
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setDeleteModalOpen(false)}
-                disabled={deleting}
-                className="ghost-action flex-1 rounded-full px-4 py-2.5 text-xs font-semibold disabled:opacity-50"
-              >
-                {t("common.cancel")}
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteConfirm}
-                disabled={deleting}
-                className="flex-1 rounded-full bg-[var(--danger)] px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[var(--danger)]/90 disabled:opacity-50"
-              >
-                {deleting ? t("import.saving") : t("wardrobe.delete")}
-              </button>
-            </div>
+  const updateDraft = <K extends keyof WardrobeDraft>(key: K, value: WardrobeDraft[K]) => {
+    setDraft((current) => ({ ...current, [key]: value }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave(item.id, draft);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await onDelete(item.id);
+      onClose();
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[80] bg-[#070811]/96 backdrop-blur-xl">
+      <div className="mx-auto flex h-full max-w-5xl flex-col">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.08] bg-[#070811]/92 px-4 py-3 backdrop-blur-xl">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--text-muted)]">Гардероб</p>
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Редагування речі</h2>
           </div>
-        </div>
-      )}
-
-      {showDetails && (
-        <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/90 via-black/50 to-transparent p-3">
           <button
             type="button"
-            onClick={() => setShowDetails(false)}
-            className="absolute right-2 top-2 text-white/60 hover:text-white"
+            onClick={onClose}
+            disabled={saving || deleting}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[var(--text-primary)] disabled:opacity-50"
+            aria-label="Закрити"
           >
-            ✕
+            <X size={18} />
           </button>
-          <div className="space-y-1 text-xs text-white/90">
-            {needsReview && (
-              <p className="mb-2 rounded-xl border border-amber-300/30 bg-amber-300/12 p-2 text-amber-100">
-                <span className="font-semibold">{t("tagEditor.needsReview")}:</span>{" "}
-                {t("tagEditor.lowConfidenceHint")}
-              </p>
-            )}
-            <p>
-              <span className="font-semibold text-[var(--accent)]">{t("wardrobe.category")}:</span>{" "}
-              {t(`categories.${item.category}`)}
-              {item.subcategory && ` / ${item.subcategory}`}
-            </p>
-            <p>
-              <span className="font-semibold text-[var(--accent)]">{t("wardrobe.color")}:</span> {item.colorPrimary}
-            </p>
-            <p>
-              <span className="font-semibold text-[var(--accent)]">{t("wardrobe.pattern")}:</span> {item.pattern}
-            </p>
-            {item.fabric && (
-              <p>
-                <span className="font-semibold text-[var(--accent)]">{t("wardrobe.fabric")}:</span> {item.fabric}
-              </p>
-            )}
-            <p>
-              <span className="font-semibold text-[var(--accent)]">{t("wardrobe.season")}:</span>{" "}
-              {t(`seasons.${item.season}`)}
-            </p>
-            <p>
-              <span className="font-semibold text-[var(--accent)]">{t("wardrobe.formality")}:</span>{" "}
-              {"⬛".repeat(item.formalityLevel)}
-              {"⬜".repeat(5 - item.formalityLevel)}
-            </p>
-            <p>
-              <span className="font-semibold text-[var(--accent)]">{t("wardrobe.timesWorn")}:</span> {item.timesWorn}{" "}
-              {t("common.times")}
-            </p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-5 pb-28">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <div className="space-y-3">
+              <div className="overflow-hidden rounded-[2rem] border border-white/[0.08] bg-white/[0.03]">
+                <img
+                  src={item.imageUrl}
+                  alt={item.subcategory ?? item.category}
+                  className="max-h-[70vh] w-full object-contain"
+                />
+              </div>
+              {status.tone !== "ok" && (
+                <div
+                  className={[
+                    "rounded-3xl border p-4 text-sm leading-6",
+                    status.tone === "critical"
+                      ? "border-red-300/25 bg-red-500/10 text-red-100"
+                      : "border-amber-300/25 bg-amber-300/10 text-amber-100",
+                  ].join(" ")}
+                >
+                  <div className="mb-1 flex items-center gap-2 font-semibold">
+                    <AlertTriangle size={16} />
+                    {status.label}
+                  </div>
+                  <p className="text-xs opacity-85">
+                    {item.analysisStatus === "failed"
+                      ? "AI не зміг надійно розпізнати фото. Дані не вигадані — перевірте поля нижче й збережіть."
+                      : "AI позначив частину атрибутів як сумнівні. Якщо все правильно — просто натисніть “Зберегти”."}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-4 rounded-[2rem] border border-white/[0.08] bg-white/[0.035] p-4">
+              <Field label="Назва / тип речі">
+                <input
+                  value={draft.subcategory}
+                  onChange={(event) => updateDraft("subcategory", event.target.value)}
+                  className={inputClass()}
+                  placeholder="Напр. блейзер, сорочка, чінос"
+                />
+              </Field>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label={t("wardrobe.category")}>
+                  <select
+                    value={draft.category}
+                    onChange={(event) => updateDraft("category", event.target.value)}
+                    className={inputClass()}
+                  >
+                    {WARDROBE_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat} className="bg-[#11131f]">
+                        {t(`categories.${cat}`)}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label={t("wardrobe.color")}>
+                  <select
+                    value={draft.colorPrimary}
+                    onChange={(event) => updateDraft("colorPrimary", event.target.value)}
+                    className={inputClass()}
+                  >
+                    {COLOR_OPTIONS.map((color) => (
+                      <option key={color} value={color} className="bg-[#11131f]">
+                        {color}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-[0.8fr_1.2fr]">
+                <Field label="Колір у фото">
+                  <input
+                    type="color"
+                    value={draft.colorHex}
+                    onChange={(event) => updateDraft("colorHex", event.target.value)}
+                    className="h-12 w-full rounded-2xl border border-white/[0.08] bg-white/[0.05] p-1"
+                  />
+                </Field>
+
+                <Field label={t("wardrobe.pattern")}>
+                  <select
+                    value={draft.pattern}
+                    onChange={(event) => updateDraft("pattern", event.target.value)}
+                    className={inputClass()}
+                  >
+                    {PATTERN_OPTIONS.map((pattern) => (
+                      <option key={pattern} value={pattern} className="bg-[#11131f]">
+                        {pattern}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label={t("wardrobe.fabric")}>
+                  <select
+                    value={draft.fabric}
+                    onChange={(event) => updateDraft("fabric", event.target.value)}
+                    className={inputClass()}
+                  >
+                    {FABRIC_OPTIONS.map((fabric) => (
+                      <option key={fabric} value={fabric} className="bg-[#11131f]">
+                        {fabric}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label={t("wardrobe.season")}>
+                  <select
+                    value={draft.season}
+                    onChange={(event) => updateDraft("season", event.target.value as WardrobeDraft["season"])}
+                    className={inputClass()}
+                  >
+                    {SEASON_OPTIONS.map((season) => (
+                      <option key={season} value={season} className="bg-[#11131f]">
+                        {t(`seasons.${season}`)}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+
+              <Field label={t("wardrobe.formality")}>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((level) => (
+                    <button
+                      type="button"
+                      key={level}
+                      onClick={() => updateDraft("formalityLevel", level)}
+                      className={`h-11 flex-1 rounded-2xl border text-sm font-semibold transition ${
+                        draft.formalityLevel >= level
+                          ? "border-[var(--accent)]/45 bg-[var(--accent)] text-[#090b12]"
+                          : "border-white/[0.08] bg-white/[0.04] text-[var(--text-secondary)]"
+                      }`}
+                    >
+                      {level}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+
+              <Field label="Бренд">
+                <input
+                  value={draft.brand}
+                  onChange={(event) => updateDraft("brand", event.target.value)}
+                  className={inputClass()}
+                  placeholder="Якщо видно або хочете вказати вручну"
+                />
+              </Field>
+
+              <label className="flex items-start gap-3 rounded-3xl border border-white/[0.08] bg-white/[0.04] p-4">
+                <input
+                  type="checkbox"
+                  checked={draft.sharedWithFamily}
+                  onChange={(event) => updateDraft("sharedWithFamily", event.target.checked)}
+                  className="mt-1 h-5 w-5 accent-[var(--accent)]"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-[var(--text-primary)]">
+                    Поділитися з родиною
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-[var(--text-secondary)]">
+                    Якщо увімкнено, ця річ може потрапляти в сімейні підбори образів.
+                  </span>
+                </span>
+              </label>
+            </div>
           </div>
         </div>
-      )}
+
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-white/[0.08] bg-[#070811]/95 px-4 py-3 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-5xl gap-2">
+            {confirmDelete ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  disabled={deleting || saving}
+                  className="ghost-action flex-1 rounded-full px-4 py-3 text-xs font-semibold disabled:opacity-50"
+                >
+                  {t("common.cancel")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting || saving}
+                  className="flex-1 rounded-full bg-[var(--danger)] px-4 py-3 text-xs font-semibold text-white disabled:opacity-50"
+                >
+                  {deleting ? t("import.saving") : "Так, видалити"}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  disabled={saving || deleting}
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-red-400/30 bg-red-500/10 text-red-200 disabled:opacity-50"
+                  aria-label={t("wardrobe.delete")}
+                >
+                  <Trash2 size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={saving || deleting}
+                  className="ghost-action flex-1 rounded-full px-4 py-3 text-xs font-semibold disabled:opacity-50"
+                >
+                  {t("common.cancel")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving || deleting}
+                  className="gold-btn flex-[1.4] px-4 py-3 text-xs disabled:opacity-50"
+                >
+                  {saving ? t("import.saving") : t("common.save")}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -375,15 +559,15 @@ export function WardrobePage() {
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const loadItems = useCallback(async () => {
     try {
       const data = await wardrobeApi.getAll();
-      // Normalize legacy values defensively (server already does, but in case
-      // an older row slips through a non-canonical name, the UI should still
-      // route correctly).
       setItems(data.map((it) => ({ ...it, category: normalizeCategory(it.category) })));
+      setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("common.error"));
     } finally {
@@ -392,8 +576,30 @@ export function WardrobePage() {
   }, [t]);
 
   useEffect(() => {
-    loadItems();
+    void loadItems();
   }, [loadItems]);
+
+  useEffect(() => {
+    const itemId = searchParams.get("item");
+    if (itemId) setSelectedItemId(itemId);
+  }, [searchParams]);
+
+  const closeEditor = useCallback(() => {
+    setSelectedItemId(null);
+    const next = new URLSearchParams(searchParams);
+    next.delete("item");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const openEditor = useCallback(
+    (item: WardrobeItem) => {
+      setSelectedItemId(item.id);
+      const next = new URLSearchParams(searchParams);
+      next.set("item", item.id);
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
 
   const handleDelete = useCallback(
     async (itemId: string) => {
@@ -402,65 +608,97 @@ export function WardrobePage() {
         setItems((prev) => prev.filter((i) => i.id !== itemId));
       } catch (e) {
         setError(e instanceof Error ? e.message : t("common.error"));
+        throw e;
       }
     },
     [t],
   );
 
-  const handleCategoryChange = useCallback(
-    async (itemId: string, newCategory: string) => {
-      // Optimistic update
+  const handleSave = useCallback(
+    async (itemId: string, draft: WardrobeDraft) => {
       const previous = items;
-      setItems((prev) =>
-        prev.map((i) => (i.id === itemId ? { ...i, category: newCategory } : i)),
+      const optimisticPatch = {
+        category: normalizeCategory(draft.category),
+        subcategory: draft.subcategory.trim() || null,
+        colorPrimary: draft.colorPrimary,
+        colorHex: draft.colorHex || null,
+        pattern: draft.pattern,
+        fabric: draft.fabric.trim() || null,
+        formalityLevel: draft.formalityLevel,
+        season: draft.season,
+        brand: draft.brand.trim() || null,
+        sharedWithFamily: draft.sharedWithFamily,
+        needsReview: false,
+        reviewReasons: [],
+        reviewSeverity: "ok" as const,
+        analysisStatus: "ok" as const,
+        analysisReliable: true,
+      };
+
+      setItems((current) =>
+        current.map((item) =>
+          item.id === itemId ? { ...item, ...optimisticPatch } : item,
+        ),
       );
+
       try {
-        await wardrobeApi.updateItem(itemId, { category: newCategory });
+        const { item } = await wardrobeApi.updateItem(itemId, {
+          category: optimisticPatch.category,
+          subcategory: optimisticPatch.subcategory,
+          colorPrimary: optimisticPatch.colorPrimary,
+          colorHex: optimisticPatch.colorHex,
+          pattern: optimisticPatch.pattern,
+          fabric: optimisticPatch.fabric,
+          formalityLevel: optimisticPatch.formalityLevel,
+          season: optimisticPatch.season,
+          brand: optimisticPatch.brand,
+          sharedWithFamily: optimisticPatch.sharedWithFamily,
+        });
+        setItems((current) =>
+          current.map((existing) =>
+            existing.id === itemId ? { ...item, category: normalizeCategory(item.category) } : existing,
+          ),
+        );
       } catch (e) {
         setItems(previous);
         setError(e instanceof Error ? e.message : t("common.error"));
+        throw e;
       }
     },
     [items, t],
   );
 
-  const handleSharingChange = useCallback(
-    async (itemId: string, sharedWithFamily: boolean) => {
-      const previous = items;
-      setItems((current) =>
-        current.map((item) =>
-          item.id === itemId ? { ...item, sharedWithFamily } : item,
-        ),
-      );
-      try {
-        await wardrobeApi.updateItem(itemId, { sharedWithFamily });
-      } catch (cause) {
-        setItems(previous);
-        setError(cause instanceof Error ? cause.message : t("common.error"));
-      }
-    },
-    [items, t],
+  const filtered = useMemo(
+    () =>
+      items.filter((item) => {
+        if (activeCategory !== "all" && item.category !== activeCategory) return false;
+        if (searchQuery) {
+          const q = searchQuery.toLowerCase();
+          return (
+            item.category.toLowerCase().includes(q) ||
+            (item.subcategory?.toLowerCase().includes(q) ?? false) ||
+            item.colorPrimary.toLowerCase().includes(q) ||
+            (item.brand?.toLowerCase().includes(q) ?? false) ||
+            (item.fabric?.toLowerCase().includes(q) ?? false)
+          );
+        }
+        return true;
+      }),
+    [activeCategory, items, searchQuery],
   );
 
-  const filtered = items.filter((item) => {
-    if (activeCategory !== "all" && item.category !== activeCategory) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return (
-        item.category.toLowerCase().includes(q) ||
-        (item.subcategory?.toLowerCase().includes(q) ?? false) ||
-        item.colorPrimary.toLowerCase().includes(q) ||
-        (item.brand?.toLowerCase().includes(q) ?? false) ||
-        (item.fabric?.toLowerCase().includes(q) ?? false)
-      );
-    }
-    return true;
-  });
+  const categoryCounts = useMemo(
+    () =>
+      items.reduce<Record<string, number>>((acc, item) => {
+        acc[item.category] = (acc[item.category] ?? 0) + 1;
+        return acc;
+      }, {}),
+    [items],
+  );
 
-  const categoryCounts = items.reduce<Record<string, number>>((acc, item) => {
-    acc[item.category] = (acc[item.category] ?? 0) + 1;
-    return acc;
-  }, {});
+  const selectedItem = selectedItemId
+    ? items.find((item) => item.id === selectedItemId) ?? null
+    : null;
 
   if (loading) {
     return (
@@ -483,7 +721,7 @@ export function WardrobePage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-wide text-[var(--accent)]">
             {t("wardrobe.title")}
@@ -565,17 +803,20 @@ export function WardrobePage() {
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {filtered.map((item) => (
-                <ItemCard
-                  key={item.id}
-                  item={item}
-                  onDelete={handleDelete}
-                  onCategoryChange={handleCategoryChange}
-                  onSharingChange={handleSharingChange}
-                />
+                <ItemCard key={item.id} item={item} onOpen={openEditor} />
               ))}
             </div>
           )}
         </>
+      )}
+
+      {selectedItem && (
+        <WardrobeItemEditor
+          item={selectedItem}
+          onClose={closeEditor}
+          onSave={handleSave}
+          onDelete={handleDelete}
+        />
       )}
     </div>
   );

@@ -33,6 +33,8 @@ type Stage =
       confidence: number;
       needsReview: boolean;
       reviewReasons: string[];
+      reviewSeverity?: "ok" | "suggestion" | "critical";
+      analysisStatus?: "ok" | "partial" | "failed";
     }
   | {
       status: "error";
@@ -83,6 +85,8 @@ export function ImportPage() {
                   confidence: result.tags.confidence,
                   needsReview: result.needsReview === true || result.tags.needsReview === true,
                   reviewReasons: result.reviewReasons ?? result.tags.reviewReasons ?? [],
+                  reviewSeverity: result.reviewSeverity ?? result.tags.reviewSeverity,
+                  analysisStatus: result.analysisStatus ?? result.tags.analysisStatus,
                 }
               : it,
           ),
@@ -120,7 +124,7 @@ export function ImportPage() {
 
       setItems((prev) => [...seeds, ...prev]);
 
-      // Concurrency: 3 in-flight at a time. Each call to processFile is a
+      // Concurrency: 2 in-flight at a time. Each call to processFile is a
       // full direct-ingest round-trip (upload + Gemini + DB).
       const queue = [...seeds];
       const fileById = new Map(files.map((file, idx) => [seeds[idx].id, file]));
@@ -134,7 +138,7 @@ export function ImportPage() {
         }
       };
 
-      void Promise.all([worker(), worker(), worker()]);
+      void Promise.all([worker(), worker()]);
     },
     [processFile],
   );
@@ -274,19 +278,25 @@ export function ImportPage() {
                         }`}
                       >
                         {item.needsReview ? <AlertTriangle size={11} /> : <BadgeCheck size={11} />}
-                        {item.needsReview ? t("tagEditor.needsReview") : t("import.savedInline")}
+                        {item.analysisStatus === "failed"
+                          ? "Не вдалось розпізнати"
+                          : item.needsReview
+                            ? t("tagEditor.needsReview")
+                            : t("import.savedInline")}
                       </p>
                       <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
                         {t(`categories.${item.category}`)} · {item.colorPrimary}
                       </p>
                       {item.needsReview && (
                         <p className="mt-0.5 line-clamp-2 text-[11px] text-[var(--text-muted)]">
-                          {t("tagEditor.lowConfidenceHint")}
+                          {item.analysisStatus === "failed"
+                            ? "Відкрийте редактор речі й заповніть поля вручну."
+                            : t("tagEditor.lowConfidenceHint")}
                         </p>
                       )}
                       <button
                         type="button"
-                        onClick={() => navigate("/wardrobe")}
+                        onClick={() => navigate(`/wardrobe?item=${encodeURIComponent(item.itemId)}`)}
                         className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--accent)] hover:underline"
                       >
                         {t("import.editInWardrobe")}
