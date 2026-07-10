@@ -4,6 +4,7 @@ import { AlertTriangle, Plus, Search, Trash2, X } from "lucide-react";
 import { wardrobeApi, type WardrobeItem } from "../services/api";
 import { useI18n } from "../i18n";
 import { WARDROBE_CATEGORIES, normalizeCategory } from "../shared/wardrobe-categories";
+import { wardrobeCatalogImageUrl } from "../utils/cloudinaryImages";
 
 const CATEGORY_ICONS: Record<string, string> = {
   all: "👗",
@@ -159,6 +160,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 function ItemCard({ item, onOpen }: { item: WardrobeItem; onOpen: (item: WardrobeItem) => void }) {
   const { t } = useI18n();
   const status = statusLabel(item);
+  const catalogImageUrl = wardrobeCatalogImageUrl(item.imageUrl);
 
   return (
     <button
@@ -173,10 +175,14 @@ function ItemCard({ item, onOpen }: { item: WardrobeItem; onOpen: (item: Wardrob
     >
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-white/[0.03]">
         <img
-          src={item.thumbnailUrl ?? item.imageUrl}
+          src={catalogImageUrl}
           alt={item.category}
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          className="h-full w-full bg-[#f7f2e8] object-contain p-2 transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
+          onError={(event) => {
+            event.currentTarget.onerror = null;
+            event.currentTarget.src = item.thumbnailUrl ?? item.imageUrl;
+          }}
         />
         {status.tone !== "ok" && (
           <div
@@ -243,6 +249,7 @@ function WardrobeItemEditor({
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const status = statusLabel(item);
+  const catalogImageUrl = wardrobeCatalogImageUrl(item.imageUrl);
 
   useEffect(() => setDraft(draftFromItem(item)), [item]);
 
@@ -302,9 +309,13 @@ function WardrobeItemEditor({
             <div className="space-y-3">
               <div className="overflow-hidden rounded-[2rem] border border-white/[0.08] bg-white/[0.03]">
                 <img
-                  src={item.imageUrl}
+                  src={catalogImageUrl}
                   alt={item.subcategory ?? item.category}
-                  className="max-h-[70vh] w-full object-contain"
+                  className="max-h-[70vh] w-full bg-[#f7f2e8] object-contain p-3"
+                  onError={(event) => {
+                    event.currentTarget.onerror = null;
+                    event.currentTarget.src = item.imageUrl;
+                  }}
                 />
               </div>
               {status.tone !== "ok" && (
