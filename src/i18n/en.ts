@@ -361,6 +361,11 @@ export const en: Translations = {
     reviewHeading: "Review and fix metadata",
     inProgress: "in progress",
     issue: "issue",
+    queueSafeMode: "Safe Gemini mode is on: while Tier-1 is not active, photos are analyzed one by one so the AI does not hit the free-tier limit. Please keep this page open until the batch finishes.",
+    queuedPosition: "Waiting in queue {position}/{total}",
+    uploadingAndAnalyzing: "Uploading and preparing for AI…",
+    aiAnalyzing: "AI is analyzing the item…",
+    analyzingWithLimit: "AI is analyzing the item…",
 
     directSaveHeading: "Latest uploads",
     directSaveDesc: "Items are saved to your wardrobe instantly — you can re-categorize them there.",

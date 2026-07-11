@@ -361,6 +361,11 @@ export const uk: Translations = {
     reviewHeading: "Перевірка та фіксація метаданих",
     inProgress: "у роботі",
     issue: "помилка",
+    queueSafeMode: "Увімкнено безпечний режим Gemini: доки Tier‑1 не активний, фото аналізуються по черзі, щоб AI не впирався у ліміт. Залишайте цю сторінку відкритою до завершення партії.",
+    queuedPosition: "Очікує в черзі {position}/{total}",
+    uploadingAndAnalyzing: "Завантажуємо й готуємо до AI…",
+    aiAnalyzing: "AI аналізує річ…",
+    analyzingWithLimit: "AI аналізує річ…",
 
     directSaveHeading: "Останні завантаження",
     directSaveDesc: "Речі зберігаються у гардероб одразу — категорію можна змінити у гардеробі.",

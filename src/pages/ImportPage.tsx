@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Layers,
@@ -57,6 +57,17 @@ export function ImportPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [items, setItems] = useState<Stage[]>([]);
+  const inFlight = items.filter(
+    (i) => i.status === "queued" || i.status === "uploading" || i.status === "analyzing",
+  ).length;
+  const doneCount = items.filter((i) => i.status === "done").length;
+  const errorCount = items.filter((i) => i.status === "error").length;
+  const queuePositionById = useMemo(() => {
+    const active = items.filter(
+      (i) => i.status === "queued" || i.status === "uploading" || i.status === "analyzing",
+    );
+    return new Map(active.map((item, index) => [item.id, index + 1]));
+  }, [items]);
 
   const processFile = useCallback(
     async (file: File, id: string) => {
@@ -145,12 +156,6 @@ export function ImportPage() {
     [processFile],
   );
 
-  const inFlight = items.filter(
-    (i) => i.status === "queued" || i.status === "uploading" || i.status === "analyzing",
-  ).length;
-  const doneCount = items.filter((i) => i.status === "done").length;
-  const errorCount = items.filter((i) => i.status === "error").length;
-
   const handleRemove = useCallback((id: string) => {
     setItems((prev) => prev.filter((it) => it.id !== id));
   }, []);
@@ -163,7 +168,7 @@ export function ImportPage() {
 
   return (
     <div className="page-shell-tight space-y-8">
-      <DropZone onFiles={handleFiles} disabled={false} />
+      <DropZone onFiles={handleFiles} disabled={inFlight > 0} />
 
       <section className="page-header p-6 sm:p-8">
         <div className="relative z-10 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
@@ -210,6 +215,11 @@ export function ImportPage() {
               <p className="mt-1 text-sm text-[var(--text-secondary)]">
                 {t("import.directSaveDesc")}
               </p>
+              {inFlight > 0 && (
+                <p className="mt-2 rounded-2xl border border-[rgba(201,165,90,0.18)] bg-[rgba(201,165,90,0.08)] px-3 py-2 text-xs leading-5 text-[var(--text-secondary)]">
+                  {t("import.queueSafeMode")}
+                </p>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
               {inFlight > 0 && (
@@ -257,19 +267,22 @@ export function ImportPage() {
                   </p>
                   {item.status === "queued" && (
                     <p className="mt-1 text-xs text-[var(--text-muted)]">
-                      {t("tagEditor.pending")}
+                      {t("import.queuedPosition", {
+                        position: queuePositionById.get(item.id) ?? 1,
+                        total: inFlight,
+                      })}
                     </p>
                   )}
                   {item.status === "uploading" && (
                     <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--accent)]">
                       <LoaderCircle size={11} className="animate-spin" />
-                      {t("import.processing")}
+                      {t("import.uploadingAndAnalyzing")}
                     </p>
                   )}
                   {item.status === "analyzing" && (
                     <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--accent)]">
                       <Sparkles size={11} />
-                      {t("import.dropzone.kicker")}…
+                      {t("import.analyzingWithLimit")}
                     </p>
                   )}
                   {item.status === "done" && (
@@ -281,7 +294,7 @@ export function ImportPage() {
                       >
                         {item.needsReview ? <AlertTriangle size={11} /> : <BadgeCheck size={11} />}
                         {item.analysisStatus === "failed"
-                          ? "Не вдалось розпізнати"
+                          ? t("import.recognitionFailed")
                           : item.needsReview
                             ? t("tagEditor.needsReview")
                             : t("import.savedInline")}
@@ -292,7 +305,7 @@ export function ImportPage() {
                       {item.needsReview && (
                         <p className="mt-0.5 line-clamp-2 text-[11px] text-[var(--text-muted)]">
                           {item.analysisStatus === "failed"
-                            ? "Відкрийте редактор речі й заповніть поля вручну."
+                            ? t("import.fillManually")
                             : t("tagEditor.lowConfidenceHint")}
                         </p>
                       )}
