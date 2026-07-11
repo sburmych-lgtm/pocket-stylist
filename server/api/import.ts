@@ -100,7 +100,7 @@ function decorateWardrobeItem<T extends { category: string; confidence: number; 
   };
 }
 
-function clothingAnalysisFromItem(
+export function clothingAnalysisFromItem(
   item: Partial<ClothingAnalysis> & { category: string; colorPrimary: string },
 ): ClothingAnalysis {
   return {
@@ -118,6 +118,12 @@ function clothingAnalysisFromItem(
     confidence: item.confidence ?? FALLBACK_CLOTHING_ANALYSIS.confidence,
     needsReview: item.needsReview ?? false,
     reviewReasons: item.reviewReasons ?? [],
+    // Never inherit the fallback's "failed"/"critical" status — this function
+    // reconstructs an analysis from stored/edited fields, and the caller
+    // (reviewClothingAnalysis) recomputes review flags from the actual reasons.
+    // Leaking the fallback status made every manual save read as "Не розпізнано".
+    analysisStatus: item.analysisStatus ?? ((item.needsReview ?? false) ? "partial" : "ok"),
+    reviewSeverity: item.reviewSeverity ?? "ok",
   };
 }
 
