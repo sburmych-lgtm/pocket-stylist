@@ -792,6 +792,13 @@ export const en: Translations = {
     failed: "Could not update the weather. Please try again.",
   },
 
+  routeError: {
+    kicker: "Page error",
+    title: "Something went wrong",
+    description: "The app stayed alive. Try refreshing this section once more.",
+    retry: "Try again",
+  },
+
   /* ---- Analytics ---- */
   analytics: {
     kicker: "Wardrobe Intelligence",

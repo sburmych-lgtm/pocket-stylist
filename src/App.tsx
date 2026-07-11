@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./contexts/AuthContext";
 import { useAuth } from "./contexts/auth-context";
-import { LanguageProvider } from "./i18n";
+import { LanguageProvider, useI18n } from "./i18n";
 import { HomePage } from "./pages/HomePage";
 import { ImportPage } from "./pages/ImportPage";
 import { StylingPage } from "./pages/StylingPage";
@@ -17,6 +17,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { LegalPage } from "./pages/LegalPage";
 import { HowItWorksPage } from "./pages/HowItWorksPage";
 import { Layout } from "./components/Layout";
+import { ErrorBoundary } from "./components/common/ErrorBoundary";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +48,25 @@ function ProtectedRoute() {
   return <Outlet />;
 }
 
+function RouteErrorFallback({ reset }: { reset: () => void }) {
+  const { t } = useI18n();
+
+  return (
+    <section className="luxe-card mx-auto max-w-xl p-6 text-center">
+      <p className="section-subtitle">{t("routeError.kicker")}</p>
+      <h1 className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">
+        {t("routeError.title")}
+      </h1>
+      <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
+        {t("routeError.description")}
+      </p>
+      <button type="button" onClick={reset} className="primary-action mt-5 px-5 py-3 text-sm">
+        {t("routeError.retry")}
+      </button>
+    </section>
+  );
+}
+
 /* ---------- App ---------- */
 
 export default function App() {
@@ -71,7 +91,17 @@ export default function App() {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/wardrobe" element={<WardrobePage />} />
                 <Route path="/import" element={<ImportPage />} />
-                <Route path="/style" element={<StylingPage />} />
+                <Route
+                  path="/style"
+                  element={(
+                    <ErrorBoundary
+                      scope="styling"
+                      fallback={(_error, reset) => <RouteErrorFallback reset={reset} />}
+                    >
+                      <StylingPage />
+                    </ErrorBoundary>
+                  )}
+                />
                 <Route path="/scan" element={<ScannerPage />} />
                 <Route path="/match" element={<MatchingPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
