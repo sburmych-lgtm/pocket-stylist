@@ -1,3 +1,5 @@
+import type { WardrobeSeason } from "../shared/wardrobe-seasons";
+
 const API_BASE = "/api";
 
 const TOKEN_KEY = "pocket_stylist_token";
@@ -633,7 +635,7 @@ export interface WardrobeItemPatch {
   pattern?: string;
   fabric?: string | null;
   formalityLevel?: number;
-  season?: "spring" | "summer" | "fall" | "winter" | "all";
+  season?: WardrobeSeason;
   brand?: string | null;
   sharedWithFamily?: boolean;
 }

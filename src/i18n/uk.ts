@@ -257,6 +257,11 @@ export const uk: Translations = {
     summer: "Літо",
     fall: "Осінь",
     winter: "Зима",
+    "spring-summer": "Весна–літо",
+    "summer-fall": "Літо–осінь",
+    "fall-winter": "Осінь–зима",
+    "winter-spring": "Зима–весна",
+    demi: "Демісезон",
   },
 
   colors: {

@@ -14,6 +14,7 @@ import {
   COLD_WEATHER_BLOCKED_CATEGORIES,
 } from "./rules-engine.js";
 import { applyPersona, type StylistPersona } from "./personas.js";
+import { wardrobeSeasonMatchesWeather } from "../../../src/shared/wardrobe-seasons.js";
 
 const GEMINI_TIMEOUT_MS = 10_000;
 const STYLIST_V2_ENABLED_VALUES = new Set(["1", "true", "yes", "on"]);
@@ -64,7 +65,7 @@ interface StylingContext {
  * validate the model's output too.
  */
 function isWeatherAppropriate(item: WardrobeItem, ctx: StylingContext): boolean {
-  if (item.season !== "all" && item.season !== ctx.weatherSeason) return false;
+  if (!wardrobeSeasonMatchesWeather(item.season, ctx.weatherSeason)) return false;
   if (ctx.temp !== undefined) {
     if (ctx.temp >= 20 && item.fabric && HOT_WEATHER_BLOCKED_FABRICS.has(item.fabric)) {
       return false;
@@ -566,7 +567,7 @@ Hard safety contract:
 1. Use ONLY item indexes from Available items. Never invent, rename or imply a missing garment.
 2. Every outfit must include footwear and either (top + bottom/jeans/pants/skirt) or dress.
 3. At 14C or below, include outerwear.
-4. Keep all items weather-safe: season must be "${ctx.weatherSeason}" or "all"; no hot fabrics in heat; no open/suede/velvet footwear in wet weather.
+4. Keep all items weather-safe: season must match "${ctx.weatherSeason}", "all", or a transition value that includes "${ctx.weatherSeason}" (for example "fall-winter"); no hot fabrics in heat; no open/suede/velvet footwear in wet weather.
 5. Respect avoid colors and do not use worn-out items.
 6. If a wardrobe item has needsReview=true, use it only if the outfit would otherwise fail and mention the risk.
 7. Return up to ${count} outfits for variants: ${requestedVariants.join(", ")}. Skip a variant if it cannot be valid.
@@ -685,7 +686,7 @@ ${precipLine}
 - Formality range: ${ctx.formalityRange.min}-${ctx.formalityRange.max}${describeUserContext(ctx)}
 
 STRICT WEATHER RULES — violating these makes the outfit invalid:
-1. NEVER include an item whose "season" is different from "${ctx.weatherSeason}" UNLESS its season is "all".
+1. NEVER include an item whose "season" does not include "${ctx.weatherSeason}" UNLESS its season is "all" (transition seasons like "summer-fall" are valid only for their two named seasons).
 2. NEVER include items with fabric "fleece", "wool", "cashmere", "velvet", or "suede" when the temperature is 20°C or above.
 3. NEVER include items in the "swimwear" category when the temperature is 10°C or below.
 4. Prefer items matching the user's best colors; never build an outfit around a color from the AVOID list.

@@ -257,6 +257,11 @@ export const en: Translations = {
     summer: "Summer",
     fall: "Fall",
     winter: "Winter",
+    "spring-summer": "Spring–summer",
+    "summer-fall": "Summer–fall",
+    "fall-winter": "Fall–winter",
+    "winter-spring": "Winter–spring",
+    demi: "Demi-season",
   },
 
   colors: {

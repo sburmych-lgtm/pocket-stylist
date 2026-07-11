@@ -1,4 +1,5 @@
 import type { WardrobeItem } from "../../../src/generated/prisma/client.js";
+import { wardrobeSeasonMatchesWeather } from "../../../src/shared/wardrobe-seasons.js";
 
 interface ColorEntry {
   name: string;
@@ -111,8 +112,9 @@ export function filterWardrobe(
   const temp = ctx.temp;
 
   return items.filter((item) => {
-    // Season filter
-    if (item.season !== "all" && item.season !== ctx.weatherSeason) return false;
+    // Season filter. Transition values such as "fall-winter" match either
+    // side of the season pair, so demi-season clothing is not unfairly hidden.
+    if (!wardrobeSeasonMatchesWeather(item.season, ctx.weatherSeason)) return false;
     if (item.condition === "worn") return false;
     if (ctx.avoidColors?.some((entry) => colorEntryMatches(item, entry))) return false;
 

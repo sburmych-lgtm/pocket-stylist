@@ -142,6 +142,44 @@ test("filterWardrobe excludes items whose condition is worn", () => {
   assert.deepEqual(filtered.map(({ id }) => id), ["good"]);
 });
 
+test("filterWardrobe accepts transition seasons that include the weather season", () => {
+  const transitional = wardrobeItem("summer-fall-shirt", { season: "summer-fall" });
+  const winterOnly = wardrobeItem("winter-only-knit", { season: "winter" });
+
+  const filtered = filterWardrobe([transitional, winterOnly], {
+    ...BASE_CONTEXT,
+    weatherSeason: "fall",
+    temp: 12,
+  });
+
+  assert.deepEqual(filtered.map(({ id }) => id), ["summer-fall-shirt"]);
+});
+
+test("filterWardrobe accepts transition seasons for adjacent weather seasons", () => {
+  const fallWinter = wardrobeItem("fall-winter-jacket", {
+    season: "fall-winter",
+    category: "outerwear",
+    subcategory: "midweight jacket",
+  });
+  const springSummer = wardrobeItem("spring-summer-shirt", {
+    season: "spring-summer",
+  });
+
+  const winterFiltered = filterWardrobe([fallWinter, springSummer], {
+    ...BASE_CONTEXT,
+    weatherSeason: "winter",
+    temp: 6,
+  });
+  const fallFiltered = filterWardrobe([fallWinter, springSummer], {
+    ...BASE_CONTEXT,
+    weatherSeason: "fall",
+    temp: 12,
+  });
+
+  assert.deepEqual(winterFiltered.map(({ id }) => id), ["fall-winter-jacket"]);
+  assert.deepEqual(fallFiltered.map(({ id }) => id), ["fall-winter-jacket"]);
+});
+
 test("scoreItem recognizes a palette match by normalized hex value", () => {
   const palette = [{ name: "Deep blue", hex: "#000080" }];
   const matching = wardrobeItem("matching", {

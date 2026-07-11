@@ -5,6 +5,7 @@ import { wardrobeApi, type WardrobeItem } from "../services/api";
 import { useI18n } from "../i18n";
 import { enumLabel } from "../i18n/enumLabel";
 import { WARDROBE_CATEGORIES, normalizeCategory } from "../shared/wardrobe-categories";
+import { WARDROBE_SEASONS, type WardrobeSeason } from "../shared/wardrobe-seasons";
 import { CatalogImage } from "../components/common/CatalogImage";
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -103,7 +104,7 @@ const FABRIC_OPTIONS = [
   "polyamide",
 ];
 
-const SEASON_OPTIONS = ["spring", "summer", "fall", "winter", "all"] as const;
+const SEASON_OPTIONS = WARDROBE_SEASONS;
 
 type WardrobeDraft = {
   category: string;
@@ -113,7 +114,7 @@ type WardrobeDraft = {
   pattern: string;
   fabric: string;
   formalityLevel: number;
-  season: "spring" | "summer" | "fall" | "winter" | "all";
+  season: WardrobeSeason;
   brand: string;
   sharedWithFamily: boolean;
 };

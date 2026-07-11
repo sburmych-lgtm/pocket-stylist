@@ -25,6 +25,7 @@ import { normalizeCategory } from "../../src/shared/wardrobe-categories.js";
 import { withTimeout } from "../services/gemini-utils.js";
 import { fetchBufferWithTimeout, fetchWithTimeout } from "../services/http.js";
 import { ImageAnalyzeBodySchema } from "../services/request-schemas.js";
+import { WARDROBE_SEASONS } from "../../src/shared/wardrobe-seasons.js";
 
 /** Drive files larger than this are rejected instead of buffered into RAM. */
 const DRIVE_MAX_FILE_BYTES = 20 * 1024 * 1024; // 20 MB
@@ -140,7 +141,7 @@ const SaveItemsSchema = z.object({
         pattern: z.string().max(40).optional(),
         fabric: z.string().max(40).optional(),
         formalityLevel: z.coerce.number().int().min(1).max(5).optional(),
-        season: z.enum(["spring", "summer", "fall", "winter", "all"]).optional(),
+        season: z.enum(WARDROBE_SEASONS).optional(),
         brand: z.string().max(80).optional(),
         confidence: z.coerce.number().min(0).max(1).optional(),
       }),
@@ -173,7 +174,7 @@ const ItemPatchSchema = z
     pattern: z.string().max(40).optional(),
     fabric: z.string().max(40).nullable().optional(),
     formalityLevel: z.number().int().min(1).max(5).optional(),
-    season: z.enum(["spring", "summer", "fall", "winter", "all"]).optional(),
+    season: z.enum(WARDROBE_SEASONS).optional(),
     brand: z.string().max(80).nullable().optional(),
     sharedWithFamily: z.boolean().optional(),
   })

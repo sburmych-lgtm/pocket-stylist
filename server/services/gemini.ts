@@ -4,6 +4,7 @@ import { generateGeminiText, geminiJsonConfig, geminiTextAndImageContent } from 
 import { parseGeminiJson } from "./gemini-utils.js";
 import { recordGeminiUsage } from "./gemini-usage.js";
 import { WARDROBE_CATEGORIES, normalizeCategory } from "../../src/shared/wardrobe-categories.js";
+import { WARDROBE_SEASONS } from "../../src/shared/wardrobe-seasons.js";
 
 const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_CLOTHING_TIMEOUT_MS ?? 20_000);
 const GEMINI_CLOTHING_MODEL = process.env.GEMINI_CLOTHING_MODEL ?? "gemini-2.5-flash";
@@ -36,7 +37,7 @@ const FABRICS = [
   "unknown",
 ] as const;
 
-const SEASONS = ["spring", "summer", "fall", "winter", "all"] as const;
+const SEASONS = WARDROBE_SEASONS;
 const LOW_CONFIDENCE_THRESHOLD = 0.5;
 const REVIEW_CONFIDENCE_CAP = 0.69;
 const HEAVY_OUTERWEAR_RE =
@@ -190,6 +191,11 @@ function normalizeSeason(value: string | null | undefined): (typeof SEASONS)[num
   const token = normalizeToken(value);
   if ((SEASONS as readonly string[]).includes(token)) return token as (typeof SEASONS)[number];
   if (token === "autumn") return "fall";
+  if (token === "spring/summer" || token === "spring summer") return "spring-summer";
+  if (token === "summer/autumn" || token === "summer/fall" || token === "summer fall") return "summer-fall";
+  if (token === "autumn/winter" || token === "fall/winter" || token === "fall winter") return "fall-winter";
+  if (token === "winter/spring" || token === "winter spring") return "winter-spring";
+  if (token === "demi-season" || token === "mid-season" || token === "transitional") return "demi";
   if (token === "year-round" || token === "all-season" || token === "all-seasons") return "all";
   return "all";
 }
@@ -289,7 +295,7 @@ Category routing rules — pick the MOST SPECIFIC section:
 - "bottoms" ONLY as a last resort if none of the above applies
 
 Season/fabric disambiguation rules:
-- Treat "season" as when the item is comfortable to wear outdoors, not as a fashion collection label.
+- Treat "season" as when the item is comfortable to wear outdoors, not as a fashion collection label. Use transition values when one item honestly fits two neighboring seasons: "spring-summer", "summer-fall", "fall-winter", "winter-spring"; use "demi" for classic spring/fall mid-season pieces.
 - Outerwear (coat, jacket, parka, puffer, trench, raincoat, bomber, blazer) must NOT be "summer". Use "winter" for puffer/down/parka/heavy coat, "fall" for trench/raincoat/bomber/leather/denim jacket, or "all" only if genuinely season-neutral.
 - Wool, cashmere, fleece, velvet and suede must NOT be "summer". Prefer "winter" or "fall".
 - Linen, chiffon, swimwear and open footwear usually belong to "summer"; they must NOT be "winter" unless the photo clearly shows insulated winter construction.
