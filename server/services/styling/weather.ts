@@ -49,12 +49,18 @@ interface GeocodeResult {
   timezone: string;
 }
 
+interface ReverseGeocodeResult {
+  name: string;
+  country: string;
+}
+
 const cache = new Map<string, { data: WeatherData; expiry: number }>();
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const FETCH_TIMEOUT_MS = 10_000;
 
 const OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast";
 const OPEN_METEO_GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search";
+const NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse";
 
 /* ---------- Weather-code → label mapping ---------- */
 
@@ -119,6 +125,31 @@ const GeocodeSchema = z.object({
     )
     .optional(),
 });
+
+const ReverseGeocodeSchema = z.object({
+  name: z.string().optional(),
+  display_name: z.string().optional(),
+  address: z
+    .object({
+      city: z.string().optional(),
+      town: z.string().optional(),
+      village: z.string().optional(),
+      municipality: z.string().optional(),
+      county: z.string().optional(),
+      state: z.string().optional(),
+      country: z.string().optional(),
+    })
+    .optional(),
+});
+
+function withTimeoutSignal(timeoutMs: number): { signal: AbortSignal; cleanup: () => void } {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return {
+    signal: controller.signal,
+    cleanup: () => clearTimeout(timer),
+  };
+}
 
 /* ---------- Mock fallback ---------- */
 
@@ -320,6 +351,71 @@ export async function geocodeCity(query: string): Promise<GeocodeResult | null> 
   }
 }
 
+/**
+ * Browser geolocation gives us lat/lon, but not a human city name. Resolve it
+ * server-side so the home weather card can show "Львів" instead of a timezone
+ * or a blank label. Failure is non-fatal: coordinates are still useful.
+ */
+export async function reverseGeocodeCoords(
+  lat: number,
+  lon: number,
+): Promise<ReverseGeocodeResult | null> {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+
+  const url =
+    `${NOMINATIM_REVERSE_URL}` +
+    `?format=jsonv2` +
+    `&lat=${encodeURIComponent(String(lat))}` +
+    `&lon=${encodeURIComponent(String(lon))}` +
+    `&zoom=10` +
+    `&addressdetails=1` +
+    `&accept-language=uk,en`;
+
+  try {
+    const timeout = withTimeoutSignal(FETCH_TIMEOUT_MS);
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        signal: timeout.signal,
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "PocketStylist/0.1 (sburmych@gmail.com)",
+        },
+      });
+    } finally {
+      timeout.cleanup();
+    }
+
+    if (!res.ok) return null;
+
+    const raw = (await res.json()) as unknown;
+    const parsed = ReverseGeocodeSchema.safeParse(raw);
+    if (!parsed.success) return null;
+
+    const address = parsed.data.address;
+    const name =
+      address?.city ??
+      address?.town ??
+      address?.village ??
+      address?.municipality ??
+      address?.county ??
+      address?.state ??
+      parsed.data.name ??
+      parsed.data.display_name?.split(",")[0]?.trim() ??
+      "";
+
+    if (name.length === 0) return null;
+
+    return {
+      name,
+      country: address?.country ?? "",
+    };
+  } catch (err) {
+    console.warn("[weather] reverseGeocodeCoords failed:", err);
+    return null;
+  }
+}
+
 /* ---------- Legacy adapters ----------
  *
  * Older callers used `getWeather(lat, lon)` returning a single object and
@@ -401,4 +497,4 @@ export function _resetWeatherCache(): void {
   cache.clear();
 }
 
-export type { WeatherData, GeocodeResult, DailyForecast };
+export type { WeatherData, GeocodeResult, ReverseGeocodeResult, DailyForecast };

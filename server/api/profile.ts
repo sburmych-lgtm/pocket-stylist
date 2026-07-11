@@ -12,7 +12,7 @@ import {
 } from "../services/demo-store.js";
 import { rateLimitPerUser } from "../middleware/rate-limit.js";
 import { requirePaidOrTrial } from "../middleware/require-access.js";
-import { geocodeCity } from "../services/styling/weather.js";
+import { geocodeCity, reverseGeocodeCoords } from "../services/styling/weather.js";
 import { deleteImage } from "../services/cloudinary.js";
 import {
   STYLIST_PERSONAS,
@@ -187,10 +187,14 @@ profileRouter.patch("/location", async (req: Request, res: Response) => {
 
     let payload: LocationFields;
     if ("lat" in parsed.data && "lon" in parsed.data) {
+      const city =
+        parsed.data.city ??
+        (await reverseGeocodeCoords(parsed.data.lat, parsed.data.lon))?.name ??
+        null;
       payload = {
         lat: parsed.data.lat,
         lon: parsed.data.lon,
-        city: parsed.data.city ?? null,
+        city,
         timezone: parsed.data.timezone ?? null,
       };
     } else {

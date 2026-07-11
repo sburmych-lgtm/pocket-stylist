@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   fetchWeather,
+  reverseGeocodeCoords,
   _resetWeatherCache,
 } from "../server/services/styling/weather.js";
 
@@ -106,5 +107,43 @@ test("fetchWeather falls back to mock when the HTTP call fails", async () => {
     assert.equal(data.location, "Mock City");
     assert.equal(data.daily.length, 7);
     assert.ok(typeof data.tempC === "number");
+  });
+});
+
+test("reverseGeocodeCoords resolves a human city name from browser coordinates", async () => {
+  const mockFetch: FetchImpl = async (input) => {
+    assert.match(String(input), /nominatim\.openstreetmap\.org\/reverse/);
+    return new Response(
+      JSON.stringify({
+        name: "Львів",
+        display_name: "Львів, Львівська область, Україна",
+        address: {
+          city: "Львів",
+          state: "Львівська область",
+          country: "Україна",
+        },
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  };
+
+  await withFetchMock(mockFetch, async () => {
+    const data = await reverseGeocodeCoords(49.84, 24.03);
+    assert.deepEqual(data, {
+      name: "Львів",
+      country: "Україна",
+    });
+  });
+});
+
+test("reverseGeocodeCoords returns null instead of throwing on upstream failure", async () => {
+  const mockFetch: FetchImpl = async () => new Response("nope", { status: 429 });
+
+  await withFetchMock(mockFetch, async () => {
+    const data = await reverseGeocodeCoords(49.84, 24.03);
+    assert.equal(data, null);
   });
 });
