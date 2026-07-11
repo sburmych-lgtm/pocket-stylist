@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { AlertTriangle, Plus, Search, Trash2, X } from "lucide-react";
+import { AlertTriangle, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import { wardrobeApi, type WardrobeItem } from "../services/api";
 import { useI18n } from "../i18n";
+import { enumLabel } from "../i18n/enumLabel";
 import { WARDROBE_CATEGORIES, normalizeCategory } from "../shared/wardrobe-categories";
 import { wardrobeCatalogImageUrl } from "../utils/cloudinaryImages";
 
@@ -217,9 +218,9 @@ function ItemCard({ item, onOpen }: { item: WardrobeItem; onOpen: (item: Wardrob
           </span>
         </div>
         <div className="mt-0.5 flex items-center gap-1 text-[10px] text-[#f0ece4]/35">
-          <span>{item.colorPrimary}</span>
+          <span>{enumLabel(t, "colors", item.colorPrimary)}</span>
           <span>·</span>
-          <span>{item.pattern}</span>
+          <span>{enumLabel(t, "patterns", item.pattern)}</span>
           {item.brand && (
             <>
               <span>·</span>
@@ -237,16 +238,20 @@ function WardrobeItemEditor({
   onClose,
   onSave,
   onDelete,
+  onReanalyze,
 }: {
   item: WardrobeItem;
   onClose: () => void;
   onSave: (itemId: string, draft: WardrobeDraft) => Promise<void>;
   onDelete: (itemId: string) => Promise<void> | void;
+  onReanalyze: (itemId: string) => Promise<WardrobeItem>;
 }) {
   const { t } = useI18n();
   const [draft, setDraft] = useState(() => draftFromItem(item));
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [reanalyzing, setReanalyzing] = useState(false);
+  const [reanalyzeError, setReanalyzeError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const status = statusLabel(item);
   const catalogImageUrl = wardrobeCatalogImageUrl(item.imageUrl);
@@ -282,6 +287,23 @@ function WardrobeItemEditor({
       onClose();
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleReanalyze = async () => {
+    setReanalyzing(true);
+    setReanalyzeError(null);
+    try {
+      const fresh = await onReanalyze(item.id);
+      setDraft(draftFromItem(fresh));
+    } catch (error) {
+      setReanalyzeError(
+        error instanceof Error && error.message.includes("demo")
+          ? t("wardrobe.reanalyzeDemo")
+          : t("wardrobe.reanalyzeFailed"),
+      );
+    } finally {
+      setReanalyzing(false);
     }
   };
 
@@ -338,6 +360,17 @@ function WardrobeItemEditor({
                   </p>
                 </div>
               )}
+
+              <button
+                type="button"
+                onClick={handleReanalyze}
+                disabled={reanalyzing || saving || deleting}
+                className="flex w-full items-center justify-center gap-2 rounded-3xl border border-[var(--accent)]/40 bg-[var(--accent)]/10 px-4 py-3 text-sm font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)]/20 disabled:opacity-50"
+              >
+                <Sparkles size={16} className={reanalyzing ? "animate-pulse" : ""} />
+                {reanalyzing ? t("wardrobe.reanalyzing") : t("wardrobe.reanalyze")}
+              </button>
+              {reanalyzeError && <p className="text-xs text-red-300">{reanalyzeError}</p>}
             </div>
 
             <div className="space-y-4 rounded-[2rem] border border-white/[0.08] bg-white/[0.035] p-4">
@@ -373,7 +406,7 @@ function WardrobeItemEditor({
                   >
                     {COLOR_OPTIONS.map((color) => (
                       <option key={color} value={color} className="bg-[#11131f]">
-                        {color}
+                        {enumLabel(t, "colors", color)}
                       </option>
                     ))}
                   </select>
@@ -398,7 +431,7 @@ function WardrobeItemEditor({
                   >
                     {PATTERN_OPTIONS.map((pattern) => (
                       <option key={pattern} value={pattern} className="bg-[#11131f]">
-                        {pattern}
+                        {enumLabel(t, "patterns", pattern)}
                       </option>
                     ))}
                   </select>
@@ -414,7 +447,7 @@ function WardrobeItemEditor({
                   >
                     {FABRIC_OPTIONS.map((fabric) => (
                       <option key={fabric} value={fabric} className="bg-[#11131f]">
-                        {fabric}
+                        {enumLabel(t, "fabrics", fabric)}
                       </option>
                     ))}
                   </select>
@@ -679,6 +712,18 @@ export function WardrobePage() {
     [items, t],
   );
 
+  const handleReanalyze = useCallback(
+    async (itemId: string): Promise<WardrobeItem> => {
+      const { item } = await wardrobeApi.reanalyze(itemId);
+      const fresh = { ...item, category: normalizeCategory(item.category) };
+      setItems((current) =>
+        current.map((existing) => (existing.id === itemId ? fresh : existing)),
+      );
+      return fresh;
+    },
+    [],
+  );
+
   const filtered = useMemo(
     () =>
       items.filter((item) => {
@@ -827,6 +872,7 @@ export function WardrobePage() {
           onClose={closeEditor}
           onSave={handleSave}
           onDelete={handleDelete}
+          onReanalyze={handleReanalyze}
         />
       )}
     </div>

@@ -719,3 +719,87 @@ importRouter.delete("/wardrobe/:itemId", async (req: Request, res: Response) => 
     res.status(500).json({ error: "Failed to delete item" });
   }
 });
+
+// POST /api/import/wardrobe/:itemId/reanalyze — Re-run AI on the stored photo.
+// Recovers items that were saved with fallback tags (e.g. during a Gemini
+// rate-limit spell) without forcing the user to delete and re-upload.
+importRouter.post(
+  "/wardrobe/:itemId/reanalyze",
+  requirePaidOrTrial,
+  geminiLimiter,
+  async (req: Request, res: Response) => {
+    try {
+      const userId = req.userId!;
+      const itemId = Array.isArray(req.params.itemId)
+        ? req.params.itemId[0]
+        : req.params.itemId ?? "";
+
+      // Demo items are seeded placeholders with no real photo to analyse.
+      if (isDemoUser(userId)) {
+        res.status(400).json({ error: "reanalyze_unavailable_demo" });
+        return;
+      }
+
+      const existing = await prisma.wardrobeItem.findUnique({ where: { id: itemId } });
+      if (!existing || existing.userId !== userId) {
+        res.status(404).json({ error: "Item not found" });
+        return;
+      }
+
+      // Pull the stored (original) photo back from Cloudinary as base64.
+      let base64: string;
+      let mimeType = "image/jpeg";
+      try {
+        const downloaded = await fetchBufferWithTimeout(existing.imageUrl, {}, 15_000);
+        if (!downloaded.response.ok || downloaded.buffer.length === 0) {
+          res.status(502).json({ error: "image_fetch_failed" });
+          return;
+        }
+        base64 = downloaded.buffer.toString("base64");
+        mimeType = downloaded.response.headers.get("content-type") ?? "image/jpeg";
+      } catch {
+        res.status(502).json({ error: "image_fetch_failed" });
+        return;
+      }
+
+      let tags;
+      try {
+        tags = await analyzeClothingImage(base64, mimeType);
+      } catch {
+        res.status(503).json({ error: "reanalyze_failed" });
+        return;
+      }
+
+      const reviewed = reviewClothingAnalysis({
+        ...tags,
+        category: normalizeCategory(tags.category),
+      }).item;
+      const reviewTags = reviewTagsFor(reviewed, reviewed.analysisStatus !== "failed");
+
+      const item = await withTimeout(
+        prisma.wardrobeItem.update({
+          where: { id: itemId },
+          data: {
+            category: reviewed.category,
+            subcategory: reviewed.subcategory,
+            colorPrimary: reviewed.colorPrimary,
+            colorHex: reviewed.colorHex,
+            pattern: reviewed.pattern,
+            fabric: reviewed.fabric,
+            formalityLevel: reviewed.formalityLevel,
+            season: reviewed.season,
+            confidence: reviewed.confidence,
+            tags: reviewTags,
+          },
+        }),
+        5_000,
+        "Database update timed out",
+      );
+
+      res.json({ item: decorateWardrobeItem(item) });
+    } catch (err) {
+      console.error("Wardrobe reanalyze error:", err);
+      res.status(500).json({ error: "reanalyze_failed" });
+    }
+  },
+);

@@ -12,6 +12,7 @@ import { DropZone } from "../components/import/DropZone";
 import { ingestImage } from "../services/api";
 import { compressImageToBase64 } from "../utils/imageCompress";
 import { useI18n } from "../i18n";
+import { enumLabel } from "../i18n/enumLabel";
 
 let nextId = 0;
 const IMPORT_CONCURRENCY = Math.max(1, Number(import.meta.env.VITE_IMPORT_CONCURRENCY ?? 1));
@@ -286,7 +287,7 @@ export function ImportPage() {
                             : t("import.savedInline")}
                       </p>
                       <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
-                        {t(`categories.${item.category}`)} · {item.colorPrimary}
+                        {t(`categories.${item.category}`)} · {enumLabel(t, "colors", item.colorPrimary)}
                       </p>
                       {item.needsReview && (
                         <p className="mt-0.5 line-clamp-2 text-[11px] text-[var(--text-muted)]">

@@ -655,6 +655,12 @@ export const wardrobeApi = {
       body: JSON.stringify(patch),
     });
   },
+
+  reanalyze(itemId: string): Promise<{ item: WardrobeItem }> {
+    return apiFetch<{ item: WardrobeItem }>(`/import/wardrobe/${itemId}/reanalyze`, {
+      method: "POST",
+    });
+  },
 };
 
 /* ---------- Feedback ---------- */
