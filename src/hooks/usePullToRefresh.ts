@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 const DEFAULT_THRESHOLD_PX = 82;
 const MAX_PULL_PX = 118;
+const DEFAULT_REFRESH = () => window.location.reload();
 
 type PullState =
   | { status: "idle"; distance: number }
@@ -31,7 +32,7 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
 
 export function usePullToRefresh(options: PullToRefreshOptions = {}): PullToRefreshResult {
   const threshold = options.thresholdPx ?? DEFAULT_THRESHOLD_PX;
-  const onRefresh = options.onRefresh ?? (() => window.location.reload());
+  const onRefresh = options.onRefresh ?? DEFAULT_REFRESH;
   const [state, setState] = useState<PullState>({ status: "idle", distance: 0 });
 
   useEffect(() => {
@@ -111,4 +112,3 @@ export function usePullToRefresh(options: PullToRefreshOptions = {}): PullToRefr
     [state, threshold],
   );
 }
-
