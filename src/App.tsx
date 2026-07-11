@@ -110,6 +110,9 @@ export default function App() {
                 <Route path="/family" element={<FamilyPage />} />
               </Route>
             </Route>
+            {/* Unknown paths (typos, stale links like /home) → home instead of a
+                blank white screen. ProtectedRoute then sends guests to /login. */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
