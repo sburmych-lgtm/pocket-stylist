@@ -40,6 +40,9 @@ export const uk: Translations = {
   },
   pwa: {
     offline: "Ви офлайн. Доступні раніше завантажені екрани; AI-функції потребують мережі.",
+    pullToRefresh: "Потягніть, щоб оновити",
+    releaseToRefresh: "Відпустіть для оновлення",
+    refreshing: "Оновлюємо…",
   },
 
   /* ---- Login ---- */

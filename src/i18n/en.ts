@@ -40,6 +40,9 @@ export const en: Translations = {
   },
   pwa: {
     offline: "You are offline. Previously loaded screens remain available; AI features need a connection.",
+    pullToRefresh: "Pull to refresh",
+    releaseToRefresh: "Release to refresh",
+    refreshing: "Refreshing…",
   },
 
   /* ---- Login ---- */

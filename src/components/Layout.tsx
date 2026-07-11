@@ -16,9 +16,11 @@ import {
   CalendarDays,
   Users,
   LogOut,
+  RefreshCw,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { usePullToRefresh } from "../hooks/usePullToRefresh";
 
 interface NavItem {
   to: string;
@@ -106,10 +108,33 @@ export function Layout() {
   const { user, logout } = useAuth();
   const { t, lang, setLang } = useI18n();
   const navigate = useNavigate();
+  const pullRefresh = usePullToRefresh();
 
   return (
     <div className="min-h-screen text-[var(--text-primary)]">
       <OfflineBanner />
+      <div
+        aria-hidden={pullRefresh.distance === 0 && !pullRefresh.refreshing}
+        className="pointer-events-none fixed inset-x-0 top-3 z-[80] flex justify-center transition-opacity duration-150 md:hidden"
+        style={{
+          opacity: pullRefresh.distance > 0 || pullRefresh.refreshing ? 1 : 0,
+          transform: `translateY(${Math.max(0, pullRefresh.distance - 56)}px)`,
+        }}
+      >
+        <div className="flex items-center gap-2 rounded-full border border-white/10 bg-[rgba(14,16,24,0.88)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] shadow-[0_18px_44px_rgba(0,0,0,0.42)] backdrop-blur-2xl">
+          <RefreshCw
+            size={15}
+            className={pullRefresh.refreshing ? "animate-spin text-[var(--accent)]" : "text-[var(--accent)]"}
+          />
+          <span>
+            {pullRefresh.refreshing
+              ? t("pwa.refreshing")
+              : pullRefresh.ready
+                ? t("pwa.releaseToRefresh")
+                : t("pwa.pullToRefresh")}
+          </span>
+        </div>
+      </div>
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute left-[6%] top-[12%] h-56 w-56 rounded-full bg-[rgba(201,165,90,0.12)] blur-[110px]" />
         <div className="absolute right-[4%] top-[18%] h-72 w-72 rounded-full bg-[rgba(136,198,189,0.09)] blur-[130px]" />
