@@ -365,7 +365,9 @@ export const en: Translations = {
     queuedPosition: "Waiting in queue {position}/{total}",
     uploadingAndAnalyzing: "Uploading and preparing for AI…",
     aiAnalyzing: "AI is analyzing the item…",
-    analyzingWithLimit: "AI is analyzing the item…",
+    analyzingWithLimit: "AI is analyzing this item; on the free tier this can take up to a minute.",
+    recognitionFailed: "Could not recognize",
+    fillManually: "Open the item editor and fill fields manually, or run AI re-analysis.",
 
     directSaveHeading: "Latest uploads",
     directSaveDesc: "Items are saved to your wardrobe instantly — you can re-categorize them there.",

@@ -365,7 +365,9 @@ export const uk: Translations = {
     queuedPosition: "Очікує в черзі {position}/{total}",
     uploadingAndAnalyzing: "Завантажуємо й готуємо до AI…",
     aiAnalyzing: "AI аналізує річ…",
-    analyzingWithLimit: "AI аналізує річ…",
+    analyzingWithLimit: "AI аналізує річ; на free-tier це може тривати до хвилини.",
+    recognitionFailed: "Не вдалось розпізнати",
+    fillManually: "Відкрийте редактор речі й заповніть поля вручну або запустіть переаналіз AI.",
 
     directSaveHeading: "Останні завантаження",
     directSaveDesc: "Речі зберігаються у гардероб одразу — категорію можна змінити у гардеробі.",
