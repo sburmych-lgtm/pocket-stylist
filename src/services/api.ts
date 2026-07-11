@@ -684,6 +684,20 @@ export interface StylingWeather {
   source?: "live" | "mock";
 }
 
+export interface WeatherForecastDay {
+  date: string;
+  tempMax: number;
+  tempMin: number;
+  condition: string;
+  icon: string;
+  precipMm: number;
+}
+
+export interface WeatherResponse extends StylingWeather {
+  daily: WeatherForecastDay[];
+  precipMm?: number;
+}
+
 export interface OutfitSuggestion {
   /** Persisted outfit id (null for demo users — feedback is a no-op). */
   id?: string | null;
@@ -743,6 +757,11 @@ export const stylingApi = {
       body: JSON.stringify({ modelImage, garmentImage }),
       timeoutMs: 60_000,
     });
+  },
+
+  weather(lat: number, lon: number): Promise<WeatherResponse> {
+    const search = new URLSearchParams({ lat: String(lat), lon: String(lon) });
+    return apiFetch<WeatherResponse>(`/styling/weather?${search.toString()}`);
   },
 
   feedback(outfitId: string, liked: boolean, reason?: string): Promise<{ ok: boolean }> {

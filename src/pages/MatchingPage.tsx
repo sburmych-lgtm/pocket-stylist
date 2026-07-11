@@ -6,6 +6,7 @@ import { shareImage, downloadBlob } from "../utils/share.js";
 import { matchingApi } from "../services/api";
 import type { MatchResult } from "../services/api";
 import { useI18n } from "../i18n";
+import { CatalogImage } from "../components/common/CatalogImage";
 
 type ShareState = "idle" | "generating" | "shared" | "downloaded";
 
@@ -236,7 +237,12 @@ export function MatchingPage() {
                           >
                             <div className="aspect-[4/5] overflow-hidden">
                               {item.imageUrl.startsWith("data:") || item.imageUrl.startsWith("http") ? (
-                                <img src={item.imageUrl} alt={item.category} className="h-full w-full object-cover" />
+                                <CatalogImage
+                                  imageUrl={item.imageUrl}
+                                  fallbackUrl={item.imageUrl}
+                                  alt={item.category}
+                                  className="h-full w-full bg-[#f7f2e8] object-contain p-2"
+                                />
                               ) : (
                                 <div className="flex h-full w-full items-center justify-center text-sm text-[var(--text-muted)]">
                                   {item.category}

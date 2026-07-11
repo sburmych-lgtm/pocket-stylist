@@ -6,6 +6,7 @@ import { getAppStatus } from "../../services/api";
 import type { StylistPersona } from "../../services/api";
 import { SpeakButton } from "../common/SpeakButton";
 import { TryOnModal } from "./TryOnModal";
+import { CatalogImage } from "../common/CatalogImage";
 
 interface OutfitCardProps {
   name: string;
@@ -97,7 +98,12 @@ export function OutfitCard({
             >
               <div className="aspect-[4/5] overflow-hidden">
                 {item.imageUrl.startsWith("data:") || item.imageUrl.startsWith("http") ? (
-                  <img src={item.imageUrl} alt={item.category} className="h-full w-full object-cover" />
+                  <CatalogImage
+                    imageUrl={item.imageUrl}
+                    fallbackUrl={item.thumbnailUrl ?? item.imageUrl}
+                    alt={item.category}
+                    className="h-full w-full bg-[#f7f2e8] object-contain p-2"
+                  />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-sm text-[var(--text-muted)]">
                     {item.category}

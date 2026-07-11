@@ -1,4 +1,5 @@
 import { useI18n } from "../../i18n";
+import { CatalogImage } from "../common/CatalogImage";
 
 interface SharePreviewProps {
   referenceImageUrl: string;
@@ -67,7 +68,12 @@ export function SharePreview({
               <div className="grid grid-cols-2 gap-2">
                 {recreationItems.slice(0, 4).map((item, index) => (
                   <div key={`${item.category}-${index}`} className="overflow-hidden rounded-[0.95rem] border border-white/8 bg-white/[0.03]">
-                    <img src={item.imageUrl} alt={item.category} className="aspect-square h-full w-full object-cover" />
+                    <CatalogImage
+                      imageUrl={item.imageUrl}
+                      fallbackUrl={item.imageUrl}
+                      alt={item.category}
+                      className="aspect-square h-full w-full bg-[#f7f2e8] object-contain p-1"
+                    />
                   </div>
                 ))}
               </div>

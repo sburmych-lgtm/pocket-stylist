@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useI18n } from "../i18n";
-import { LocationRequest } from "../components/LocationRequest";
+import { HomeWeatherWidget } from "../components/HomeWeatherWidget";
+import { CatalogImage } from "../components/common/CatalogImage";
 
 function StatCard({
   icon: Icon,
@@ -126,12 +127,12 @@ function RecentItems({ items }: { items: WardrobeItem[] }) {
             key={item.id}
             className="overflow-hidden rounded-[1.35rem] border border-white/8 bg-white/[0.03]"
           >
-            <div className="aspect-[4/5] overflow-hidden">
-              <img
-                src={item.thumbnailUrl ?? item.imageUrl}
+        <div className="aspect-[4/5] overflow-hidden">
+              <CatalogImage
+                imageUrl={item.imageUrl}
+                fallbackUrl={item.thumbnailUrl ?? item.imageUrl}
                 alt={item.category}
-                className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
-                loading="lazy"
+                className="h-full w-full bg-[#f7f2e8] object-contain p-2 transition-transform duration-300 hover:scale-105"
               />
             </div>
             <div className="space-y-1 px-4 py-3">
@@ -165,9 +166,6 @@ export function HomePage() {
   const navigate = useNavigate();
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [loading, setLoading] = useState(true);
-  // Local override so the banner disappears the moment the city form
-  // succeeds, without waiting for AuthContext to refresh.
-  const [locationResolved, setLocationResolved] = useState(false);
 
   useEffect(() => {
     wardrobeApi
@@ -176,11 +174,6 @@ export function HomePage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
-
-  // Show the LocationRequest banner whenever we don't yet have a saved
-  // latitude. `lat` is undefined for demo users and null for new accounts;
-  // both should trigger the banner.
-  const needsLocation = !locationResolved && (user?.lat ?? null) === null;
 
   const categories = items.reduce<Record<string, number>>((acc, item) => {
     acc[item.category] = (acc[item.category] ?? 0) + 1;
@@ -195,6 +188,8 @@ export function HomePage() {
 
   return (
     <div className="page-shell space-y-8">
+      <HomeWeatherWidget />
+
       <section className="page-header animate-fade-in-up p-6 sm:p-8">
         <div className="relative z-10 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="space-y-6">
@@ -274,10 +269,6 @@ export function HomePage() {
           </div>
         </div>
       </section>
-
-      {needsLocation && (
-        <LocationRequest onResolved={() => setLocationResolved(true)} />
-      )}
 
       {loading ? (
         <StatsSkeleton />

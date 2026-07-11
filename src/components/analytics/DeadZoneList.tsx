@@ -1,4 +1,5 @@
 import { useI18n } from "../../i18n";
+import { CatalogImage } from "../common/CatalogImage";
 
 interface DeadZoneItem {
   id: string;
@@ -37,11 +38,12 @@ export function DeadZoneList({ items }: DeadZoneListProps) {
         {items.map((item) => (
           <div key={item.id} className="grid gap-4 rounded-[1.2rem] border border-white/8 bg-white/[0.03] p-4 sm:grid-cols-[4rem_1fr_auto] sm:items-center">
             <div className="h-16 w-16 overflow-hidden rounded-[1rem] bg-white/[0.05]">
-              {(item.thumbnailUrl ?? item.imageUrl).startsWith("data:") ? (
-                <img
-                  src={item.thumbnailUrl ?? item.imageUrl}
+              {item.imageUrl.startsWith("data:") || item.imageUrl.startsWith("http") ? (
+                <CatalogImage
+                  imageUrl={item.imageUrl}
+                  fallbackUrl={item.thumbnailUrl ?? item.imageUrl}
                   alt={item.category}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full bg-[#f7f2e8] object-contain p-1"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-xs text-[var(--text-muted)]">

@@ -734,6 +734,9 @@ export const en: Translations = {
     cta: "Try on",
     title: "Virtual Try-On",
     instructions: "Upload a full-body photo of yourself with a clean background and we'll show how this look fits.",
+    photoTip1: "A full-body photo works best: head, torso and legs visible.",
+    photoTip2: "Stand straight, avoid mirror filters, and keep other people out of the frame.",
+    photoTip3: "A face selfie or portrait is not enough for a reliable try-on.",
     uploadSelfie: "Upload photo",
     generating: "Generating your try-on…",
     generatingHint: "Usually 10–30 seconds. Don't close this window.",
@@ -776,6 +779,17 @@ export const en: Translations = {
     detected: "Location saved",
     denied: "Location permission denied. Enter your city manually.",
     cityNotFound: "City not found. Try a different spelling or a larger nearby city.",
+  },
+
+  weather: {
+    kicker: "Weather for style",
+    loading: "Updating forecast…",
+    setTitle: "Choose a location for accurate outfits",
+    setDesc: "Allow geolocation or enter a city manually — useful for travel and vacation planning.",
+    changeLocation: "Change location",
+    locationUnknown: "Selected location",
+    estimated: "estimated",
+    failed: "Could not update the weather. Please try again.",
   },
 
   /* ---- Analytics ---- */

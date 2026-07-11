@@ -112,6 +112,14 @@ export function TryOnModal({ open, onClose, garmentImageUrl, garmentLabel }: Pro
               <p className="text-sm leading-6 text-[var(--text-secondary)]">
                 {t("tryon.instructions")}
               </p>
+              <div className="grid gap-2 rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-left">
+                {[t("tryon.photoTip1"), t("tryon.photoTip2"), t("tryon.photoTip3")].map((tip) => (
+                  <p key={tip} className="flex items-start gap-2 text-xs leading-5 text-[var(--text-secondary)]">
+                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]" />
+                    {tip}
+                  </p>
+                ))}
+              </div>
               <button
                 type="button"
                 onClick={openPicker}

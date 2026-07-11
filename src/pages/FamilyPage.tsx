@@ -18,6 +18,7 @@ import {
 } from "../services/api";
 import { useAuth } from "../contexts/auth-context";
 import { useI18n } from "../i18n";
+import { CatalogImage } from "../components/common/CatalogImage";
 
 function RoleBadge({ role }: { role: string }) {
   const { t } = useI18n();
@@ -97,7 +98,12 @@ function WardrobePreview({
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
           {items.slice(0, 18).map((item) => (
             <div key={item.id} className="overflow-hidden rounded-[1rem] border border-white/8 bg-white/[0.03]">
-              <img src={item.thumbnailUrl ?? item.imageUrl} alt={item.category} className="aspect-square h-full w-full object-cover" />
+              <CatalogImage
+                imageUrl={item.imageUrl}
+                fallbackUrl={item.thumbnailUrl ?? item.imageUrl}
+                alt={item.category}
+                className="aspect-square h-full w-full bg-[#f7f2e8] object-contain p-1"
+              />
               <div className="px-2 py-2 text-center text-[0.65rem] uppercase tracking-[0.16em] text-[var(--text-muted)]">
                 {item.category}
               </div>

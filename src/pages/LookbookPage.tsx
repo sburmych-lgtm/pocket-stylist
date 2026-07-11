@@ -4,6 +4,7 @@ import { lookbookApi } from "../services/api";
 import type { LookbookDay, StylistPersona } from "../services/api";
 import { useI18n } from "../i18n";
 import { SpeakButton } from "../components/common/SpeakButton";
+import { CatalogImage } from "../components/common/CatalogImage";
 
 function formatDate(dateStr: string, dayNames: string[]): { dayName: string; display: string } {
   const date = new Date(`${dateStr}T00:00:00`);
@@ -78,10 +79,11 @@ function DayCard({ day, index, onWear, onRegenerate, wornDays, regenerating, per
             {day.outfit.items.map((item) => (
               <div key={item.id} className="overflow-hidden rounded-[1rem] border border-white/8 bg-white/[0.03]">
                 {item.imageUrl.startsWith("data:") || item.imageUrl.startsWith("http") ? (
-                  <img
-                    src={item.thumbnailUrl ?? item.imageUrl}
+                  <CatalogImage
+                    imageUrl={item.imageUrl}
+                    fallbackUrl={item.thumbnailUrl ?? item.imageUrl}
                     alt={item.category}
-                    className="aspect-[4/5] h-full w-full object-cover"
+                    className="aspect-[4/5] h-full w-full bg-[#f7f2e8] object-contain p-1.5"
                   />
                 ) : (
                   <div className="flex aspect-[4/5] items-center justify-center text-xs text-[var(--text-muted)]">
