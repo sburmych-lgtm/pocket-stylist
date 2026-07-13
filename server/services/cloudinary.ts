@@ -28,7 +28,14 @@ export async function uploadImage(
   mimeType: string,
 ): Promise<UploadResult> {
   if (!isConfigured) {
-    // Mock mode: store as data URL
+    // In PRODUCTION a missing Cloudinary config must fail loudly. Silently
+    // storing the raw image as a base64 data URL bloats every row and makes
+    // the wardrobe endpoint return hundreds of MB of JSON — unloadable on a
+    // phone (this is exactly what corrupted an early bulk import). Only fall
+    // back to an inline data URL in local dev / mock mode.
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("cloudinary_not_configured");
+    }
     const dataUrl = `data:${mimeType};base64,${base64Data}`;
     return {
       imageUrl: dataUrl,
