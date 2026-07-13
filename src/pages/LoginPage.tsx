@@ -363,7 +363,7 @@ export function LoginPage() {
 
             <button
               type="submit"
-              disabled={authInProgress || (mode === "register" && !acceptedTerms)}
+              disabled={authInProgress}
               className="gold-btn flex w-full items-center justify-center gap-2 rounded-full px-4 py-3.5 text-sm font-semibold disabled:opacity-50"
             >
               {mode === "register" ? (
