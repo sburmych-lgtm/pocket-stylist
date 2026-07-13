@@ -174,6 +174,24 @@ export const authApi = {
   refreshSession(): Promise<{ token: string }> {
     return apiFetch<{ token: string }>("/auth/refresh", { method: "POST" });
   },
+
+  // Request a reset link. Always resolves (server answers uniformly) so the
+  // UI must never infer account existence from success/failure.
+  requestPasswordReset(email: string): Promise<{ ok: true }> {
+    return apiFetch<{ ok: true }>("/auth/password/forgot", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  // Set a new password with a token from the reset email. On success the
+  // response is a full session (auto-login), same shape as loginEmail.
+  resetPassword(token: string, password: string): Promise<AuthResponse> {
+    return apiFetch<AuthResponse>("/auth/password/reset", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    });
+  },
 };
 
 /* ---------- Drive types & API ---------- */

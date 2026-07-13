@@ -86,6 +86,30 @@ export const uk: Translations = {
     termsAnd: "та",
     privacyLink: "Політикою конфіденційності",
     howItWorksLink: "Як це працює?",
+    forgotPassword: "Забули пароль?",
+  },
+
+  /* ---- Forgot / reset password ---- */
+  forgotPassword: {
+    subtitle: "Введіть свій email — надішлемо посилання для відновлення пароля.",
+    submit: "Надіслати посилання",
+    sending: "Надсилаємо…",
+    sent: "Якщо цей email зареєстровано, ми надіслали на нього посилання для скидання пароля. Перевірте пошту (і теку «Спам»).",
+    backToLogin: "Повернутися до входу",
+  },
+  resetPassword: {
+    subtitle: "Придумайте новий пароль для свого акаунту.",
+    newPasswordLabel: "Новий пароль",
+    newPasswordPlaceholder: "Новий пароль (мінімум {min} символів)",
+    confirmLabel: "Підтвердження пароля",
+    confirmPlaceholder: "Повторіть пароль",
+    submit: "Зберегти новий пароль",
+    submitting: "Зберігаємо…",
+    mismatch: "Паролі не збігаються.",
+    invalidToken: "Посилання недійсне або застаріле. Запросіть нове.",
+    missingToken: "У посиланні немає токена. Запросіть нове посилання для скидання пароля.",
+    requestNew: "Запросити нове посилання",
+    failed: "Не вдалося змінити пароль. Спробуйте ще раз.",
   },
 
   /* ---- How it works (public landing) ---- */

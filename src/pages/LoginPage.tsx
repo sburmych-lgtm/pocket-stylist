@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Mail, Lock, User as UserIcon, LogIn, UserPlus, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../contexts/auth-context";
 import { getAppStatus } from "../services/api";
@@ -315,6 +315,17 @@ export function LoginPage() {
                 </button>
               </div>
             </label>
+
+            {mode === "login" && (
+              <div className="-mt-1 text-right">
+                <Link
+                  to="/forgot-password"
+                  className="text-xs text-[var(--text-secondary)] transition-colors hover:text-[var(--accent)]"
+                >
+                  {t("login.forgotPassword")}
+                </Link>
+              </div>
+            )}
 
             {mode === "register" && (
               <label className="flex cursor-pointer items-start gap-2 px-1 text-[11px] leading-snug text-[var(--text-secondary)]">

@@ -14,6 +14,8 @@ import { LookbookPage } from "./pages/LookbookPage";
 import FamilyPage from "./pages/FamilyPage";
 import { WardrobePage } from "./pages/WardrobePage";
 import { LoginPage } from "./pages/LoginPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { LegalPage } from "./pages/LegalPage";
 import { HowItWorksPage } from "./pages/HowItWorksPage";
 import { Layout } from "./components/Layout";
@@ -77,6 +79,8 @@ export default function App() {
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route
               path="/privacy"
               element={<LegalPage docPath="/privacy.md" titleKey="legal.privacyTitle" />}

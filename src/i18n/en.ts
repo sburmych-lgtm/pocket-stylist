@@ -86,6 +86,30 @@ export const en: Translations = {
     termsAnd: "and",
     privacyLink: "Privacy Policy",
     howItWorksLink: "How does it work?",
+    forgotPassword: "Forgot password?",
+  },
+
+  /* ---- Forgot / reset password ---- */
+  forgotPassword: {
+    subtitle: "Enter your email and we'll send you a password reset link.",
+    submit: "Send reset link",
+    sending: "Sending…",
+    sent: "If that email is registered, we've sent it a password reset link. Check your inbox (and spam folder).",
+    backToLogin: "Back to sign in",
+  },
+  resetPassword: {
+    subtitle: "Choose a new password for your account.",
+    newPasswordLabel: "New password",
+    newPasswordPlaceholder: "New password (min {min} characters)",
+    confirmLabel: "Confirm password",
+    confirmPlaceholder: "Repeat password",
+    submit: "Save new password",
+    submitting: "Saving…",
+    mismatch: "Passwords don't match.",
+    invalidToken: "This link is invalid or expired. Request a new one.",
+    missingToken: "No token in the link. Request a new reset link.",
+    requestNew: "Request a new link",
+    failed: "Couldn't change the password. Please try again.",
   },
 
   /* ---- How it works (public landing) ---- */

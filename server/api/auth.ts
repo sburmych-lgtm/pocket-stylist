@@ -13,6 +13,12 @@ import { rateLimitByIp } from "../middleware/rate-limit.js";
 import { createTrialSubscription } from "../services/subscription.js";
 import { hashPassword, verifyPassword } from "../services/password.js";
 import { createOAuthState, verifyOAuthState } from "../services/oauth-state.js";
+import {
+  createResetToken,
+  verifyResetToken,
+  fingerprintMatches,
+} from "../services/password-reset.js";
+import { sendEmail } from "../services/email.js";
 
 // Anti-bot: 20 attempts / hour per IP for credential endpoints.
 // Bounded enough to keep humans unaffected while pushing automated
@@ -38,6 +44,16 @@ function getBoolField(body: unknown, key: string): boolean | undefined {
   if (!body || typeof body !== "object") return undefined;
   const v = (body as Record<string, unknown>)[key];
   return typeof v === "boolean" ? v : undefined;
+}
+
+// Escape user-controlled text before interpolating into HTML email bodies.
+function escapeHtml(input: string): string {
+  return input.replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ??
+      c,
+  );
 }
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -737,6 +753,135 @@ authRouter.post("/email/login", authLimiter, async (req: Request, res: Response)
   } catch (err) {
     console.error("Email login error:", err);
     res.status(500).json({ error: "login_failed" });
+  }
+});
+
+// POST /api/auth/password/forgot — request a password-reset link.
+// Always answers 200 {ok:true} regardless of whether the email exists or
+// whether SMTP is configured: never reveal account existence (enumeration).
+authRouter.post("/password/forgot", authLimiter, async (req: Request, res: Response) => {
+  const uniform = () => res.json({ ok: true });
+  try {
+    const emailRaw = getStringField(req.body, "email");
+    if (emailRaw === undefined) {
+      uniform();
+      return;
+    }
+    const normalizedEmail = emailRaw.trim().toLowerCase();
+    if (normalizedEmail.length > EMAIL_MAX_LENGTH || !EMAIL_REGEX.test(normalizedEmail)) {
+      uniform();
+      return;
+    }
+
+    const user = await withTimeout(
+      prisma.user.findUnique({
+        where: { email: normalizedEmail },
+        select: { id: true, email: true, name: true, passwordHash: true },
+      }),
+      5_000,
+      "Database lookup timed out",
+    );
+
+    // Only email/password accounts can reset a password. Google-only users
+    // have no passwordHash — they recover by signing in with Google.
+    if (user?.passwordHash) {
+      const token = createResetToken(user.id, user.passwordHash, JWT_SECRET);
+      const appUrl = getAppUrl(req);
+      const link = `${appUrl}/reset-password#token=${encodeURIComponent(token)}`;
+      const displayName = user.name?.trim() || "there";
+      await sendEmail({
+        to: user.email,
+        subject: "Reset your Pocket Stylist password",
+        text:
+          `Hi ${displayName},\n\n` +
+          `We received a request to reset your Pocket Stylist password. ` +
+          `Use the link below within 1 hour:\n\n${link}\n\n` +
+          `If you didn't request this, ignore this email — your password stays unchanged.`,
+        html:
+          `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a">` +
+          `<h2 style="color:#1a1a1a">Reset your password</h2>` +
+          `<p>Hi ${escapeHtml(displayName)},</p>` +
+          `<p>We received a request to reset your Pocket Stylist password. ` +
+          `This link is valid for 1 hour:</p>` +
+          `<p><a href="${link}" style="display:inline-block;padding:12px 24px;background:#c9a55a;` +
+          `color:#1a1a1a;border-radius:9999px;text-decoration:none;font-weight:600">Reset password</a></p>` +
+          `<p style="font-size:12px;color:#888">Or paste this link into your browser:<br>${link}</p>` +
+          `<p style="font-size:12px;color:#888">If you didn't request this, ignore this email — ` +
+          `your password stays unchanged.</p></div>`,
+      });
+    }
+
+    uniform();
+  } catch (err) {
+    console.error("Password forgot error:", err);
+    // Still answer uniformly — don't leak internal failures either.
+    uniform();
+  }
+});
+
+// POST /api/auth/password/reset — set a new password using a valid token.
+// On success the user is auto-logged-in (returns a fresh app JWT).
+authRouter.post("/password/reset", authLimiter, async (req: Request, res: Response) => {
+  try {
+    const token = getStringField(req.body, "token");
+    const password = getStringField(req.body, "password");
+
+    if (token === undefined || password === undefined) {
+      res.status(400).json({ error: "invalid_payload" });
+      return;
+    }
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      res.status(400).json({ error: "password_too_short" });
+      return;
+    }
+    if (password.length > PASSWORD_MAX_LENGTH) {
+      res.status(400).json({ error: "password_too_long" });
+      return;
+    }
+
+    const claims = verifyResetToken(token, JWT_SECRET);
+    if (!claims) {
+      res.status(400).json({ error: "invalid_or_expired_token" });
+      return;
+    }
+
+    const user = await withTimeout(
+      prisma.user.findUnique({
+        where: { id: claims.userId },
+        select: { id: true, email: true, name: true, avatarUrl: true, passwordHash: true },
+      }),
+      5_000,
+      "Database lookup timed out",
+    );
+
+    // Fingerprint must still match the CURRENT hash — kills reused links and
+    // any link minted before an earlier successful reset.
+    if (!user?.passwordHash || !fingerprintMatches(user.passwordHash, claims.fp)) {
+      res.status(400).json({ error: "invalid_or_expired_token" });
+      return;
+    }
+
+    const passwordHash = await hashPassword(password);
+    await withTimeout(
+      prisma.user.update({ where: { id: user.id }, data: { passwordHash } }),
+      5_000,
+      "Database update timed out",
+    );
+
+    const appToken = signToken(user.id);
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      token: appToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+      },
+    });
+  } catch (err) {
+    console.error("Password reset error:", err);
+    res.status(500).json({ error: "reset_failed" });
   }
 });
 
