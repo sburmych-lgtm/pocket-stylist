@@ -16,6 +16,7 @@ import { WardrobePage } from "./pages/WardrobePage";
 import { LoginPage } from "./pages/LoginPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
+import { AdminPage } from "./pages/AdminPage";
 import { LegalPage } from "./pages/LegalPage";
 import { HowItWorksPage } from "./pages/HowItWorksPage";
 import { Layout } from "./components/Layout";
@@ -91,6 +92,8 @@ export default function App() {
             />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
             <Route element={<ProtectedRoute />}>
+              {/* Private owner tool — login required, no nav entry. */}
+              <Route path="/admin" element={<AdminPage />} />
               <Route element={<Layout />}>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/wardrobe" element={<WardrobePage />} />

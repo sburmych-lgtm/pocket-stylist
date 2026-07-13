@@ -33,6 +33,13 @@ const EMAIL_MAX_LENGTH = 254; // RFC 5321
 const NAME_MAX_LENGTH = 100;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Owner-admin emails allowed to reset any user's password from the /admin
+// page. Comma-separated env var; empty (unset) = nobody is admin (safe default).
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+
 // Type-safe extraction of an optional string field from request body.
 function getStringField(body: unknown, key: string): string | undefined {
   if (!body || typeof body !== "object") return undefined;
@@ -884,6 +891,59 @@ authRouter.post("/password/reset", authLimiter, async (req: Request, res: Respon
     res.status(500).json({ error: "reset_failed" });
   }
 });
+
+// POST /api/auth/admin/reset-password — owner tool: set any user's password.
+// Guarded by ADMIN_EMAILS (the requester must be a signed-in admin). Needs no
+// email service — the admin just hands the new password to the user.
+authRouter.post(
+  "/admin/reset-password",
+  authLimiter,
+  requireAuth,
+  async (req: Request, res: Response) => {
+    try {
+      const requester = await prisma.user.findUnique({
+        where: { id: req.userId! },
+        select: { email: true },
+      });
+      if (!requester || !ADMIN_EMAILS.includes(requester.email.toLowerCase())) {
+        res.status(403).json({ error: "forbidden" });
+        return;
+      }
+
+      const emailRaw = getStringField(req.body, "email");
+      const newPassword = getStringField(req.body, "password");
+      if (emailRaw === undefined || newPassword === undefined) {
+        res.status(400).json({ error: "invalid_payload" });
+        return;
+      }
+      if (newPassword.length < PASSWORD_MIN_LENGTH) {
+        res.status(400).json({ error: "password_too_short" });
+        return;
+      }
+      if (newPassword.length > PASSWORD_MAX_LENGTH) {
+        res.status(400).json({ error: "password_too_long" });
+        return;
+      }
+
+      const email = emailRaw.trim().toLowerCase();
+      const target = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true, email: true },
+      });
+      if (!target) {
+        res.status(404).json({ error: "user_not_found" });
+        return;
+      }
+
+      const passwordHash = await hashPassword(newPassword);
+      await prisma.user.update({ where: { id: target.id }, data: { passwordHash } });
+      res.json({ ok: true, email: target.email });
+    } catch (err) {
+      console.error("Admin reset error:", err);
+      res.status(500).json({ error: "reset_failed" });
+    }
+  },
+);
 
 // POST /api/auth/refresh — rotate a still-valid app JWT before it expires.
 authRouter.post("/refresh", requireAuth, (req: Request, res: Response) => {

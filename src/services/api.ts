@@ -192,6 +192,18 @@ export const authApi = {
       body: JSON.stringify({ token, password }),
     });
   },
+
+  // Owner-only: set any user's password directly (no email needed). Requires
+  // the caller to be signed in as an ADMIN_EMAILS account (server-enforced).
+  adminResetPassword(
+    email: string,
+    password: string,
+  ): Promise<{ ok: true; email: string }> {
+    return apiFetch<{ ok: true; email: string }>("/auth/admin/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+  },
 };
 
 /* ---------- Drive types & API ---------- */
